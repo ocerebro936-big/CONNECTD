@@ -1,0 +1,160 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "User ID" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "bio": { "type": "string" },
+        "tags": { "type": "string" },
+        "color": { "type": "string" },
+        "youtube": { "type": "string" },
+        "instagram": { "type": "string" },
+        "tiktok": { "type": "string" },
+        "facebook": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "coverURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "User generated posts",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorHandle": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "content": { "type": "string" },
+        "image": { "type": "string" },
+        "likes": { "type": "number" },
+        "comments": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "authorName", "content", "createdAt"]
+    },
+    "TvQueueItem": {
+      "title": "TvQueueItem",
+      "description": "Video queued for Connect TV",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "playing", "played"] },
+        "submittedAt": { "type": "number" }
+      },
+      "required": ["userId", "authorName", "videoUrl", "status", "submittedAt"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a post",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "authorName", "content", "createdAt"]
+    },
+    "Purchase": {
+      "title": "Purchase",
+      "description": "A gallery item purchase",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "itemId": { "type": "string" },
+        "title": { "type": "string" },
+        "price": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "itemId", "title", "price", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Internal direct message",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderAvatar": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["senderId", "receiverId", "senderName", "content", "createdAt"]
+    },
+    "TvChatMessage": {
+      "title": "TvChatMessage",
+      "description": "Live chat message for Connect TV",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "authorName", "content", "createdAt"]
+    },
+    "SecurityLog": {
+      "title": "SecurityLog",
+      "description": "Security audit and rate-limit activity log",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "eventType": { "type": "string" },
+        "details": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "eventType", "details", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "/posts/{postId}": {
+      "schema": { "$ref": "#/entities/Post" },
+      "description": "Global posts feed"
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/Comment" },
+      "description": "Comments for a post"
+    },
+    "/tv_queue/{itemId}": {
+      "schema": { "$ref": "#/entities/TvQueueItem" },
+      "description": "Jukebox-style queue for Connect TV"
+    },
+    "/purchases/{purchaseId}": {
+      "schema": { "$ref": "#/entities/Purchase" },
+      "description": "User purchases from the gallery"
+    },
+    "/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Direct messages between users"
+    },
+    "/tv_chat/{messageId}": {
+      "schema": { "$ref": "#/entities/TvChatMessage" },
+      "description": "Live chat for TV"
+    },
+    "/security_logs/{logId}": {
+      "schema": { "$ref": "#/entities/SecurityLog" },
+      "description": "Security logs for audit trails"
+    }
+  }
+}
+

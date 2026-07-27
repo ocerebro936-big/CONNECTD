@@ -1,0 +1,217 @@
+import React from 'react';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Camera, UserCircle, Palette, Youtube, Instagram, Facebook, MessageCircle, CheckCircle2 } from 'lucide-react';
+
+interface ProfilePageProps {
+  user: any;
+  profileData: any;
+  setProfileData: (data: any) => void;
+  isSaving: boolean;
+  handleSaveProfile: () => void;
+  photoInputRef: React.RefObject<HTMLInputElement>;
+  coverInputRef: React.RefObject<HTMLInputElement>;
+  handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>, type: 'photoURL' | 'coverURL') => void;
+}
+
+const ProfilePage: React.FC<ProfilePageProps> = ({
+  user,
+  profileData,
+  setProfileData,
+  isSaving,
+  handleSaveProfile,
+  photoInputRef,
+  coverInputRef,
+  handleImageUpload,
+}) => {
+  return (
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Seu Perfil</h2>
+        <p className="text-slate-700 font-medium text-base">Personalize sua identidade na rede Connected.</p>
+      </div>
+
+      <div className="glass-card rounded-3xl overflow-hidden shadow-xl border-white/30">
+        <input type="file" accept="image/*" ref={coverInputRef} className="hidden" onChange={(e) => handleImageUpload(e, 'coverURL')} />
+        <input type="file" accept="image/*" ref={photoInputRef} className="hidden" onChange={(e) => handleImageUpload(e, 'photoURL')} />
+        {/* Banner */}
+        <div className="h-48 md:h-72 w-full relative group bg-gradient-to-r from-blue-400 to-purple-500">
+          <img src={profileData.coverURL || "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2000&auto=format&fit=crop"} alt="Cover" className="w-full h-full object-cover opacity-80 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <Button variant="secondary" className="glass backdrop-blur-md border-white/40 text-slate-900 font-semibold rounded-xl" onClick={() => coverInputRef.current?.click()}><Camera className="mr-2 h-4 w-4"/> Alterar Capa</Button>
+          </div>
+        </div>
+
+        {/* Avatar & Info */}
+        <div className="px-6 sm:px-10 pb-10 relative">
+          <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-end -mt-16 sm:-mt-24 mb-8 relative z-10">
+            <div className="relative group">
+              <Avatar className="h-32 w-32 sm:h-40 sm:w-40 border-4 border-white/50 shadow-xl">
+                <AvatarImage src={profileData.photoURL || "https://github.com/shadcn.png"} alt="@shadcn" />
+                <AvatarFallback>CN</AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer" onClick={() => photoInputRef.current?.click()}>
+                <Camera className="h-8 w-8 text-white" />
+              </div>
+            </div>
+            <div className="flex-1 pb-2 sm:pb-4">
+              <h1 className="text-3xl font-bold text-slate-900">{profileData.displayName || 'Novo Usuário'}</h1>
+              <p className="text-slate-700 font-medium text-base sm:text-lg mb-2">@{profileData.displayName?.toLowerCase().replace(/\s+/g, '') || 'usuario'} • Criador Ouro</p>
+
+              <div className="flex items-center gap-2">
+                {profileData.youtube && (
+                  <a href={profileData.youtube.startsWith('http') ? profileData.youtube : `https://${profileData.youtube}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/60 hover:bg-white border border-white/40 rounded-full shadow-sm transition-all text-red-600">
+                    <Youtube className="h-4 w-4" />
+                  </a>
+                )}
+                {profileData.instagram && (
+                  <a href={profileData.instagram.startsWith('http') ? profileData.instagram : `https://${profileData.instagram}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/60 hover:bg-white border border-white/40 rounded-full shadow-sm transition-all text-pink-600">
+                    <Instagram className="h-4 w-4" />
+                  </a>
+                )}
+                {profileData.tiktok && (
+                  <a href={profileData.tiktok.startsWith('http') ? profileData.tiktok : `https://${profileData.tiktok}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/60 hover:bg-white border border-white/40 rounded-full shadow-sm transition-all text-slate-900">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
+                  </a>
+                )}
+                {profileData.facebook && (
+                  <a href={profileData.facebook.startsWith('http') ? profileData.facebook : `https://${profileData.facebook}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/60 hover:bg-white border border-white/40 rounded-full shadow-sm transition-all text-blue-600">
+                    <Facebook className="h-4 w-4" />
+                  </a>
+                )}
+                {profileData.whatsapp && (
+                  <a href={profileData.whatsapp.startsWith('http') ? profileData.whatsapp : `https://wa.me/${profileData.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/60 hover:bg-white border border-white/40 rounded-full shadow-sm transition-all text-emerald-500">
+                    <MessageCircle className="h-4 w-4" />
+                  </a>
+                )}
+              </div>
+            </div>
+            <div className="pb-2 sm:pb-4 flex gap-3 w-full sm:w-auto">
+              <Button
+                className="rounded-xl shadow-md w-full sm:w-auto text-md h-12 px-8 font-semibold"
+                onClick={handleSaveProfile}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Salvando...' : 'Salvar Perfil'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Form Fields */}
+          <div className="grid md:grid-cols-2 gap-10 mt-8">
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2"><UserCircle className="h-6 w-6 text-primary"/> Informações Básicas</h3>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-800">Nome de Exibição</label>
+                <input
+                  type="text"
+                  value={profileData.displayName}
+                  onChange={(e) => setProfileData({...profileData, displayName: e.target.value})}
+                  className="w-full glass-input rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 text-slate-900 font-medium placeholder:text-slate-500 shadow-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-800">Bio (Apresentação)</label>
+                <textarea
+                  rows={4}
+                  value={profileData.bio}
+                  onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
+                  placeholder="Fale um pouco sobre você..."
+                  className="w-full glass-input rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 text-slate-900 font-medium placeholder:text-slate-500 resize-none shadow-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-800">Tags de Nicho</label>
+                <input
+                  type="text"
+                  value={profileData.tags}
+                  onChange={(e) => setProfileData({...profileData, tags: e.target.value})}
+                  placeholder="Ex: Design, Tech, Lifestyle"
+                  className="w-full glass-input rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 text-slate-900 font-medium placeholder:text-slate-500 shadow-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2"><Palette className="h-6 w-6 text-primary"/> Personalização</h3>
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-slate-800">Cor de Destaque</label>
+                <div className="flex gap-4 flex-wrap">
+                  {['bg-blue-500', 'bg-purple-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500'].map((color, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setProfileData({...profileData, color})}
+                      className={`h-12 w-12 rounded-full ${color} shadow-lg border-2 ${profileData.color === color ? 'border-white' : 'border-transparent'} flex items-center justify-center hover:scale-110 transition-transform`}
+                    >
+                      {profileData.color === color && <CheckCircle2 className="h-6 w-6 text-white" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 mt-8">
+                <label className="text-sm font-bold text-slate-800">Links Sociais em Destaque</label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 glass-input p-2 rounded-xl shadow-sm">
+                    <div className="bg-white/80 p-2 rounded-lg"><Youtube className="h-5 w-5 text-red-500" /></div>
+                    <input
+                      type="text"
+                      value={profileData.youtube}
+                      onChange={(e) => setProfileData({...profileData, youtube: e.target.value})}
+                      placeholder="youtube.com/seu-canal"
+                      className="flex-1 bg-transparent border-none focus:outline-none text-slate-900 font-medium px-2 w-full"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 glass-input p-2 rounded-xl shadow-sm">
+                    <div className="bg-white/80 p-2 rounded-lg"><Instagram className="h-5 w-5 text-pink-500" /></div>
+                    <input
+                      type="text"
+                      value={profileData.instagram}
+                      onChange={(e) => setProfileData({...profileData, instagram: e.target.value})}
+                      placeholder="instagram.com/seu-perfil"
+                      className="flex-1 bg-transparent border-none focus:outline-none text-slate-900 font-medium px-2 w-full"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 glass-input p-2 rounded-xl shadow-sm">
+                    <div className="bg-white/80 p-2 rounded-lg"><svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-slate-900"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg></div>
+                    <input
+                      type="text"
+                      value={profileData.tiktok}
+                      onChange={(e) => setProfileData({...profileData, tiktok: e.target.value})}
+                      placeholder="tiktok.com/@seu-perfil"
+                      className="flex-1 bg-transparent border-none focus:outline-none text-slate-900 font-medium px-2 w-full"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 glass-input p-2 rounded-xl shadow-sm">
+                    <div className="bg-white/80 p-2 rounded-lg"><Facebook className="h-5 w-5 text-blue-600" /></div>
+                    <input
+                      type="text"
+                      value={profileData.facebook}
+                      onChange={(e) => setProfileData({...profileData, facebook: e.target.value})}
+                      placeholder="facebook.com/sua-pagina"
+                      className="flex-1 bg-transparent border-none focus:outline-none text-slate-900 font-medium px-2 w-full"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 glass-input p-2 rounded-xl shadow-sm">
+                    <div className="bg-white/80 p-2 rounded-lg"><MessageCircle className="h-5 w-5 text-emerald-500" /></div>
+                    <input
+                      type="text"
+                      value={profileData.whatsapp}
+                      onChange={(e) => setProfileData({...profileData, whatsapp: e.target.value})}
+                      placeholder="Seu número (ex: 5511999999999)"
+                      className="flex-1 bg-transparent border-none focus:outline-none text-slate-900 font-medium px-2 w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export { ProfilePage };
+export default ProfilePage;
