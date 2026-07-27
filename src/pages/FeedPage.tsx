@@ -3,6 +3,8 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Heart, MessageSquare, Share2, ImageIcon, Video, Send, MoreHorizontal, Home } from 'lucide-react';
+import { ThermalBadge } from '../components/ThermalBadge';
+import { calculateTemperature } from '../lib/thermal-utils';
 
 interface FeedPageProps {
   user: any;
@@ -114,6 +116,7 @@ const FeedPage: React.FC<FeedPageProps> = ({
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="font-bold text-slate-900 text-[15px]">{post.authorName}</span>
                   <span className="inline-flex items-center rounded-md border border-amber-200/50 px-1.5 py-0 text-[10px] font-bold bg-amber-100/50 text-amber-700">Creator</span>
+                  <ThermalBadge temperature={calculateTemperature(post.likes, post.comments)} />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-slate-500 text-xs font-semibold">{post.authorHandle}</span>

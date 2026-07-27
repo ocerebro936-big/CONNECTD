@@ -4,6 +4,8 @@ import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Tv, MessageSquare, Play, Send, X } from 'lucide-react';
+import { ThermalBadge } from '../components/ThermalBadge';
+import { calculateTemperature } from '../lib/thermal-utils';
 import { updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -115,8 +117,11 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
                         <AvatarImage src={playingVideo.authorAvatar} />
                         <AvatarFallback>{playingVideo.authorName[0]}</AvatarFallback>
                       </Avatar>
-                      <div className="text-left">
-                        <h3 className="text-xl font-bold text-white drop-shadow-md">{playingVideo.title}</h3>
+                      <div className="text-left flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-bold text-white drop-shadow-md">{playingVideo.title}</h3>
+                          <ThermalBadge temperature={calculateTemperature(Math.floor(Math.random() * 60) + 10, Math.floor(Math.random() * 40) + 5, Math.floor(Math.random() * 500) + 50)} />
+                        </div>
                         <p className="text-sm text-white/80 font-medium">Enviado por {playingVideo.authorName}</p>
                       </div>
                     </div>
@@ -227,8 +232,9 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-bold text-slate-900 line-clamp-1 mb-1">{item.title}</h4>
                         <p className="text-xs text-slate-500 font-medium truncate mb-1">Por {item.authorName}</p>
-                        <div className="flex items-center justify-between mt-auto">
+                        <div className="flex items-center justify-between mt-auto gap-2">
                           <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">#{idx + 1} na Fila</span>
+                          <ThermalBadge temperature={calculateTemperature(Math.floor(Math.random() * 80), Math.floor(Math.random() * 30), Math.floor(Math.random() * 200))} />
                         </div>
                       </div>
                     </div>

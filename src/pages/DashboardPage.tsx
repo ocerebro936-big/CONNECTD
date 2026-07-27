@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '../components/ui/button';
 import { Users, Activity, TrendingUp, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { PlatformStatus } from '../components/PlatformStatus';
 
 interface DashboardPageProps {
   handleComingSoon: () => void;
@@ -143,6 +144,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
           </CardContent>
         </Card>
       </div>
+
+      <PlatformStatus />
     </div>
   );
 };

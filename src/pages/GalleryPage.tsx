@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Tag, Tv, ShoppingCart, Sparkles } from 'lucide-react';
+import { ThermalBadge } from '../components/ThermalBadge';
+import { calculateTemperature } from '../lib/thermal-utils';
 
 interface GalleryPageProps {
   user: any;
@@ -48,7 +50,10 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
                   </div>
                 </div>
                 <CardContent className="p-4">
-                  <h3 className="font-bold text-slate-900 text-lg mb-1">Pacote Natureza {i}</h3>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-bold text-slate-900 text-lg">Pacote Natureza {i}</h3>
+                    <ThermalBadge temperature={calculateTemperature(i * 15, i * 5, i * 100)} />
+                  </div>
                   <p className="text-sm text-slate-600 font-medium mb-4">Por @criador_{i}</p>
                   <div className="flex flex-col gap-2">
                     {i % 3 === 0 && (
