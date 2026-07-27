@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { MessageCircle, Phone, Send, X } from 'lucide-react';
+import { MessageCircle, Phone, Send, X, Award, TrendingUp, Shield, Target } from 'lucide-react';
+import { CallModal } from '../components/CallModal';
+import { UserLevelBadge } from '../components/UserLevelBadge';
+import { JOB_ROLES } from '../lib/reputation-utils';
 
 interface NetworkPageProps {
   user: any;
@@ -28,8 +31,13 @@ const NetworkPage: React.FC<NetworkPageProps> = ({
   setNewMessage,
   handleSendMessage,
 }) => {
+  const [callingUser, setCallingUser] = useState<any | null>(null);
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+      {callingUser && (
+        <CallModal user={user} targetUser={callingUser} onClose={() => setCallingUser(null)} />
+      )}
+
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-slate-900">Networking</h2>
         <p className="text-slate-700 font-medium text-base">Conecte-se com criadores, empreendedores e marcas.</p>
@@ -99,9 +107,10 @@ const NetworkPage: React.FC<NetworkPageProps> = ({
       )}
 
       <Tabs defaultValue="creators" className="w-full">
-        <TabsList className="glass-input p-1 rounded-xl">
+        <TabsList className="glass-input p-1 rounded-xl grid grid-cols-3">
           <TabsTrigger value="creators" className="rounded-lg data-[state=active]:bg-white/80 data-[state=active]:text-slate-900 data-[state=active]:shadow-sm font-semibold text-slate-700">Utilizadores</TabsTrigger>
-          <TabsTrigger value="brands" className="rounded-lg data-[state=active]:bg-white/80 data-[state=active]:text-slate-900 data-[state=active]:shadow-sm font-semibold text-slate-700">Marcas (Patrocínios)</TabsTrigger>
+          <TabsTrigger value="opportunities" className="rounded-lg data-[state=active]:bg-white/80 data-[state=active]:text-slate-900 data-[state=active]:shadow-sm font-semibold text-slate-700">Oportunidades</TabsTrigger>
+          <TabsTrigger value="brands" className="rounded-lg data-[state=active]:bg-white/80 data-[state=active]:text-slate-900 data-[state=active]:shadow-sm font-semibold text-slate-700">Marcas</TabsTrigger>
         </TabsList>
         <TabsContent value="creators" className="mt-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -119,7 +128,10 @@ const NetworkPage: React.FC<NetworkPageProps> = ({
                     <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
                   </Avatar>
                   <div className="flex-1 overflow-hidden">
-                    <CardTitle className="text-lg font-bold text-slate-900 truncate">{u.displayName || u.email?.split('@')[0]}</CardTitle>
+                    <CardTitle className="text-lg font-bold text-slate-900 truncate flex items-center gap-2">
+                      {u.displayName || u.email?.split('@')[0]}
+                      <UserLevelBadge points={u.points || 0} size="sm" />
+                    </CardTitle>
                     <CardDescription className="text-slate-600 font-medium truncate">{u.bio || 'Criador Digital'}</CardDescription>
                   </div>
                 </CardHeader>
@@ -141,7 +153,7 @@ const NetworkPage: React.FC<NetworkPageProps> = ({
                       <span>SMS / Chat</span>
                     </Button>
                     <Button variant="outline" size="sm" className="glass-input border-white/50 text-slate-700 hover:text-emerald-600 shadow-sm flex items-center h-10 gap-2 rounded-xl" onClick={() => {
-                      alert(`Simulando chamada para ${u.displayName || u.email}... (Servidor Interno Connect TV)`);
+                        setCallingUser(u);
                     }}>
                       <Phone className="h-4 w-4" />
                       <span>Ligar</span>
@@ -150,6 +162,58 @@ const NetworkPage: React.FC<NetworkPageProps> = ({
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </TabsContent>
+        <TabsContent value="opportunities" className="mt-6">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {JOB_ROLES.map((role, idx) => {
+              const meetsReqs = (profileData.points || 0) >= role.minPoints;
+              return (
+                <Card key={idx} className={`glass-card border-white/30 shadow-md overflow-hidden ${meetsReqs ? 'ring-2 ring-emerald-400/50' : 'opacity-80'}`}>
+                  <CardHeader>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-3xl">{role.icon}</span>
+                      <div>
+                        <CardTitle className="text-lg font-bold text-slate-900">{role.title}</CardTitle>
+                        <CardDescription className="text-xs font-semibold">
+                          {meetsReqs ? (
+                            <span className="text-emerald-600">✅ Requisitos cumpridos</span>
+                          ) : (
+                            <span className="text-amber-600">Nível {role.level} • {role.minPoints} pts necessários</span>
+                          )}
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-slate-700 font-medium">{role.description}</p>
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Responsabilidades:</p>
+                      <ul className="space-y-1.5">
+                        {role.responsibilities.map((resp, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-slate-600 font-medium">
+                            <span className="text-primary mt-0.5">•</span>
+                            {resp}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="bg-white/50 rounded-xl p-3 border border-white/40">
+                      <p className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">Compensação</p>
+                      <p className="text-sm font-semibold text-emerald-700">{role.compensation}</p>
+                    </div>
+                    <Button
+                      className="w-full rounded-xl font-bold"
+                      variant={meetsReqs ? 'default' : 'outline'}
+                      disabled={!meetsReqs}
+                      onClick={() => alert(`Candidatura enviada para ${role.title}! Receberá uma resposta em breve.`)}
+                    >
+                      {meetsReqs ? 'Candidatar-me' : `${role.minPoints - (profileData.points || 0)} pts em falta`}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
         <TabsContent value="brands" className="mt-6">

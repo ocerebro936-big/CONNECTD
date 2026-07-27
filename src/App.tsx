@@ -162,6 +162,7 @@ export default function App() {
     facebookConnected: false,
     photoURL: '',
     coverURL: '',
+    points: 0,
   });
   const [networkConnections, setNetworkConnections] = useState<Record<number, boolean>>({});
 
@@ -191,10 +192,11 @@ export default function App() {
               uid: currentUser.uid,
               email: currentUser.email || '',
               role: 'user',
+              points: 0,
               createdAt: serverTimestamp(),
               displayName: currentUser.displayName || '',
             });
-            setProfileData(prev => ({ ...prev, displayName: currentUser.displayName || '' }));
+            setProfileData(prev => ({ ...prev, displayName: currentUser.displayName || '', points: 0 }));
           } else {
             const data = userSnap.data();
             setProfileData({
@@ -213,6 +215,7 @@ export default function App() {
               facebookConnected: data.facebookConnected || false,
               photoURL: data.photoURL || '',
               coverURL: data.coverURL || '',
+              points: data.points || 0,
             });
           }
         } catch (error) {

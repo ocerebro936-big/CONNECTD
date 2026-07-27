@@ -2,7 +2,9 @@ import React from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Camera, UserCircle, Palette, Youtube, Instagram, Facebook, MessageCircle, CheckCircle2 } from 'lucide-react';
+import { Camera, UserCircle, Palette, Youtube, Instagram, Facebook, MessageCircle, CheckCircle2, Award } from 'lucide-react';
+import { CreditDisplay } from '../components/CreditDisplay';
+import { UserLevelBadge } from '../components/UserLevelBadge';
 
 interface ProfilePageProps {
   user: any;
@@ -57,7 +59,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
             <div className="flex-1 pb-2 sm:pb-4">
               <h1 className="text-3xl font-bold text-slate-900">{profileData.displayName || 'Novo Usuário'}</h1>
-              <p className="text-slate-700 font-medium text-base sm:text-lg mb-2">@{profileData.displayName?.toLowerCase().replace(/\s+/g, '') || 'usuario'} • Criador Ouro</p>
+              <p className="text-slate-700 font-medium text-base sm:text-lg mb-2">@{profileData.displayName?.toLowerCase().replace(/\s+/g, '') || 'usuario'} <UserLevelBadge points={profileData.points || 0} size="md" /></p>
 
               <div className="flex items-center gap-2">
                 {profileData.youtube && (
@@ -206,6 +208,10 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="mt-8 max-w-sm">
+            <CreditDisplay points={profileData.points || 0} />
           </div>
         </div>
       </div>
