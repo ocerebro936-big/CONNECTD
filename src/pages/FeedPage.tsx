@@ -43,8 +43,30 @@ const FeedPage: React.FC<FeedPageProps> = ({
   isCommenting,
   handleComingSoon,
 }) => {
+  const [feedSubTab, setFeedSubTab] = useState<'global' | 'following' | 'trending'>('global');
   return (
     <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Sub-aba Navigation */}
+      <div className="flex gap-1 p-1 bg-white/50 rounded-xl border border-white/30 shadow-sm">
+        {[
+          { id: 'global' as const, label: '🌍 Global' },
+          { id: 'following' as const, label: '👥 Seguindo' },
+          { id: 'trending' as const, label: '🔥 Destaques' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setFeedSubTab(tab.id)}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${
+              feedSubTab === tab.id
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-white/40'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Stories */}
       <div className="flex gap-4 overflow-x-auto pb-3 pt-2 px-1 scrollbar-hide">
         <div className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group" onClick={handleComingSoon}>

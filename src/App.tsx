@@ -49,7 +49,8 @@ import {
   MoreHorizontal,
   Image as ImageIcon,
   Video,
-  Send
+  Send,
+  Settings
 } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from './components/ui/card';
@@ -65,6 +66,7 @@ const AiInsightsPage = lazy(() => import('./pages/AiInsightsPage'));
 const NetworkPage = lazy(() => import('./pages/NetworkPage'));
 const GalleryPage = lazy(() => import('./pages/GalleryPage'));
 const ConnectTvPage = lazy(() => import('./pages/ConnectTvPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 function PageLoader() {
   return (
@@ -86,7 +88,7 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['feed', 'profile', 'overview', 'connections', 'ai', 'network', 'gallery', 'connect-tv'].includes(tabParam)) {
+    if (tabParam && ['feed', 'profile', 'overview', 'connections', 'ai', 'network', 'gallery', 'connect-tv', 'settings'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, []);
@@ -891,6 +893,13 @@ export default function App() {
               <Tv className="h-5 w-5" />
               Connect TV
             </button>
+            <button 
+              onClick={() => handleTabSelect('settings')}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'settings' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+            >
+              <Settings className="h-5 w-5" />
+              Definições
+            </button>
           </nav>
         </div>
         <div className="mt-auto p-4">
@@ -1039,6 +1048,14 @@ export default function App() {
                 setNewTvChatMessage={setNewTvChatMessage}
                 handleSendTvChatMessage={handleSendTvChatMessage}
                 isSendingTvChat={isSendingTvChat}
+              />
+            )}
+            {activeTab === 'settings' && (
+              <SettingsPage
+                user={user}
+                profileData={profileData}
+                toggleConnection={toggleConnection}
+                handleComingSoon={handleComingSoon}
               />
             )}
           </Suspense>

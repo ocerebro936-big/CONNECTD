@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
@@ -42,8 +42,32 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
   handleSendTvChatMessage,
   isSendingTvChat,
 }) => {
+  const [tvSubTab, setTvSubTab] = useState<'jukebox' | 'programacao' | 'classicos'>('jukebox');
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
+      {/* Sub-abas Connect TV */}
+      <div className="flex gap-1 p-1 bg-white/50 rounded-xl border border-white/30 shadow-sm">
+        {[
+          { id: 'jukebox' as const, label: '🎵 Jukebox' },
+          { id: 'programacao' as const, label: '📋 Programação' },
+          { id: 'classicos' as const, label: '🏆 Clássicos' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setTvSubTab(tab.id)}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${
+              tvSubTab === tab.id
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-white/40'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {tvSubTab === 'jukebox' && (
+        <>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
@@ -249,6 +273,59 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
           </Tabs>
         </div>
       </div>
+    </>
+    )}
+    {tvSubTab === 'programacao' && (
+      <div className="flex items-center justify-center py-20">
+        <Card className="w-full max-w-md glass-card border-white/30 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-slate-900 text-xl font-bold">📋 Programação</CardTitle>
+            <CardDescription className="text-slate-600 font-medium">Grade de programação ao vivo da Connected TV</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {[
+              { time: '08:00', show: 'Morning Connected', host: '@bluewhite' },
+              { time: '12:00', show: 'Almoço com Criadores', host: '@curador_chief' },
+              { time: '15:00', show: 'Oficina Digital', host: '@mod_tech' },
+              { time: '18:00', show: 'Prime Time — Conteúdo em Destaque', host: 'Curadoria IA' },
+              { time: '21:00', show: 'Jukebox Livre', host: 'Comunidade' },
+              { time: '23:00', show: 'Clássicos da Connected', host: 'Automático' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-white/40 rounded-xl border border-white/30">
+                <div>
+                  <span className="text-sm font-black text-primary">{item.time}</span>
+                  <p className="font-bold text-slate-900 text-sm">{item.show}</p>
+                  <p className="text-xs text-slate-500 font-medium">por {item.host}</p>
+                </div>
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    )}
+    {tvSubTab === 'classicos' && (
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 py-4">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Card key={i} className="glass-card border-amber-200/50 shadow-lg overflow-hidden group cursor-pointer hover:shadow-xl transition-all">
+            <div className="relative h-44 w-full overflow-hidden">
+              <img src={`https://picsum.photos/seed/classico${i}/600/400`} alt="Clássico" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-lg text-xs font-semibold">
+                🏆 Clássico
+              </div>
+            </div>
+            <CardContent className="p-4">
+              <h3 className="font-bold text-slate-900 text-lg mb-1">Connected Classic #{i}</h3>
+              <p className="text-sm text-slate-500 font-medium mb-2">Obra prima da comunidade</p>
+              <div className="flex items-center justify-between">
+                <ThermalBadge temperature={calculateTemperature(i * 30, i * 10, i * 200)} />
+                <span className="text-xs text-slate-400 font-medium">{new Date(2024, i - 1, 15).toLocaleDateString('pt-PT')}</span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )}
     </div>
   );
 };

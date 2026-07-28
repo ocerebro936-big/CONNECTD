@@ -1,42 +1,73 @@
 import { useState, useEffect } from 'react';
 
-const IMAGES = [
-  'https://images.unsplash.com/photo-1534088568595-a066f410cbda?q=80&w=2560&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1509803874385-db7c23652552?q=80&w=2560&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1499346030926-9a72daac6c63?q=80&w=2560&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1473496169904-658ba7c44d8a?q=80&w=2560&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=2560&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1505322022379-7c3353ee6291?q=80&w=2560&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1431440869543-efaf3388c585?q=80&w=2560&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1513002749550-c59d786b8e6c?q=80&w=2560&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1500534623283-312aade485b7?q=80&w=2560&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?q=80&w=2560&auto=format&fit=crop'
+const BACKGROUNDS = [
+  { id: 'space1', type: '🌌 Universo', url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=1920' },
+  { id: 'nature1', type: '🌿 Natureza', url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=1920' },
+  { id: 'sky1', type: '☁️ Céus', url: 'https://images.unsplash.com/photo-1534088568595-a066f410bcda?q=80&w=1920' },
+  { id: 'tech1', type: '⚡ Tecnologia', url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1920' },
+  { id: 'space2', type: '🌌 Nebulosa', url: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=1920' },
+  { id: 'nature2', type: '🌿 Oceano', url: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?q=80&w=1920' },
+  { id: 'sky2', type: '☁️ Por do Sol', url: 'https://images.unsplash.com/photo-1473496169904-658ba7c44d8a?q=80&w=1920' },
+  { id: 'tech2', type: '⚡ Data Center', url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=1920' },
 ];
 
+let globalBgIndex = 0;
+const listeners = new Set<(index: number) => void>();
+
+function notifyListeners() {
+  listeners.forEach(fn => fn(globalBgIndex));
+}
+
+export function getCurrentBackground() {
+  return BACKGROUNDS[globalBgIndex];
+}
+
+export function nextBackground() {
+  globalBgIndex = (globalBgIndex + 1) % BACKGROUNDS.length;
+  notifyListeners();
+}
+
 export function BackgroundSlider() {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(globalBgIndex);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setLoaded(true);
+    img.src = BACKGROUNDS[currentIndex].url;
+  }, [currentIndex]);
+
+  useEffect(() => {
+    const handler = (index: number) => {
+      setCurrentIndex(index);
+      setLoaded(false);
+    };
+    listeners.add(handler);
+    return () => listeners.delete(handler);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % IMAGES.length);
-    }, 15000); // Change image every 15 seconds
-
+      globalBgIndex = (globalBgIndex + 1) % BACKGROUNDS.length;
+      setCurrentIndex(globalBgIndex);
+      setLoaded(false);
+      notifyListeners();
+    }, 45000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="fixed inset-0 -z-10 bg-slate-900">
-      {IMAGES.map((src, index) => (
+    <div className="fixed inset-0 -z-10">
+      {BACKGROUNDS.map((bg, index) => (
         <div
-          key={src}
-          className={`absolute inset-0 transition-opacity duration-3000 ease-in-out animate-clouds ${
+          key={bg.id}
+          className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
             index === currentIndex ? 'opacity-100' : 'opacity-0'
           }`}
-          style={{
-            backgroundImage: `url(${src})`,
-          }}
+          style={{ backgroundImage: `url(${bg.url})` }}
         />
       ))}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-all duration-1000" />
     </div>
   );
 }

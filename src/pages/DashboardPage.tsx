@@ -1,9 +1,11 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Users, Activity, TrendingUp, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Users, Activity, TrendingUp, Sparkles, ArrowUpRight, ArrowDownRight, Crown, Briefcase, GraduationCap } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { PlatformStatus } from '../components/PlatformStatus';
+import { DivinoTreasuryWidget } from '../components/DivinoTreasuryWidget';
+import { formatCurrency } from '../lib/currency-utils';
 
 interface DashboardPageProps {
   handleComingSoon: () => void;
@@ -26,7 +28,23 @@ const platformData = [
   { name: 'Facebook', value: 10 },
 ];
 
+const jobs = [
+  { title: 'Moderador de Comunidade', salary: 12000, desc: 'Gestão de chats e suporte ao utilizador' },
+  { title: 'Curador de Conteúdo TV', salary: 18000, desc: 'Organização de vídeos na Connect TV' },
+  { title: 'Editor de Mídia', salary: 15000, desc: 'Edição de vídeos e thumbnails para criadores' },
+  { title: 'Analista de Dados', salary: 25000, desc: 'Métricas de audiência e relatórios de desempenho' },
+];
+
+const courses = [
+  { title: 'Como Monetizar Lives na Connect TV', type: 'Gratuito', color: 'indigo', desc: 'Estratégias para atrair Fãs e maximizar doações em tempo real.' },
+  { title: 'Gestão de Direitos Autorais & Ativos Digitais', type: 'Certificado Oficial', color: 'purple', desc: 'Precificação e venda de obras na Galeria em Meticais (MZN).' },
+  { title: 'Produção de Conteúdo 4K para a Jukebox', type: 'Gratuito', color: 'indigo', desc: 'Técnicas de gravação, edição e envio para a Connect TV.' },
+  { title: 'Marketing Digital & Crescimento de Audiência', type: 'VIP', color: 'amber', desc: 'Estratégias avançadas de tráfego orgânico e anúncios na plataforma.' },
+];
+
 const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
+  const [dashTab, setDashTab] = useState<'vip' | 'jobs' | 'academy'>('vip');
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
@@ -34,9 +52,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h2>
           <p className="text-slate-700 font-medium text-base">Bem-vindo de volta! Aqui está o resumo da sua vida digital.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button className="rounded-xl shadow-md font-semibold" onClick={handleComingSoon}>Baixar Relatório</Button>
-        </div>
+        <Button className="rounded-xl shadow-md font-semibold" onClick={handleComingSoon}>Baixar Relatório</Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -146,6 +162,137 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
       </div>
 
       <PlatformStatus />
+
+      <DivinoTreasuryWidget />
+
+      <div className="pt-4 border-t border-slate-200/50">
+        <h3 className="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-amber-500" />
+          Oportunidades
+        </h3>
+        <p className="text-sm text-slate-600 mb-5">Cresça connosco — seja VIP, candidate-se a vagas ou aprenda na Faculdade Connected.</p>
+
+        <div className="flex gap-2 p-1.5 bg-white/70 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm overflow-x-auto">
+          {([
+            { id: 'vip' as const, label: '⭐ Seja Membro', color: 'bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg' },
+            { id: 'jobs' as const, label: '💼 Quero Trabalhar', color: 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg' },
+            { id: 'academy' as const, label: '🎓 Faculdade', color: 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' },
+          ]).map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setDashTab(tab.id)}
+              className={`flex-1 min-w-[130px] py-3 px-4 rounded-xl text-xs font-bold transition-all ${
+                dashTab === tab.id ? tab.color : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-6">
+          {dashTab === 'vip' && (
+            <div className="space-y-6">
+              <div className="border-b border-slate-200/50 pb-4">
+                <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-amber-500" />
+                  Torne-se Membro VIP da Connected
+                </h4>
+                <p className="text-sm text-slate-600">Aumente os seus ganhos em Lives, obtenha selo de distinção e receba comissões sobre o tráfego gerado.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="border-slate-200/50 shadow-md hover:shadow-lg transition-all">
+                  <CardContent className="p-5 space-y-4">
+                    <h4 className="font-bold text-lg text-slate-900">Membro Pro</h4>
+                    <p className="text-2xl font-black text-amber-600">{formatCurrency(250, 'MZN')} <span className="text-xs font-normal text-slate-500">/ mês</span></p>
+                    <ul className="text-xs space-y-2 text-slate-700">
+                      <li>✅ 80% de retenção de ganhos em Lives</li>
+                      <li>✅ Selo de Membro Oficial no Perfil</li>
+                      <li>✅ Acesso a chamadas de voz ilimitadas</li>
+                    </ul>
+                    <Button className="w-full rounded-xl font-bold bg-amber-600 hover:bg-amber-500 shadow-sm">Subscrever Agora</Button>
+                  </CardContent>
+                </Card>
+                <Card className="border-amber-200/50 shadow-md hover:shadow-lg transition-all bg-gradient-to-br from-amber-50 to-white">
+                  <CardContent className="p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-lg text-amber-800">Membro Criador VIP</h4>
+                      <span className="text-[10px] bg-amber-600 text-white font-black px-2 py-0.5 rounded-full">RECOMENDADO</span>
+                    </div>
+                    <p className="text-2xl font-black text-amber-600">{formatCurrency(750, 'MZN')} <span className="text-xs font-normal text-slate-500">/ mês</span></p>
+                    <ul className="text-xs space-y-2 text-slate-700">
+                      <li>✅ 90% de retenção em doações e presentes</li>
+                      <li>✅ Distribuição de lucros de tráfego de anúncios</li>
+                      <li>✅ Entrada direta no Museu Dinâmico</li>
+                    </ul>
+                    <Button className="w-full rounded-xl font-bold bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 shadow-sm text-white">Ativar Passe VIP</Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {dashTab === 'jobs' && (
+            <div className="space-y-6">
+              <div className="border-b border-slate-200/50 pb-4">
+                <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Briefcase className="h-5 w-5 text-emerald-500" />
+                  Trabalhe na Connected
+                </h4>
+                <p className="text-sm text-slate-600">Candidate-se a vagas internas da plataforma e seja pago em Meticais (MZN).</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {jobs.map((job, i) => (
+                  <Card key={i} className="border-slate-200/50 shadow-md hover:shadow-lg transition-all">
+                    <CardContent className="p-5 flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-sm text-slate-900">{job.title}</h4>
+                        <p className="text-xs text-emerald-600 font-bold mt-0.5">{formatCurrency(job.salary, 'MZN')} / mês</p>
+                        <p className="text-xs text-slate-500 mt-1 truncate">{job.desc}</p>
+                      </div>
+                      <Button size="sm" className="rounded-lg text-xs font-bold shrink-0 ml-4 bg-emerald-600 hover:bg-emerald-500 shadow-sm">Candidatar</Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {dashTab === 'academy' && (
+            <div className="space-y-6">
+              <div className="border-b border-slate-200/50 pb-4">
+                <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5 text-indigo-500" />
+                  Faculdade & Capacitação Digital
+                </h4>
+                <p className="text-sm text-slate-600">Aprenda a criar transmissões de alto impacto, gestão de audiência, programação e marketing digital.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {courses.map((course, i) => {
+                  const colorMap: Record<string, string> = {
+                    indigo: 'bg-indigo-100 text-indigo-700 border-indigo-300',
+                    purple: 'bg-purple-100 text-purple-700 border-purple-300',
+                    amber: 'bg-amber-100 text-amber-700 border-amber-300',
+                  };
+                  return (
+                    <Card key={i} className="border-slate-200/50 shadow-md hover:shadow-lg transition-all">
+                      <CardContent className="p-5 space-y-2">
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${colorMap[course.color] || colorMap.indigo}`}>{course.type}</span>
+                        <h4 className="font-bold text-sm text-slate-900">{course.title}</h4>
+                        <p className="text-xs text-slate-600">{course.desc}</p>
+                        <Button size="sm" className="w-full rounded-lg text-xs font-bold mt-2 bg-indigo-600 hover:bg-indigo-500 shadow-sm">Acessar Curso</Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

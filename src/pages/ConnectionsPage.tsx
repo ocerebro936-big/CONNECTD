@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Youtube, Instagram, Facebook } from 'lucide-react';
+import { Users, Globe, Heart, MessageCircle, UserPlus } from 'lucide-react';
 
 interface ConnectionsPageProps {
   user: any;
@@ -9,107 +9,115 @@ interface ConnectionsPageProps {
   toggleConnection: (platform: 'youtubeConnected' | 'instagramConnected' | 'tiktokConnected' | 'facebookConnected') => void;
 }
 
+const countries = ['Moçambique', 'Angola', 'Portugal', 'Brasil', 'Cabo Verde', 'São Tomé', 'Guiné-Bissau', 'Timor-Leste', 'Outros'];
+
 const ConnectionsPage: React.FC<ConnectionsPageProps> = ({ user, profileData, toggleConnection }) => {
+  const [subTab, setSubTab] = useState<'friendly' | 'countries'>('friendly');
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Integrações</h2>
-        <p className="text-slate-700 font-medium text-base">Conecte suas redes sociais para sincronizar dados e insights.</p>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          <Globe className="h-6 w-6 text-purple-500" />
+          Integrações Globais
+        </h2>
+        <p className="text-slate-700 font-medium text-base">Expanda a sua rede além fronteiras — conexões inteligentes e descoberta global.</p>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="glass-card border-white/30 shadow-md">
-          <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-sm ${profileData.youtubeConnected ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-400'}`}>
-              <Youtube className="h-6 w-6" />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-bold text-slate-900">YouTube</CardTitle>
-              <CardDescription className={profileData.youtubeConnected ? "text-emerald-600 font-bold" : "text-slate-500 font-bold"}>
-                {profileData.youtubeConnected ? 'Conectado' : 'Não conectado'}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-slate-700 font-medium mb-4">Sincronizando vídeos, shorts, visualizações e inscritos.</p>
-            <Button
-              variant={profileData.youtubeConnected ? "outline" : "default"}
-              className={`w-full ${profileData.youtubeConnected ? 'glass-input border-white/60 text-slate-900 hover:bg-white/50' : 'shadow-md'}`}
-              onClick={() => toggleConnection('youtubeConnected')}
-            >
-              {profileData.youtubeConnected ? 'Desconectar' : 'Conectar Conta'}
-            </Button>
-          </CardContent>
-        </Card>
-        <Card className="glass-card border-white/30 shadow-md">
-          <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-sm ${profileData.instagramConnected ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-400'}`}>
-              <Instagram className="h-6 w-6" />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-bold text-slate-900">Instagram</CardTitle>
-              <CardDescription className={profileData.instagramConnected ? "text-emerald-600 font-bold" : "text-slate-500 font-bold"}>
-                {profileData.instagramConnected ? 'Conectado' : 'Não conectado'}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-slate-700 font-medium mb-4">Sincronizando posts, reels, stories e seguidores.</p>
-            <Button
-              variant={profileData.instagramConnected ? "outline" : "default"}
-              className={`w-full ${profileData.instagramConnected ? 'glass-input border-white/60 text-slate-900 hover:bg-white/50' : 'shadow-md'}`}
-              onClick={() => toggleConnection('instagramConnected')}
-            >
-              {profileData.instagramConnected ? 'Desconectar' : 'Conectar Conta'}
-            </Button>
-          </CardContent>
-        </Card>
-        <Card className="glass-card border-white/30 shadow-md">
-          <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-sm ${profileData.tiktokConnected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}>
-              <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
-            </div>
-            <div>
-              <CardTitle className="text-lg font-bold text-slate-900">TikTok</CardTitle>
-              <CardDescription className={profileData.tiktokConnected ? "text-emerald-600 font-bold" : "text-slate-500 font-bold"}>
-                {profileData.tiktokConnected ? 'Conectado' : 'Não conectado'}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-slate-700 font-medium mb-4">Sincronizando vídeos curtos e engajamento.</p>
-            <Button
-              variant={profileData.tiktokConnected ? "outline" : "default"}
-              className={`w-full ${profileData.tiktokConnected ? 'glass-input border-white/60 text-slate-900 hover:bg-white/50' : 'shadow-md'}`}
-              onClick={() => toggleConnection('tiktokConnected')}
-            >
-              {profileData.tiktokConnected ? 'Desconectar' : 'Conectar Conta'}
-            </Button>
-          </CardContent>
-        </Card>
-        <Card className="glass-card border-white/30 shadow-md">
-          <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-sm ${profileData.facebookConnected ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
-              <Facebook className="h-6 w-6" />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-bold text-slate-900">Facebook</CardTitle>
-              <CardDescription className={profileData.facebookConnected ? "text-emerald-600 font-bold" : "text-slate-500 font-bold"}>
-                {profileData.facebookConnected ? 'Conectado' : 'Não conectado'}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-slate-700 font-medium mb-4">Conecte para sincronizar páginas e grupos.</p>
-            <Button
-              variant={profileData.facebookConnected ? "outline" : "default"}
-              className={`w-full ${profileData.facebookConnected ? 'glass-input border-white/60 text-slate-900 hover:bg-white/50' : 'shadow-md'}`}
-              onClick={() => toggleConnection('facebookConnected')}
-            >
-              {profileData.facebookConnected ? 'Desconectar' : 'Conectar Conta'}
-            </Button>
-          </CardContent>
-        </Card>
+
+      <div className="flex gap-2 p-1.5 bg-white/70 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm">
+        {([
+          { id: 'friendly' as const, label: '🤝 Conexão Amigável', color: 'bg-purple-600 text-white shadow-lg shadow-purple-500/30' },
+          { id: 'countries' as const, label: '🌍 Amigos por Países', color: 'bg-purple-600 text-white shadow-lg shadow-purple-500/30' },
+        ]).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setSubTab(tab.id)}
+            className={`flex-1 min-w-[160px] py-3 px-4 rounded-xl text-sm font-bold transition-all ${
+              subTab === tab.id ? tab.color : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
+
+      {subTab === 'friendly' && (
+        <div className="space-y-6">
+          <div className="border-b border-purple-200/30 pb-4">
+            <h3 className="text-lg font-bold text-purple-700 flex items-center gap-2">
+              <Heart className="h-5 w-5 text-purple-500" />
+              Procurar Conexão Amigável
+            </h3>
+            <p className="text-sm text-slate-600">
+              O algoritmo da Connected sugere novos amigos com base nos seus interesses, publicações e visão de mundo.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((u) => (
+              <Card key={u} className="border-purple-200/30 shadow-md hover:shadow-lg transition-all">
+                <CardContent className="p-5 flex flex-col items-center text-center space-y-3">
+                  <div className="w-16 h-16 rounded-full bg-purple-100 border-2 border-purple-300 flex items-center justify-center text-2xl font-bold text-purple-600">
+                    👤
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900">Criador_{u}</h4>
+                    <p className="text-xs text-purple-600 font-semibold flex items-center gap-1 justify-center">
+                      <Heart className="h-3 w-3" /> {95 - u * 3}% Compatibilidade
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Interesses: Tecnologia, Música, Arte</p>
+                  </div>
+                  <Button className="w-full rounded-xl text-xs font-bold gap-2 bg-purple-600 hover:bg-purple-500 shadow-sm" size="sm">
+                    <UserPlus className="h-4 w-4" /> Conectar
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {subTab === 'countries' && (
+        <div className="space-y-6">
+          <div className="border-b border-purple-200/30 pb-4">
+            <h3 className="text-lg font-bold text-purple-700 flex items-center gap-2">
+              <Globe className="h-5 w-5 text-purple-500" />
+              Explorar Amigos por Países
+            </h3>
+            <p className="text-sm text-slate-600">Filtre e conecte-se com membros da comunidade organizados por localização geográfica.</p>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-2 flex-wrap">
+            {countries.map((country, idx) => (
+              <button
+                key={idx}
+                className="px-4 py-2 bg-white/60 hover:bg-purple-100 border border-white/40 rounded-xl text-xs font-semibold text-slate-700 hover:text-purple-700 whitespace-nowrap transition-all"
+              >
+                {country}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            {['Moçambique', 'Angola', 'Portugal', 'Brasil'].map((country, i) => (
+              <Card key={i} className="border-white/30 shadow-md hover:shadow-lg transition-all">
+                <CardContent className="p-5 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{['🇲🇿', '🇦🇴', '🇵🇹', '🇧🇷'][i]}</span>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm">Comunidade {country}</h4>
+                      <p className="text-xs text-slate-500">{(Math.random() * 5 + 1).toFixed(1)}k Utilizadores Ativos</p>
+                    </div>
+                  </div>
+                  <Button size="sm" className="rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500" onClick={() => alert(`A explorar membros de ${country}...`)}>
+                    <Users className="h-3.5 w-3.5 mr-1" /> Ver Membros
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
