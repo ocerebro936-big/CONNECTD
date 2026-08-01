@@ -7,7 +7,7 @@ import { PlatformStatus } from '../components/PlatformStatus';
 import { DivinoTreasuryWidget } from '../components/DivinoTreasuryWidget';
 import { AdminPanel } from '../components/AdminPanel';
 import { formatCurrency } from '../lib/currency-utils';
-import { collection, query, where, onSnapshot, addDoc, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const jobs = [
@@ -30,7 +30,7 @@ interface DashboardPageProps {
 }
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ user, posts }) => {
-  const [dashTab, setDashTab] = useState<'vip' | 'jobs' | 'academy'>('vip');
+  const [dashTab, setDashTab] = useState<'vip' | 'jobs' | 'academy' | 'creator'>('vip');
   const [followersCount, setFollowersCount] = useState(0);
   const [likesCount, setLikesCount] = useState(0);
   const [commentsCount, setCommentsCount] = useState(0);
@@ -290,6 +290,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, posts }) => {
             { id: 'vip' as const, label: '⭐ Seja Membro', color: 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg' },
             { id: 'jobs' as const, label: '💼 Quero Trabalhar', color: 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg' },
             { id: 'academy' as const, label: '🎓 Faculdade', color: 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg' },
+            { id: 'creator' as const, label: '🎥 Espaço Criador', color: 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg' },
           ]).map((tab) => (
             <button
               key={tab.id}
@@ -404,6 +405,126 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, posts }) => {
                   );
                 })}
               </div>
+            </div>
+          )}
+          {dashTab === 'creator' && (
+            <div className="space-y-6">
+              <div className="border-b border-slate-200/50 pb-4">
+                <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-purple-500" />
+                  Espaço Criador
+                </h4>
+                <p className="text-sm text-slate-600">Perfil profissional, monetização, gestão de conteúdos e análise de desempenho.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { label: 'Monetização estimada', value: formatCurrency(Math.round(likesCount * 0.25 + Math.round(ratingSum) * 0.1), 'MZN'), hint: 'likes + avaliações do teu conteúdo', color: 'text-emerald-600' },
+                  { label: 'Pontos ganhos com conteúdo', value: `${Math.round(likesCount * 0.5 + Math.round(ratingSum) * 0.2)} pts`, hint: 'estimativa de pontos por interação', color: 'text-indigo-600' },
+                  { label: 'Conteúdos publicados', value: `${myPosts.length}`, hint: `${myPosts.filter(p => p.media).length} com mídia`, color: 'text-purple-600' },
+                ].map((s) => (
+                  <Card key={s.label} className="border-slate-200/50 shadow-md">
+                    <CardContent className="p-5">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{s.label}</p>
+                      <p className={`text-2xl font-black mt-1 ${s.color}`}>{s.value}</p>
+                      <p className="text-[10px] text-slate-500 font-semibold mt-0.5">{s.hint}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card className="border-slate-200/50 shadow-md">
+                  <CardHeader>
+                    <CardTitle className="text-slate-900 font-bold text-sm">Melhor Conteúdo</CardTitle>
+                    <CardDescription className="text-slate-600 font-medium text-xs">O teu post com mais engagement</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const best = [...myPosts].sort((a, b) => (b.likes || 0) + (b.comments || 0) - ((a.likes || 0) + (a.comments || 0)))[0];
+                      if (!best) return <p className="text-sm text-slate-500 font-medium text-center py-6">Publica o teu primeiro conteúdo para veres análises.</p>;
+                      return (
+                        <div className="bg-white/60 border border-slate-200 rounded-xl p-4">
+                          <p className="text-sm font-bold text-slate-900 line-clamp-2">{best.content || (best.media?.type === 'video' ? '🎬 Vídeo' : '📷 Foto')}</p>
+                          <div className="flex gap-3 mt-2 text-xs font-bold text-slate-600">
+                            <span className="text-rose-500">♥ {best.likes || 0}</span>
+                            <span className="text-blue-500">💬 {best.comments || 0}</span>
+                            <span className="text-amber-500">★ {(best.averageRating || 0).toFixed(1)}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
+                <Card className="border-slate-200/50 shadow-md">
+                  <CardHeader>
+                    <CardTitle className="text-slate-900 font-bold text-sm">Horário de Melhor Desempenho</CardTitle>
+                    <CardDescription className="text-slate-600 font-medium text-xs">Hora do dia com mais publicações e likes</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      if (myPosts.length === 0) return <p className="text-sm text-slate-500 font-medium text-center py-6">Sem dados suficientes.</p>;
+                      const hours = myPosts.reduce<Record<string, { count: number; likes: number }>>((acc, p) => {
+                        const h = new Date(p.createdAt).getHours();
+                        acc[h] = { count: (acc[h]?.count || 0) + 1, likes: (acc[h]?.likes || 0) + (p.likes || 0) };
+                        return acc;
+                      }, {});
+                      const entries = Object.entries(hours) as [string, { count: number; likes: number }][];
+                      const bestHour = entries.sort((a, b) => (b[1].likes + b[1].count * 5) - (a[1].likes + a[1].count * 5))[0];
+                      return (
+                        <div className="bg-white/60 border border-slate-200 rounded-xl p-4 text-center">
+                          <p className="text-3xl font-black text-indigo-600">{bestHour[0]}:00</p>
+                          <p className="text-xs text-slate-600 font-semibold mt-1">
+                            {bestHour[1].count} publicações · {bestHour[1].likes} likes a esta hora
+                          </p>
+                          <p className="text-[10px] text-slate-500 font-medium mt-1">Publica perto desta hora para maximizar o alcance.</p>
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="border-slate-200/50 shadow-md">
+                <CardHeader>
+                  <CardTitle className="text-slate-900 font-bold text-sm">Gestão de Conteúdos</CardTitle>
+                  <CardDescription className="text-slate-600 font-medium text-xs">Os teus posts — clica em remover para apagar</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-[350px] overflow-auto">
+                    {[...myPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).map((p) => (
+                      <div key={p.id} className="flex items-center gap-3 bg-white/60 border border-slate-200 rounded-xl p-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-900 truncate">{p.content || (p.media?.type === 'video' ? '🎬 Vídeo' : '📷 Foto')}</p>
+                          <p className="text-[10px] text-slate-500 font-semibold">
+                            {new Date(p.createdAt).toLocaleString('pt-PT')} · ♥ {p.likes || 0} · 💬 {p.comments || 0}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-lg text-[11px] font-bold text-rose-600 border-rose-200 hover:bg-rose-50"
+                          onClick={async () => {
+                            if (!confirm('Apagar esta publicação?')) return;
+                            try {
+                              await deleteDoc(doc(db, 'posts', p.id));
+                            } catch (e) {
+                              console.error('Error deleting post:', e);
+                              alert('Erro ao apagar publicação.');
+                            }
+                          }}
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    ))}
+                    {myPosts.length === 0 && (
+                      <p className="text-sm text-slate-500 text-center py-6 font-medium">Sem conteúdos. Publica no Feed para começar a crescer!</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
         </div>

@@ -122,6 +122,55 @@ service cloud.firestore {
              (data.createdAt is number || data.createdAt is timestamp);
     }
 
+    function isCompanyOwner(companyId) {
+      return get(/databases/$(database)/documents/companies/$(companyId)).data.ownerId == request.auth.uid;
+    }
+
+    function isValidCompany(data) {
+      return hasRequiredFields(['name', 'category', 'description', 'ownerId', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.category is string && data.category.size() > 0 && data.category.size() <= 50 &&
+             data.description is string && data.description.size() > 0 && data.description.size() <= 2000 &&
+             data.ownerId is string && data.ownerId.size() > 0 && data.ownerId.size() < 128 &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             isValidOptionalString('logoUrl', 0, 1000000) &&
+             isValidOptionalString('website', 0, 200) &&
+             isValidOptionalString('email', 0, 200) &&
+             isValidOptionalString('whatsapp', 0, 50) &&
+             isValidOptionalString('ownerName', 0, 100) &&
+             (!('verified' in data) || data.verified is bool) &&
+             (!('views' in data) || data.views is number) &&
+             (!('followers' in data) || data.followers is number);
+    }
+
+    function isValidCompanyProduct(data) {
+      return hasRequiredFields(['companyId', 'name', 'price', 'createdAt']) &&
+             data.companyId is string && data.companyId.size() > 0 && data.companyId.size() < 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.price is number && data.price >= 0 &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             isValidOptionalString('description', 0, 1000) &&
+             isValidOptionalString('imageUrl', 0, 1000000);
+    }
+
+    function isValidCompanyCampaign(data) {
+      return hasRequiredFields(['companyId', 'title', 'pricePerDay', 'days', 'status', 'createdAt']) &&
+             data.companyId is string && data.companyId.size() > 0 && data.companyId.size() < 128 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 150 &&
+             data.pricePerDay is number && data.pricePerDay >= 0 &&
+             data.days is number && data.days >= 1 && data.days <= 365 &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             isValidOptionalString('description', 0, 1000);
+    }
+
+    function isValidCompanyFollow(data) {
+      return hasRequiredFields(['userId', 'companyId', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() < 128 &&
+             data.companyId is string && data.companyId.size() > 0 && data.companyId.size() < 128 &&
+             (data.createdAt is number || data.createdAt is timestamp);
+    }
+
     function isValidMessage(data) {
       return hasRequiredFields(['senderId', 'receiverId', 'senderName', 'content', 'createdAt']) &&
              data.senderId is string && data.senderId.size() > 0 && data.senderId.size() < 128 &&
@@ -436,6 +485,34 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidSecurityLog(request.resource.data) && request.resource.data.userId == request.auth.uid;
       allow update: if false;
       allow delete: if isAdmin();
+    }
+
+    match /companies/{companyId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidCompany(request.resource.data) && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /company_products/{productId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidCompanyProduct(request.resource.data) && isCompanyOwner(request.resource.data.companyId);
+      allow update: if isAdmin() || (isAuthenticated() && isCompanyOwner(resource.data.companyId));
+      allow delete: if isAdmin() || (isAuthenticated() && isCompanyOwner(resource.data.companyId));
+    }
+
+    match /company_campaigns/{campaignId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidCompanyCampaign(request.resource.data) && isCompanyOwner(request.resource.data.companyId);
+      allow update: if isAdmin() || (isAuthenticated() && isCompanyOwner(resource.data.companyId));
+      allow delete: if isAdmin() || (isAuthenticated() && isCompanyOwner(resource.data.companyId));
+    }
+
+    match /company_follows/{followId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidCompanyFollow(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
   }
 }

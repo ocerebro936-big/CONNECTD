@@ -56,7 +56,8 @@ import {
   Settings,
   Gamepad2,
   Globe,
-  PhoneOff
+  PhoneOff,
+  Building2
 } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from './components/ui/card';
@@ -78,6 +79,7 @@ const GalleryPage = lazy(() => import('./pages/GalleryPage'));
 const ConnectTvPage = lazy(() => import('./pages/ConnectTvPage'));
 const GamesPage = lazy(() => import('./pages/GamesPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const CompaniesPage = lazy(() => import('./pages/CompaniesPage'));
 
 function PageLoader() {
   return (
@@ -117,7 +119,7 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['feed', 'profile', 'overview', 'connections', 'ai', 'network', 'gallery', 'connect-tv', 'games', 'settings'].includes(tabParam)) {
+    if (tabParam && ['feed', 'profile', 'overview', 'connections', 'ai', 'network', 'gallery', 'connect-tv', 'games', 'settings', 'empresas'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, []);
@@ -136,6 +138,7 @@ export default function App() {
       'connect-tv': 'Connect TV — Connected',
       games: 'Games Online — Connected',
       settings: 'Definições — Connected',
+      empresas: 'Empresas — Connected',
     };
     document.title = titles[tabName] || 'Connected — Rede Social & Ecossistema Digital';
     try {
@@ -1308,6 +1311,13 @@ export default function App() {
               Games Online
             </button>
             <button 
+              onClick={() => handleTabSelect('empresas')}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'empresas' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+            >
+              <Building2 className="h-5 w-5" />
+              Empresas
+            </button>
+            <button 
               onClick={() => handleTabSelect('settings')}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'settings' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
             >
@@ -1563,6 +1573,9 @@ export default function App() {
             )}
             {activeTab === 'games' && (
               <GamesPage user={user} profileData={profileData} />
+            )}
+            {activeTab === 'empresas' && (
+              <CompaniesPage user={user} profileData={profileData} />
             )}
             {activeTab === 'settings' && (
               <SettingsPage
