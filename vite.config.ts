@@ -69,6 +69,8 @@ export default defineConfig(() => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest}'],
+          navigateFallback: '/CONNECTD/index.html',
+          navigateFallbackAllowlist: [/^\/CONNECTD\//],
           runtimeCaching: [
             {
               urlPattern: ({ url }) => url.origin === 'https://images.unsplash.com',
