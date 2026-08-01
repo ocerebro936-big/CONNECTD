@@ -66,6 +66,7 @@ import { BackgroundSlider } from './components/BackgroundSlider';
 import { InstallPrompt } from './components/InstallPrompt';
 import { UpdateNotifier } from './components/UpdateNotifier';
 import { CallModal, IncomingCallListener } from './components/CallModal';
+import { playSound } from './lib/sound-engine';
 
 const FeedPage = lazy(() => import('./pages/FeedPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -105,10 +106,12 @@ export default function App() {
   const [reportReason, setReportReason] = useState('');
   const [incomingCall, setIncomingCall] = useState<any>(null);
   const [incomingCallAccepted, setIncomingCallAccepted] = useState(false);
+  const lastNotifIdRef = useRef<string>('');
 
   const handleIncomingCall = useCallback((call: any) => {
     setIncomingCall(call);
     setIncomingCallAccepted(false);
+    playSound('call');
   }, []);
 
   useEffect(() => {
@@ -122,6 +125,19 @@ export default function App() {
   const handleTabSelect = (tabName: string) => {
     setActiveTab(tabName);
     setIsMobileMenuOpen(false);
+    const titles: Record<string, string> = {
+      feed: 'Feed — Connected',
+      profile: 'Perfil — Connected',
+      overview: 'Dashboard — Connected',
+      connections: 'Rede de Conexões — Connected',
+      ai: 'DIVINO IA — Connected',
+      network: 'Networking — Connected',
+      gallery: 'Galeria & Direitos Autorais — Connected',
+      'connect-tv': 'Connect TV — Connected',
+      games: 'Games Online — Connected',
+      settings: 'Definições — Connected',
+    };
+    document.title = titles[tabName] || 'Connected — Rede Social & Ecossistema Digital';
     try {
       const url = new URL(window.location.href);
       url.searchParams.set('tab', tabName);
@@ -408,7 +424,13 @@ export default function App() {
     }
     const nq = query(collection(db, 'notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
     const unsubN = onSnapshot(nq, (snapshot) => {
-      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const firstId = list[0]?.id || '';
+      if (firstId && lastNotifIdRef.current && firstId !== lastNotifIdRef.current) {
+        playSound('notification');
+      }
+      lastNotifIdRef.current = firstId;
+      setNotifications(list);
     }, error => console.error('Notifications error:', error));
 
     const fq = query(collection(db, 'follows'), where('followerId', '==', user.uid));
@@ -484,6 +506,7 @@ export default function App() {
           likes: increment(1),
           userLikes: arrayUnion(user.uid),
         });
+        playSound('like');
         await createNotification(post.userId, 'like', `gostou da tua publicação`, profileData.displayName || user.email?.split('@')[0] || 'Unknown', profileData.photoURL, `?tab=feed&post=${post.id}`);
       }
     } catch (e) {
@@ -699,6 +722,7 @@ export default function App() {
         createdAt: Date.now()
       });
       setNewPostContent('');
+      playSound('post');
     } catch (error) {
       console.error('Error publishing post:', error);
       handleFirestoreError(error, OperationType.CREATE, 'posts');

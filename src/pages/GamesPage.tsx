@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Play, ExternalLink, Star, Users, X, Gamepad2, ShieldCheck, Code2, Send, Loader2 } from 'lucide-react';
 import { collection, onSnapshot, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { playSound } from '../lib/sound-engine';
 
 const GAME_CATEGORIES = [
   '🎲 Todos',
@@ -340,6 +341,7 @@ const GamesPage: React.FC<{ user: any; profileData: any }> = ({ user, profileDat
                       return;
                     }
                     setPlaying(game);
+                    playSound('game');
                   }}
                   disabled={!safe}
                 >

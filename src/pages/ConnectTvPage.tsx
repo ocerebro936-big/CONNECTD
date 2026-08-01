@@ -8,6 +8,7 @@ import { ThermalBadge } from '../components/ThermalBadge';
 import { calculateTemperature } from '../lib/thermal-utils';
 import { updateDoc, doc, addDoc, collection, deleteDoc, increment, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { playSound } from '../lib/sound-engine';
 
 const TV_GIFTS = [
   { emoji: '💖', name: 'Coração', points: 5 },
@@ -185,7 +186,13 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
         <div className="flex-1 glass-card border-white/30 shadow-xl rounded-2xl overflow-hidden relative min-h-[400px] xl:min-h-[500px] flex items-center justify-center bg-black">
           {tvQueue.filter((v: any) => v.status === 'playing').length > 0 ? (
             (() => {
-              const playingVideo = tvQueue.find((v: any) => v.status === 'playing');
+  const playingVideo = tvQueue.find((v: any) => v.status === 'playing');
+
+  useEffect(() => {
+    if (playingVideo && user && playingVideo.userId === user.uid) {
+      playSound('live');
+    }
+  }, [playingVideo?.id]);
               return (
                 <div className="w-full h-full flex flex-col relative group">
                   {playingVideo.videoUrl.includes('youtube') ? (

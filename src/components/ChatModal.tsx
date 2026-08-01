@@ -5,6 +5,7 @@ import { Send, X, Image as ImageIcon, Video, FileText, Mic, MapPin, Smile, Reply
 import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
+import { playSound } from '../lib/sound-engine';
 
 interface ChatModalProps {
   user: any;
@@ -77,7 +78,17 @@ export function ChatModal({ user, profileData, chatUser, onClose }: ChatModalPro
         (m.senderId === user.uid && m.receiverId === chatUser.id) ||
         (m.senderId === chatUser.id && m.receiverId === user.uid)
       );
-      setMessages(mine);
+      setMessages(prev => {
+        const prevCount = prev.length;
+        const newCount = mine.length;
+        if (newCount > prevCount && prevCount > 0) {
+          const newest = mine[mine.length - 1];
+          if (newest && newest.senderId === chatUser.id) {
+            playSound('message');
+          }
+        }
+        return mine;
+      });
       scrollToBottom();
     });
     return () => unsub();

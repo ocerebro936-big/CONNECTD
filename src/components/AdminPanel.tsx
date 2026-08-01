@@ -6,6 +6,7 @@ import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, addDoc, 
 import { db } from '../firebase';
 import { formatCurrency } from '../lib/currency-utils';
 import { isValidStripeLink, getStripeLinks, setStripeLinks } from '../lib/payment-utils';
+import { playSound } from '../lib/sound-engine';
 
 interface Purchase {
   id: string;
@@ -106,6 +107,7 @@ export function AdminPanel({ user }: { user: any }) {
         read: false,
         createdAt: Date.now(),
       });
+      playSound('payment');
     } catch (e) {
       console.error('Error confirming purchase:', e);
       alert('Erro ao confirmar compra. Verifica os logs.');

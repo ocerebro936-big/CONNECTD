@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { getCurrentBackground, getBackgroundPrefs, setBackgroundPrefs, BACKGROUNDS, BACKGROUND_CATEGORIES } from '../components/BackgroundSlider';
+import { getSoundPrefs, setSoundPrefs, previewSound, SoundName } from '../lib/sound-engine';
+import { Volume2, VolumeX, Play } from 'lucide-react';
 
 interface SettingsPageProps {
   user: any;
@@ -10,13 +12,20 @@ interface SettingsPageProps {
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleConnection }) => {
-  const [settingsTab, setSettingsTab] = useState<'appearance' | 'connections' | 'payments' | 'relationships' | 'contracts'>('appearance');
+  const [settingsTab, setSettingsTab] = useState<'appearance' | 'sound' | 'connections' | 'payments' | 'relationships' | 'contracts'>('appearance');
   const [bgPrefs, setBgPrefs] = useState(getBackgroundPrefs());
+  const [soundPrefs, setSoundPrefsState] = useState(getSoundPrefs());
 
   const updateBgPrefs = (partial: Partial<ReturnType<typeof getBackgroundPrefs>>) => {
     const next = { ...bgPrefs, ...partial };
     setBgPrefs(next);
     setBackgroundPrefs(next);
+  };
+
+  const updateSoundPrefs = (partial: Partial<typeof soundPrefs>) => {
+    const next = { ...soundPrefs, ...partial };
+    setSoundPrefsState(next);
+    setSoundPrefs(next);
   };
 
   return (
@@ -36,6 +45,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
             <CardContent className="p-2 space-y-1">
               {([
                 { id: 'appearance' as const, label: '🎨 Aparência & Fundo' },
+                { id: 'sound' as const, label: '🔊 Identidade Sonora' },
                 { id: 'connections' as const, label: '🔗 Conexões Externas' },
                 { id: 'payments' as const, label: '💳 Formas de Pagamento' },
                 { id: 'relationships' as const, label: '⭐ Fãs, Amigos & Clientes' },
@@ -144,6 +154,70 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
 
                   <p className="text-xs text-slate-500">
                     As preferências ficam guardadas neste dispositivo e sincronizam automaticamente com a plataforma.
+                  </p>
+                </div>
+              )}
+
+              {settingsTab === 'sound' && (
+                <div className="space-y-6">
+                  <h3 className="text-lg font-bold text-slate-900 border-b border-slate-200/50 pb-3">🔊 Identidade Sonora</h3>
+                  <p className="text-sm text-slate-600">
+                    Sons curtos e discretos para cada ação importante da plataforma. Todos são sintetizados localmente (sem downloads) e respeitam as tuas preferências.
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-4 bg-white/60 rounded-xl p-4 border border-slate-200">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={soundPrefs.enabled}
+                        onChange={(e) => updateSoundPrefs({ enabled: e.target.checked })}
+                        className="accent-indigo-600 h-4 w-4"
+                      />
+                      {soundPrefs.enabled ? <Volume2 className="h-4 w-4 text-indigo-600" /> : <VolumeX className="h-4 w-4 text-slate-400" />}
+                      Sons Ativados
+                    </label>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                      <span>Volume:</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={Math.round(soundPrefs.volume * 100)}
+                        onChange={(e) => updateSoundPrefs({ volume: Number(e.target.value) / 100 })}
+                        className="accent-indigo-600 w-40"
+                      />
+                      <span className="text-xs font-bold text-slate-500">{Math.round(soundPrefs.volume * 100)}%</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 mb-2">Pré-visualização de Sons</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {([
+                        ['message', '💬 Nova mensagem'],
+                        ['like', '❤️ Pontuação recebida'],
+                        ['notification', '🔔 Notificação'],
+                        ['post', '📷 Publicação enviada'],
+                        ['live', '📺 Live iniciada'],
+                        ['payment', '💳 Pagamento concluído'],
+                        ['game', '🎮 Convite para jogo'],
+                        ['call', '📞 Chamada recebida'],
+                      ] as [SoundName, string][]).map(([name, label]) => (
+                        <button
+                          key={name}
+                          onClick={() => previewSound(name)}
+                          disabled={!soundPrefs.enabled}
+                          className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold border border-slate-200 bg-white/60 hover:bg-white text-slate-700 disabled:opacity-40 transition-all"
+                        >
+                          <Play className="h-3.5 w-3.5 text-indigo-600" />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    As preferências ficam guardadas neste dispositivo e aplicam-se a todas as páginas da plataforma.
                   </p>
                 </div>
               )}
