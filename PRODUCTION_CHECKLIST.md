@@ -6,6 +6,33 @@
 
 ---
 
+## 🔄 Atualização pós-correção (2026-08-01)
+
+Todas as correções foram implementadas, publicadas e commitadas (`4db2ee2`). Estado novo por módulo:
+
+| Módulo | Antes | Agora |
+|---|---|---|
+| Publicar fotos/vídeos | 🔴 sempre negado (`content: ''`) | 🟢 regras aceitam post só com media |
+| Stories | 🔴 sempre negado (`expiresAt` número) | 🟢 publica + **exibidos no feed** (visualizador fullscreen, auto-avanço, expiração 24h) |
+| Galeria | 🔴 nunca guardava | 🟢 publica (fotos+vídeos) e a grelha mostra **items reais** com likes/apagar/Enviar para TV |
+| Chamadas | 🔴 `receiverId` vs `calleeId` | 🟢 regras alinhadas; **chamadas de voz** (audio-only) + vídeo, escolha na hora de ligar |
+| Amigos | 🔴 sem regras | 🟢 regras `friendRequests` criadas (enviar/aceitar/recusar) + botão "Adicionar Amigo" no perfil de terceiros |
+| SMS offline | 🔴 `timestamp` vs `createdAt` | 🟢 regras aceitam ambos |
+| Comunidades | 🔴 `community_members` sem regras | 🟢 regras criadas |
+| Bloqueios | 🔴 sem efeito | 🟢 posts e mensagens de bloqueados filtrados |
+| Pesquisa | 🔴 cosmética | 🟢 pesquisa real: pessoas, empresas, publicações (painel com resultados) |
+| Mensagens | 🟡 sem não lidas | 🟢 botão de mensagens no header com badge, lista de conversas, **estado entregue** (✓✓) |
+| Contador de comentários | 🔴 race condition | 🟢 `increment()` |
+| Likes após login | 🔴 estado errado | 🟢 re-subscrição com `user` nas deps |
+| Notificações webhook | 🔴 mal ordenadas | 🟢 `createdAt` como número |
+| Perfil | 🟡 | 🟢 contadores de fotos/vídeos em tempo real; nível criador (Prata/Ouro/Platina) calculado dos pontos |
+| `storage.rules` + `firestore.indexes.json` | 🔴 inexistentes | 🟢 criados no repo |
+| Erros reportados | 🔴 `throw` silencia alertas | 🟢 `handleFirestoreError` apenas regista |
+
+**Ainda pendente (requer conta/CLI, não código):** deploy do `firestore.rules`/`storage.rules`/índices (CLI Firebase), deploy das functions (webhook Stripe), Payment Links Stripe, FCM push.
+
+---
+
 ## 0. 🏗️ Infraestrutura / Backend
 
 | Item | Estado | Notas |
