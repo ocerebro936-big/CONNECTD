@@ -11,6 +11,7 @@
         "bio": { "type": "string" },
         "tags": { "type": "string" },
         "color": { "type": "string" },
+        "country": { "type": "string" },
         "youtube": { "type": "string" },
         "instagram": { "type": "string" },
         "tiktok": { "type": "string" },
@@ -19,6 +20,7 @@
         "photoURL": { "type": "string" },
         "coverURL": { "type": "string" },
         "role": { "type": "string", "enum": ["user", "admin"] },
+        "points": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "role", "createdAt"]
@@ -39,6 +41,23 @@
         "createdAt": { "type": "number" }
       },
       "required": ["userId", "authorName", "content", "createdAt"]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "Friend request between users",
+      "type": "object",
+      "properties": {
+        "from": { "type": "string" },
+        "fromName": { "type": "string" },
+        "fromAvatar": { "type": "string" },
+        "to": { "type": "string" },
+        "toName": { "type": "string" },
+        "toAvatar": { "type": "string" },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["from", "to", "participants", "status", "createdAt"]
     },
     "TvQueueItem": {
       "title": "TvQueueItem",
@@ -134,6 +153,10 @@
     "/posts/{postId}/comments/{commentId}": {
       "schema": { "$ref": "#/entities/Comment" },
       "description": "Comments for a post"
+    },
+    "/friendRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/FriendRequest" },
+      "description": "Friend requests between users"
     },
     "/tv_queue/{itemId}": {
       "schema": { "$ref": "#/entities/TvQueueItem" },

@@ -1,32 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Users, Activity, TrendingUp, Sparkles, ArrowUpRight, ArrowDownRight, Crown, Briefcase, GraduationCap } from 'lucide-react';
+import { Users, Activity, TrendingUp, Sparkles, ArrowUpRight, Crown, Briefcase, GraduationCap, FileText, CheckCircle2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { PlatformStatus } from '../components/PlatformStatus';
 import { DivinoTreasuryWidget } from '../components/DivinoTreasuryWidget';
+import { AdminPanel } from '../components/AdminPanel';
 import { formatCurrency } from '../lib/currency-utils';
-
-interface DashboardPageProps {
-  handleComingSoon: () => void;
-}
-
-const data = [
-  { name: 'Jan', followers: 4000, engagement: 2400 },
-  { name: 'Feb', followers: 3000, engagement: 1398 },
-  { name: 'Mar', followers: 2000, engagement: 9800 },
-  { name: 'Apr', followers: 2780, engagement: 3908 },
-  { name: 'May', followers: 1890, engagement: 4800 },
-  { name: 'Jun', followers: 2390, engagement: 3800 },
-  { name: 'Jul', followers: 3490, engagement: 4300 },
-];
-
-const platformData = [
-  { name: 'YouTube', value: 45 },
-  { name: 'Instagram', value: 30 },
-  { name: 'TikTok', value: 15 },
-  { name: 'Facebook', value: 10 },
-];
+import { collection, query, where, onSnapshot, addDoc, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const jobs = [
   { title: 'Moderador de Comunidade', salary: 12000, desc: 'Gestão de chats e suporte ao utilizador' },
@@ -42,30 +24,152 @@ const courses = [
   { title: 'Marketing Digital & Crescimento de Audiência', type: 'VIP', color: 'amber', desc: 'Estratégias avançadas de tráfego orgânico e anúncios na plataforma.' },
 ];
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
+interface DashboardPageProps {
+  user: any;
+  posts: any[];
+}
+
+const DashboardPage: React.FC<DashboardPageProps> = ({ user, posts }) => {
   const [dashTab, setDashTab] = useState<'vip' | 'jobs' | 'academy'>('vip');
+  const [followersCount, setFollowersCount] = useState(0);
+  const [likesCount, setLikesCount] = useState(0);
+  const [commentsCount, setCommentsCount] = useState(0);
+  const [ratingSum, setRatingSum] = useState(0);
+  const [appliedJob, setAppliedJob] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const fq = query(collection(db, 'follows'), where('followingId', '==', user.uid));
+    const unsub = onSnapshot(fq, (snap) => setFollowersCount(snap.size), (e) => console.error(e));
+    return () => unsub();
+  }, [user]);
+
+  const myPosts = useMemo(() => posts.filter((p) => p.userId === user?.uid), [posts, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    let likes = 0;
+    let comments = 0;
+    let ratings = 0;
+    let commentsFetched = 0;
+    myPosts.forEach((p) => {
+      likes += p.likes || 0;
+      ratings += (p.ratings?.totalScore || 0);
+      if (p.comments && p.comments > 0) {
+        commentsFetched += 1;
+      }
+    });
+    setLikesCount(likes);
+    setRatingSum(ratings);
+    const unsubs: any[] = [];
+    myPosts.forEach((p) => {
+      unsubs.push(onSnapshot(
+        query(collection(db, 'posts', p.id, 'comments')),
+        (snap) => { commentsFetched += snap.size; setCommentsCount(commentsFetched); },
+        () => {}
+      ));
+    });
+    return () => unsubs.forEach((u) => u());
+  }, [myPosts, user]);
+
+  const chartData = useMemo(() => {
+    const months: Record<string, { name: string; posts: number; likes: number }> = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = d.toLocaleDateString('pt-PT', { month: 'short' });
+      months[key] = { name: key, posts: 0, likes: 0 };
+    }
+    myPosts.forEach((p) => {
+      const d = new Date(p.createdAt);
+      const key = d.toLocaleDateString('pt-PT', { month: 'short' });
+      if (months[key]) {
+        months[key].posts += 1;
+        months[key].likes += p.likes || 0;
+      }
+    });
+    return Object.values(months);
+  }, [myPosts]);
+
+  const platformData = useMemo(() => {
+    if (!user) return [];
+    const socials = user ? [['YouTube', 1], ['Instagram', 1], ['TikTok', 1], ['Facebook', 1]] : [];
+    const connected = socials
+      .map(([name, _]) => name)
+      .filter((n) => {
+        if (n === 'YouTube') return true;
+        if (n === 'Instagram') return true;
+        if (n === 'TikTok') return true;
+        return true;
+      });
+    const values = connected.map((name) => {
+      const count = myPosts.reduce((acc, p) => acc + (p.likes || 0), 0);
+      return { name, value: Math.max(1, Math.round(count / Math.max(1, connected.length))) };
+    });
+    return values;
+  }, [myPosts, user]);
+
+  const engagement = likesCount + commentsCount + Math.round(ratingSum);
+
+  const downloadReport = () => {
+    const csvRows: string[] = [];
+    csvRows.push('Mês,Publicações,Curtidas');
+    chartData.forEach((row) => {
+      csvRows.push(`${row.name},${row.posts},${row.likes}`);
+    });
+    csvRows.push('');
+    csvRows.push(`Seguidores,${followersCount}`);
+    csvRows.push(`Engajamento Total,${engagement}`);
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `relatorio-connected-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleApply = async (title: string) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'applications'), {
+        userId: user.uid,
+        userName: user.displayName || user.email?.split('@')[0] || 'Unknown',
+        jobTitle: title,
+        status: 'pending',
+        createdAt: Date.now(),
+      });
+      setAppliedJob(title);
+      setTimeout(() => setAppliedJob(null), 3000);
+    } catch (e) {
+      console.error('Error applying:', e);
+      alert('Erro ao enviar candidatura.');
+    }
+  };
+
+  const totalRatingCount = myPosts.reduce((acc, p) => acc + (p.totalRatings || 0), 0);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h2>
-          <p className="text-slate-700 font-medium text-base">Bem-vindo de volta! Aqui está o resumo da sua vida digital.</p>
+          <p className="text-slate-700 font-medium text-base">As tuas métricas reais, ao vivo da plataforma.</p>
         </div>
-        <Button className="rounded-xl shadow-md font-semibold" onClick={handleComingSoon}>Baixar Relatório</Button>
+        <Button className="rounded-xl shadow-md font-semibold" onClick={downloadReport}>Baixar Relatório</Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="glass-card border-white/30 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-bold text-slate-900">Total de Seguidores</CardTitle>
+            <CardTitle className="text-sm font-bold text-slate-900">Seguidores</CardTitle>
             <Users className="h-4 w-4 text-slate-700" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">124.5K</div>
+            <div className="text-2xl font-bold text-slate-900">{followersCount}</div>
             <p className="text-xs text-slate-600 font-medium flex items-center mt-1">
-              <ArrowUpRight className="mr-1 h-3 w-3 text-emerald-600" />
-              <span className="text-emerald-600 font-bold">+12.5%</span> em relação ao mês passado
+              <span className="text-emerald-600 font-bold">Contagem real</span> via Firestore
             </p>
           </CardContent>
         </Card>
@@ -75,35 +179,33 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
             <Activity className="h-4 w-4 text-slate-700" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">1.2M</div>
+            <div className="text-2xl font-bold text-slate-900">{engagement}</div>
             <p className="text-xs text-slate-600 font-medium flex items-center mt-1">
-              <ArrowUpRight className="mr-1 h-3 w-3 text-emerald-600" />
-              <span className="text-emerald-600 font-bold">+8.2%</span> em relação ao mês passado
+              <span className="text-slate-500 font-bold">{likesCount} likes · {commentsCount} comentários · {Math.round(ratingSum)} pontos de rating</span>
             </p>
           </CardContent>
         </Card>
         <Card className="glass-card border-white/30 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-bold text-slate-900">Conteúdos Virais</CardTitle>
+            <CardTitle className="text-sm font-bold text-slate-900">Publicações</CardTitle>
             <TrendingUp className="h-4 w-4 text-slate-700" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">12</div>
+            <div className="text-2xl font-bold text-slate-900">{myPosts.length}</div>
             <p className="text-xs text-slate-600 font-medium flex items-center mt-1">
-              <ArrowDownRight className="mr-1 h-3 w-3 text-rose-600" />
-              <span className="text-rose-600 font-bold">-2</span> em relação ao mês passado
+              <span className="text-slate-500 font-bold">{totalRatingCount} avaliações recebidas</span>
             </p>
           </CardContent>
         </Card>
         <Card className="glass-card border-white/30 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-bold text-slate-900">Reputação</CardTitle>
+            <CardTitle className="text-sm font-bold text-slate-900">Pontos</CardTitle>
             <Sparkles className="h-4 w-4 text-slate-700" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">Top 5%</div>
+            <div className="text-2xl font-bold text-slate-900">{(user as any)?.points ?? 0}</div>
             <p className="text-xs text-slate-600 font-medium flex items-center mt-1">
-              <span className="text-emerald-600 font-bold">+2 posições</span> no ranking global
+              <span className="text-amber-600 font-bold">Moeda interna da plataforma</span>
             </p>
           </CardContent>
         </Card>
@@ -112,13 +214,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4 glass-card border-white/30 shadow-md">
           <CardHeader>
-            <CardTitle className="text-slate-900 font-bold">Crescimento de Audiência</CardTitle>
-            <CardDescription className="text-slate-600 font-medium">Visão consolidada de todas as suas redes nos últimos 7 meses.</CardDescription>
+            <CardTitle className="text-slate-900 font-bold">As Tuas Publicações</CardTitle>
+            <CardDescription className="text-slate-600 font-medium">Atividade real dos últimos 7 meses.</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorFollowers" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.5}/>
@@ -130,11 +232,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="name" stroke="#334155" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#334155" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+                  <YAxis stroke="#334155" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" strokeOpacity={0.5} />
                   <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(8px)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.5)' }} />
-                  <Area type="monotone" dataKey="followers" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorFollowers)" />
-                  <Area type="monotone" dataKey="engagement" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorEngagement)" />
+                  <Area type="monotone" dataKey="posts" name="Publicações" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorFollowers)" />
+                  <Area type="monotone" dataKey="likes" name="Curtidas" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorEngagement)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -142,20 +244,27 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
         </Card>
         <Card className="col-span-3 glass-card border-white/30 shadow-md">
           <CardHeader>
-            <CardTitle className="text-slate-900 font-bold">Distribuição por Rede</CardTitle>
-            <CardDescription className="text-slate-600 font-medium">Onde sua audiência está mais ativa.</CardDescription>
+            <CardTitle className="text-slate-900 font-bold">Atividade Recente</CardTitle>
+            <CardDescription className="text-slate-600 font-medium">As tuas publicações com mais engagement.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={platformData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#cbd5e1" strokeOpacity={0.5} />
-                  <XAxis type="number" stroke="#334155" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis dataKey="name" type="category" stroke="#334155" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip cursor={{fill: 'rgba(255,255,255,0.2)'}} contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(8px)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.5)' }} />
-                  <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={30} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="space-y-3 max-h-[300px] overflow-auto">
+              {[...myPosts].sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 6).map((p) => (
+                <div key={p.id} className="flex items-center gap-3 bg-white/50 border border-white/40 rounded-xl p-3 shadow-sm">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-900 truncate">{p.content || (p.media?.type === 'video' ? '🎬 Vídeo' : '📷 Foto')}</p>
+                    <p className="text-[10px] text-slate-500 font-medium">{new Date(p.createdAt).toLocaleDateString('pt-PT')}</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-600 shrink-0">
+                    <span className="text-rose-500">♥ {p.likes || 0}</span>
+                    <span className="text-blue-500">💬 {p.comments || 0}</span>
+                    <span className="text-amber-500">★ {p.totalRatings || 0}</span>
+                  </div>
+                </div>
+              ))}
+              {myPosts.length === 0 && (
+                <p className="text-sm text-slate-500 text-center py-8 font-medium">Ainda não publicaste nada. Vai ao Feed e cria a tua primeira publicação!</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -164,6 +273,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
       <PlatformStatus />
 
       <DivinoTreasuryWidget />
+
+      {(user?.email === 'ocerebro936@gmail.com' || user?.role === 'admin') && (
+        <AdminPanel user={user} />
+      )}
 
       <div className="pt-4 border-t border-slate-200/50">
         <h3 className="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
@@ -174,9 +287,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
 
         <div className="flex gap-2 p-1.5 bg-white/70 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm overflow-x-auto">
           {([
-            { id: 'vip' as const, label: '⭐ Seja Membro', color: 'bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg' },
+            { id: 'vip' as const, label: '⭐ Seja Membro', color: 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg' },
             { id: 'jobs' as const, label: '💼 Quero Trabalhar', color: 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg' },
-            { id: 'academy' as const, label: '🎓 Faculdade', color: 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' },
+            { id: 'academy' as const, label: '🎓 Faculdade', color: 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg' },
           ]).map((tab) => (
             <button
               key={tab.id}
@@ -211,22 +324,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
                       <li>✅ Selo de Membro Oficial no Perfil</li>
                       <li>✅ Acesso a chamadas de voz ilimitadas</li>
                     </ul>
-                    <Button className="w-full rounded-xl font-bold bg-amber-600 hover:bg-amber-500 shadow-sm">Subscrever Agora</Button>
+                    <Button className="w-full rounded-xl font-bold bg-amber-600 hover:bg-amber-500 shadow-sm" onClick={() => alert('Subscrição Pro ativada! A funcionalidade completa estará disponível em breve.')}>Subscrever Agora</Button>
                   </CardContent>
                 </Card>
-                <Card className="border-amber-200/50 shadow-md hover:shadow-lg transition-all bg-gradient-to-br from-amber-50 to-white">
+                <Card className="border-emerald-200/50 shadow-md hover:shadow-lg transition-all bg-gradient-to-br from-emerald-50 to-white">
                   <CardContent className="p-5 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-lg text-amber-800">Membro Criador VIP</h4>
-                      <span className="text-[10px] bg-amber-600 text-white font-black px-2 py-0.5 rounded-full">RECOMENDADO</span>
+                      <h4 className="font-bold text-lg text-emerald-800">Membro Criador VIP</h4>
+                      <span className="text-[10px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded-full">RECOMENDADO</span>
                     </div>
-                    <p className="text-2xl font-black text-amber-600">{formatCurrency(750, 'MZN')} <span className="text-xs font-normal text-slate-500">/ mês</span></p>
+                    <p className="text-2xl font-black text-emerald-600">{formatCurrency(750, 'MZN')} <span className="text-xs font-normal text-slate-500">/ mês</span></p>
                     <ul className="text-xs space-y-2 text-slate-700">
                       <li>✅ 90% de retenção em doações e presentes</li>
                       <li>✅ Distribuição de lucros de tráfego de anúncios</li>
                       <li>✅ Entrada direta no Museu Dinâmico</li>
                     </ul>
-                    <Button className="w-full rounded-xl font-bold bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 shadow-sm text-white">Ativar Passe VIP</Button>
+                    <Button className="w-full rounded-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 shadow-sm text-white" onClick={() => { alert('Passe VIP ativado! Redirecionando para a rede de conexões...'); setDashTab('vip'); }}>Ativar Passe VIP</Button>
                   </CardContent>
                 </Card>
               </div>
@@ -252,7 +365,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
                         <p className="text-xs text-emerald-600 font-bold mt-0.5">{formatCurrency(job.salary, 'MZN')} / mês</p>
                         <p className="text-xs text-slate-500 mt-1 truncate">{job.desc}</p>
                       </div>
-                      <Button size="sm" className="rounded-lg text-xs font-bold shrink-0 ml-4 bg-emerald-600 hover:bg-emerald-500 shadow-sm">Candidatar</Button>
+                      <Button size="sm" className="rounded-lg text-xs font-bold shrink-0 ml-4 bg-emerald-600 hover:bg-emerald-500 shadow-sm" onClick={() => handleApply(job.title)} disabled={appliedJob === job.title}>
+                        {appliedJob === job.title ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Enviada</> : 'Candidatar'}
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
@@ -273,9 +388,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {courses.map((course, i) => {
                   const colorMap: Record<string, string> = {
-                    indigo: 'bg-indigo-100 text-indigo-700 border-indigo-300',
-                    purple: 'bg-purple-100 text-purple-700 border-purple-300',
-                    amber: 'bg-amber-100 text-amber-700 border-amber-300',
+                    blue: 'bg-blue-100 text-blue-700 border-blue-300',
+                    cyan: 'bg-cyan-100 text-cyan-700 border-cyan-300',
+                    emerald: 'bg-emerald-100 text-emerald-700 border-emerald-300',
                   };
                   return (
                     <Card key={i} className="border-slate-200/50 shadow-md hover:shadow-lg transition-all">
@@ -283,7 +398,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ handleComingSoon }) => {
                         <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${colorMap[course.color] || colorMap.indigo}`}>{course.type}</span>
                         <h4 className="font-bold text-sm text-slate-900">{course.title}</h4>
                         <p className="text-xs text-slate-600">{course.desc}</p>
-                        <Button size="sm" className="w-full rounded-lg text-xs font-bold mt-2 bg-indigo-600 hover:bg-indigo-500 shadow-sm">Acessar Curso</Button>
+                        <Button size="sm" className="w-full rounded-lg text-xs font-bold mt-2 bg-indigo-600 hover:bg-indigo-500 shadow-sm" onClick={() => alert(`Redirecionando para a Faculdade Connected... O curso "${course.title}" será disponibilizado em breve.`)}>Acessar Curso</Button>
                       </CardContent>
                     </Card>
                   );

@@ -14,13 +14,13 @@ export const LEVELS: LevelInfo[] = [
   { level: 1, title: 'Novo Membro', role: null, minPoints: 0, color: 'text-slate-400', badge: 'bg-slate-500', callCostPerMin: 20 },
   { level: 2, title: 'Contribuidor', role: null, minPoints: 100, color: 'text-emerald-400', badge: 'bg-emerald-500', callCostPerMin: 18 },
   { level: 3, title: 'Membro Ativo', role: 'moderator', minPoints: 500, color: 'text-blue-400', badge: 'bg-blue-500', callCostPerMin: 15 },
-  { level: 4, title: 'Criador de Valor', role: null, minPoints: 1000, color: 'text-purple-400', badge: 'bg-purple-500', callCostPerMin: 12 },
-  { level: 5, title: 'Curador', role: 'curator', minPoints: 1500, color: 'text-amber-400', badge: 'bg-amber-500', callCostPerMin: 10 },
-  { level: 6, title: 'Especialista', role: null, minPoints: 2500, color: 'text-rose-400', badge: 'bg-rose-500', callCostPerMin: 8 },
+  { level: 4, title: 'Criador de Valor', role: null, minPoints: 1000, color: 'text-cyan-400', badge: 'bg-cyan-500', callCostPerMin: 12 },
+  { level: 5, title: 'Curador', role: 'curator', minPoints: 1500, color: 'text-emerald-400', badge: 'bg-emerald-500', callCostPerMin: 10 },
+  { level: 6, title: 'Especialista', role: null, minPoints: 2500, color: 'text-teal-400', badge: 'bg-teal-500', callCostPerMin: 8 },
   { level: 7, title: 'Líder Comunitário', role: null, minPoints: 4000, color: 'text-cyan-400', badge: 'bg-cyan-500', callCostPerMin: 5 },
   { level: 8, title: 'Líder de Comunidade', role: 'leader', minPoints: 5000, color: 'text-yellow-400', badge: 'bg-yellow-500', callCostPerMin: 3 },
   { level: 9, title: 'Embaixador', role: null, minPoints: 8000, color: 'text-orange-400', badge: 'bg-orange-500', callCostPerMin: 1 },
-  { level: 10, title: 'Lenda Connected', role: null, minPoints: 12000, color: 'text-pink-400', badge: 'bg-gradient-to-r from-pink-500 to-purple-600', callCostPerMin: 0 },
+  { level: 10, title: 'Lenda Connected', role: null, minPoints: 12000, color: 'text-teal-400', badge: 'bg-gradient-to-r from-teal-500 to-cyan-600', callCostPerMin: 0 },
 ];
 
 export function getLevel(points: number): LevelInfo {

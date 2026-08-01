@@ -1,3 +1,5 @@
+export const DIVINO_WALLET = '0xf44910f8F13BC4B485bb9ce2406d83a3F0Ada1F2';
+
 export interface TreasuryReceipt {
   id: string;
   service: string;
@@ -31,6 +33,11 @@ export class DivinoAutonomousTreasury {
   private dailyExpenseLimitMZN = 5000;
   private spentTodayMZN = 0;
   private receipts: TreasuryReceipt[];
+  public readonly walletAddress = DIVINO_WALLET;
+  public readonly linkedMethods = {
+    primary: `MetaMask (${DIVINO_WALLET.slice(0, 6)}...${DIVINO_WALLET.slice(-4)})`,
+    secondary: 'Carteira Interna MZN (Connected Engine)',
+  };
 
   constructor() {
     this.receipts = loadReceipts();
@@ -67,6 +74,8 @@ export class DivinoAutonomousTreasury {
       remainingLimit: this.dailyExpenseLimitMZN - this.spentTodayMZN,
       remainingLimitFormatted: `${(this.dailyExpenseLimitMZN - this.spentTodayMZN).toFixed(2)} MT`,
       dailyLimit: this.dailyExpenseLimitMZN,
+      wallet: this.walletAddress,
+      linkedMethods: this.linkedMethods,
     };
   }
 

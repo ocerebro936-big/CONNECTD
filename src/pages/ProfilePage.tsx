@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Camera, UserCircle, Palette, Youtube, Instagram, Facebook, MessageCircle, CheckCircle2, Award } from 'lucide-react';
+import { Camera, UserCircle, Palette, Youtube, Instagram, Facebook, MessageCircle, CheckCircle2, Award, Users, Share2, Link as LinkIcon } from 'lucide-react';
 import { CreditDisplay } from '../components/CreditDisplay';
 import { UserLevelBadge } from '../components/UserLevelBadge';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface ProfilePageProps {
   user: any;
@@ -27,6 +29,31 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
   coverInputRef,
   handleImageUpload,
 }) => {
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [copiedProfile, setCopiedProfile] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubs: any[] = [];
+    const fq = query(collection(db, 'follows'), where('followingId', '==', user.uid));
+    unsubs.push(onSnapshot(fq, (snap) => setFollowersCount(snap.size), (e) => console.error(e)));
+    const fg = query(collection(db, 'follows'), where('followerId', '==', user.uid));
+    unsubs.push(onSnapshot(fg, (snap) => setFollowingCount(snap.size), (e) => console.error(e)));
+    return () => unsubs.forEach((u) => u());
+  }, [user]);
+
+  const handleShareProfile = () => {
+    const url = `https://ocerebro936-big.github.io/CONNECTD/?tab=profile&user=${user.uid}`;
+    if (navigator.share) {
+      navigator.share({ title: `${profileData.displayName || 'Utilizador'} na Connected`, url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+      setCopiedProfile(true);
+      setTimeout(() => setCopiedProfile(false), 3000);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
@@ -38,7 +65,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
         <input type="file" accept="image/*" ref={coverInputRef} className="hidden" onChange={(e) => handleImageUpload(e, 'coverURL')} />
         <input type="file" accept="image/*" ref={photoInputRef} className="hidden" onChange={(e) => handleImageUpload(e, 'photoURL')} />
         {/* Banner */}
-        <div className="h-48 md:h-72 w-full relative group bg-gradient-to-r from-blue-400 to-purple-500">
+        <div className="h-48 md:h-72 w-full relative group bg-gradient-to-r from-blue-400 to-cyan-500">
           <img src={profileData.coverURL || "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2000&auto=format&fit=crop"} alt="Cover" className="w-full h-full object-cover opacity-80 mix-blend-overlay" />
           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <Button variant="secondary" className="glass backdrop-blur-md border-white/40 text-slate-900 font-semibold rounded-xl" onClick={() => coverInputRef.current?.click()}><Camera className="mr-2 h-4 w-4"/> Alterar Capa</Button>
@@ -61,14 +88,22 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
               <h1 className="text-3xl font-bold text-slate-900">{profileData.displayName || 'Novo Usuário'}</h1>
               <p className="text-slate-700 font-medium text-base sm:text-lg mb-2">@{profileData.displayName?.toLowerCase().replace(/\s+/g, '') || 'usuario'} <UserLevelBadge points={profileData.points || 0} size="md" /></p>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/60 border border-white/40 rounded-full text-xs font-bold text-slate-800 shadow-sm">
+                  <Users className="h-3.5 w-3.5 text-primary" />
+                  {followersCount} Seguidores
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/60 border border-white/40 rounded-full text-xs font-bold text-slate-800 shadow-sm">
+                  <UserCircle className="h-3.5 w-3.5 text-cyan-500" />
+                  {followingCount} A Seguir
+                </span>
                 {profileData.youtube && (
                   <a href={profileData.youtube.startsWith('http') ? profileData.youtube : `https://${profileData.youtube}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/60 hover:bg-white border border-white/40 rounded-full shadow-sm transition-all text-red-600">
                     <Youtube className="h-4 w-4" />
                   </a>
                 )}
                 {profileData.instagram && (
-                  <a href={profileData.instagram.startsWith('http') ? profileData.instagram : `https://${profileData.instagram}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/60 hover:bg-white border border-white/40 rounded-full shadow-sm transition-all text-pink-600">
+                    <a href={profileData.instagram.startsWith('http') ? profileData.instagram : `https://${profileData.instagram}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/60 hover:bg-white border border-white/40 rounded-full shadow-sm transition-all text-blue-600">
                     <Instagram className="h-4 w-4" />
                   </a>
                 )}
@@ -90,6 +125,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
               </div>
             </div>
             <div className="pb-2 sm:pb-4 flex gap-3 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                className="rounded-xl shadow-md w-full sm:w-auto h-12 px-5 font-semibold border-white/40 bg-white/40 hover:bg-white/70"
+                onClick={handleShareProfile}
+              >
+                {copiedProfile ? <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" /> : <Share2 className="mr-2 h-4 w-4" />}
+                {copiedProfile ? 'Link Copiado!' : 'Partilhar Perfil'}
+              </Button>
               <Button
                 className="rounded-xl shadow-md w-full sm:w-auto text-md h-12 px-8 font-semibold"
                 onClick={handleSaveProfile}
@@ -140,7 +183,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
               <div className="space-y-3">
                 <label className="text-sm font-bold text-slate-800">Cor de Destaque</label>
                 <div className="flex gap-4 flex-wrap">
-                  {['bg-blue-500', 'bg-purple-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500'].map((color, i) => (
+                  {['bg-blue-500', 'bg-cyan-500', 'bg-emerald-500', 'bg-teal-500', 'bg-sky-500'].map((color, i) => (
                     <button
                       key={i}
                       onClick={() => setProfileData({...profileData, color})}
@@ -166,7 +209,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                     />
                   </div>
                   <div className="flex items-center gap-3 glass-input p-2 rounded-xl shadow-sm">
-                    <div className="bg-white/80 p-2 rounded-lg"><Instagram className="h-5 w-5 text-pink-500" /></div>
+                    <div className="bg-white/80 p-2 rounded-lg"><Instagram className="h-5 w-5 text-blue-500" /></div>
                     <input
                       type="text"
                       value={profileData.instagram}

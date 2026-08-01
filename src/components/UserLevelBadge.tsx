@@ -24,7 +24,7 @@ export function UserLevelBadge({ points, size = 'sm', showProgress = false, clas
         <div className="ml-1 flex items-center gap-1.5">
           <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-primary to-purple-500 rounded-full transition-all duration-500"
+              className="h-full bg-gradient-to-r from-primary to-cyan-500 rounded-full transition-all duration-500"
               style={{ width: `${progress}%` }}
             />
           </div>

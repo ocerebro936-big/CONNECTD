@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
-import { Wallet, Receipt, Shield, ArrowUpRight, AlertTriangle } from 'lucide-react';
+import { Wallet, Receipt, Shield, ArrowUpRight, AlertTriangle, ExternalLink } from 'lucide-react';
 import { divinoTreasury } from '../lib/divino-treasury';
 import { formatCurrency } from '../lib/currency-utils';
 
@@ -22,20 +22,20 @@ export function DivinoTreasuryWidget() {
   const percentUsed = (balance.spentToday / balance.dailyLimit) * 100;
 
   return (
-    <Card className="bg-gradient-to-br from-indigo-950/5 to-purple-950/5 border-purple-300/30 shadow-lg overflow-hidden">
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500" />
+    <Card className="bg-gradient-to-br from-blue-950/5 to-cyan-950/5 border-cyan-300/30 shadow-lg overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-cyan-500 to-indigo-500" />
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-purple-100 border border-purple-300 flex items-center justify-center text-xl shadow-md">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-100 border border-cyan-300 flex items-center justify-center text-xl shadow-md">
               💳
             </div>
             <div>
               <CardTitle className="text-slate-900 text-lg font-bold flex items-center gap-2">
-                <Wallet className="h-5 w-5 text-purple-500" />
+                <Wallet className="h-5 w-5 text-cyan-500" />
                 Tesouraria Autônoma
               </CardTitle>
-              <CardDescription className="text-purple-600 font-medium text-xs">
+              <CardDescription className="text-cyan-600 font-medium text-xs">
                 DIVINO IA • Gestão e liquidação automática de serviços
               </CardDescription>
             </div>
@@ -68,10 +68,16 @@ export function DivinoTreasuryWidget() {
         <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-500 ${
-              percentUsed > 80 ? 'bg-rose-500' : percentUsed > 50 ? 'bg-amber-500' : 'bg-emerald-500'
+              percentUsed > 80 ? 'bg-rose-500' : percentUsed > 50 ? 'bg-emerald-500' : 'bg-emerald-500'
             }`}
             style={{ width: `${Math.min(percentUsed, 100)}%` }}
           />
+        </div>
+
+        <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200/50 rounded-xl text-xs font-mono">
+          <ExternalLink className="h-4 w-4 text-indigo-500 shrink-0" />
+          <span className="text-slate-600 truncate">Wallet: {balance.wallet}</span>
+          <span className="text-indigo-600 font-bold shrink-0">→ {balance.linkedMethods.primary}</span>
         </div>
 
         <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200/50 rounded-xl text-xs">
@@ -104,7 +110,7 @@ export function DivinoTreasuryWidget() {
           </div>
         </div>
 
-        <Button className="w-full rounded-xl text-xs font-bold gap-2 bg-purple-600 hover:bg-purple-500 shadow-sm" onClick={() => {
+        <Button className="w-full rounded-xl text-xs font-bold gap-2 bg-cyan-600 hover:bg-cyan-500 shadow-sm" onClick={() => {
           divinoTreasury.processAutomaticPayment('Recarga automática de segurança', 500).then(refresh).catch(console.error);
           refresh();
         }}>

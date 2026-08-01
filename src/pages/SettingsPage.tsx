@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { getCurrentBackground } from '../components/BackgroundSlider';
+import { getCurrentBackground, getBackgroundPrefs, setBackgroundPrefs, BACKGROUNDS, BACKGROUND_CATEGORIES } from '../components/BackgroundSlider';
 
 interface SettingsPageProps {
   user: any;
   profileData: any;
   toggleConnection: (platform: 'youtubeConnected' | 'instagramConnected' | 'tiktokConnected' | 'facebookConnected') => void;
-  handleComingSoon: () => void;
 }
 
-const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleConnection, handleComingSoon }) => {
-  const [settingsTab, setSettingsTab] = useState<'connections' | 'payments' | 'relationships' | 'contracts'>('connections');
+const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleConnection }) => {
+  const [settingsTab, setSettingsTab] = useState<'appearance' | 'connections' | 'payments' | 'relationships' | 'contracts'>('appearance');
+  const [bgPrefs, setBgPrefs] = useState(getBackgroundPrefs());
+
+  const updateBgPrefs = (partial: Partial<ReturnType<typeof getBackgroundPrefs>>) => {
+    const next = { ...bgPrefs, ...partial };
+    setBgPrefs(next);
+    setBackgroundPrefs(next);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -20,7 +26,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
           ⚙️ Definições da Conta
         </h2>
         <p className="text-slate-700 font-medium text-base">
-          Fundo Ativo: <span className="font-bold text-indigo-600">{getCurrentBackground().type}</span> • Rotação Dinâmica Ativada
+          Fundo Ativo: <span className="font-bold text-indigo-600">{getCurrentBackground().label}</span> • {bgPrefs.autoRotate ? 'Rotação Dinâmica Ativada' : 'Rotação Desativada'}
         </p>
       </div>
 
@@ -29,6 +35,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
           <Card className="border-white/30 shadow-md">
             <CardContent className="p-2 space-y-1">
               {([
+                { id: 'appearance' as const, label: '🎨 Aparência & Fundo' },
                 { id: 'connections' as const, label: '🔗 Conexões Externas' },
                 { id: 'payments' as const, label: '💳 Formas de Pagamento' },
                 { id: 'relationships' as const, label: '⭐ Fãs, Amigos & Clientes' },
@@ -53,6 +60,94 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
         <main className="col-span-12 md:col-span-8 lg:col-span-9">
           <Card className="border-white/30 shadow-md min-h-[400px]">
             <CardContent className="p-6">
+              {settingsTab === 'appearance' && (
+                <div className="space-y-6">
+                  <h3 className="text-lg font-bold text-slate-900 border-b border-slate-200/50 pb-3">🎨 Aparência & Fundo</h3>
+
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 mb-2">Categoria de Fundo</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => updateBgPrefs({ category: null })}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                          bgPrefs.category === null
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white/60 text-slate-600 border-slate-200 hover:bg-white'
+                        }`}
+                      >
+                        🌐 Todos
+                      </button>
+                      {BACKGROUND_CATEGORIES.map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => updateBgPrefs({ category: bgPrefs.category === cat ? null : cat })}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                            bgPrefs.category === cat
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'bg-white/60 text-slate-600 border-slate-200 hover:bg-white'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 mb-2">Fundo Favorito</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {BACKGROUNDS.filter(b => !bgPrefs.category || b.category === bgPrefs.category).map(bg => (
+                        <button
+                          key={bg.id}
+                          onClick={() => updateBgPrefs({ favoriteId: bgPrefs.favoriteId === bg.id ? null : bg.id })}
+                          className={`group relative rounded-xl overflow-hidden border-2 transition-all ${
+                            bgPrefs.favoriteId === bg.id ? 'border-indigo-500 shadow-lg' : 'border-transparent hover:border-indigo-200'
+                          }`}
+                        >
+                          <img src={bg.url} alt={bg.label} className="w-full h-20 object-cover group-hover:scale-105 transition-transform" />
+                          <span className="absolute inset-0 bg-black/40 flex items-end p-1.5">
+                            <span className="text-[10px] font-bold text-white truncate w-full">{bg.label}</span>
+                          </span>
+                          {bgPrefs.favoriteId === bg.id && (
+                            <span className="absolute top-1.5 right-1.5 bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">✓</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 bg-white/60 rounded-xl px-4 py-2.5 border border-slate-200 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={bgPrefs.autoRotate}
+                        onChange={(e) => updateBgPrefs({ autoRotate: e.target.checked })}
+                        className="accent-indigo-600 h-4 w-4"
+                      />
+                      🔄 Rotação Automática
+                    </label>
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 bg-white/60 rounded-xl px-4 py-2.5 border border-slate-200">
+                      <span>⏱️ Intervalo:</span>
+                      <select
+                        value={bgPrefs.interval}
+                        onChange={(e) => updateBgPrefs({ interval: Number(e.target.value) })}
+                        className="bg-white rounded-lg px-2 py-1 text-xs font-bold border border-slate-300"
+                      >
+                        <option value={15000}>15 seg</option>
+                        <option value={30000}>30 seg</option>
+                        <option value={45000}>45 seg</option>
+                        <option value={60000}>1 min</option>
+                        <option value={120000}>2 min</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    As preferências ficam guardadas neste dispositivo e sincronizam automaticamente com a plataforma.
+                  </p>
+                </div>
+              )}
+
               {settingsTab === 'connections' && (
                 <div className="space-y-6">
                   <h3 className="text-lg font-bold text-slate-900 border-b border-slate-200/50 pb-3">Redes Sociais Conectadas</h3>
@@ -93,7 +188,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-200/50 pb-3">
                     <h3 className="text-lg font-bold text-slate-900">Métodos de Pagamento</h3>
-                    <Button size="sm" className="rounded-xl text-xs font-bold" onClick={handleComingSoon}>
+                    <Button size="sm" className="rounded-xl text-xs font-bold" onClick={() => alert('Funcionalidade de adicionar método de pagamento será aberta. Por agora, usa o Checkout na Galeria para configurar.')}>
                       + Adicionar
                     </Button>
                   </div>
@@ -101,7 +196,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
                     {[
                       { name: 'PayPal', icon: '🅿️', detail: 'utilizador@email.com', badge: 'Padrão', badgeColor: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
                       { name: 'Google Pay', icon: '📱', detail: '**** **** **** 4242', badge: 'Ativo', badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
-                      { name: 'MetaMask (Web3)', icon: '🦊', detail: '0x71C...89F2', badge: 'Ativo', badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+                      { name: 'MetaMask (Web3)', icon: '🦊', detail: '0xf44910f8F13BC4B485bb9ce2406d83a3F0Ada1F2', badge: 'Wallet Vinculada', badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
                       { name: 'Transferência Bancária', icon: '🏦', detail: 'PT50 0000 0000 0000 0000 001', badge: 'Pendente', badgeColor: 'bg-amber-100 text-amber-700 border-amber-300' },
                     ].map((m) => (
                       <div key={m.name} className="p-4 bg-white/50 border border-slate-200/50 rounded-2xl space-y-2">
@@ -113,6 +208,28 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
                       </div>
                     ))}
                   </div>
+                  <Card className="border-cyan-200/40 bg-cyan-50/40">
+                    <CardContent className="p-5 flex items-start gap-3">
+                      <span className="text-lg">🌐</span>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">Domínios Oficiais da Connected</h4>
+                        <div className="mt-2 space-y-1.5">
+                          <div className="flex items-center gap-2 text-xs font-mono text-slate-700 bg-white/60 rounded-lg px-3 py-2 border border-white/80">
+                            <span className="text-emerald-500 font-bold">✓</span>
+                            <span>https://ocerebro936-big.github.io/CONNECTD/</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs font-mono text-slate-700 bg-white/60 rounded-lg px-3 py-2 border border-white/80">
+                            <span className="text-emerald-500 font-bold">✓</span>
+                            <span>Domínio Personalizado: www.connected.org-github.io</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2">
+                          Podes usar o teu próprio domínio configurando um CNAME para o GitHub Pages. 
+                          Adiciona o domínio no Firebase Console em Authentication {'>'} Authorized domains para o login funcionar.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               )}
 
@@ -122,7 +239,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {[
                       { icon: '⭐', count: '1.240', label: 'Fãs Seguidores', color: 'from-indigo-50 to-white border-indigo-200/40 text-indigo-700' },
-                      { icon: '🤝', count: '318', label: 'Amigos Conectados', color: 'from-purple-50 to-white border-purple-200/40 text-purple-700' },
+                      { icon: '🤝', count: '318', label: 'Amigos Conectados', color: 'from-cyan-50 to-white border-cyan-200/40 text-cyan-700' },
                       { icon: '🛍️', count: '42', label: 'Clientes Compradores', color: 'from-emerald-50 to-white border-emerald-200/40 text-emerald-700' },
                     ].map((r) => (
                       <div key={r.label} className={`p-5 bg-gradient-to-br ${r.color} rounded-2xl text-center space-y-1 border shadow-sm`}>
@@ -151,6 +268,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
                           </div>
                         ))}
                       </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
               {settingsTab === 'contracts' && (
                 <div className="space-y-6">
                   <h3 className="text-lg font-bold text-slate-900 border-b border-slate-200/50 pb-3">📜 Contratos de Integração Comercial</h3>
@@ -217,10 +339,7 @@ Data de Efetivação: 27 de Julho de 2026.`}
                   </Card>
                 </div>
               )}
-            </CardContent>
-                  </Card>
-                </div>
-              )}
+
             </CardContent>
           </Card>
         </main>

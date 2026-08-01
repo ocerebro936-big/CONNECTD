@@ -102,3 +102,113 @@ exports.deductCallTime = functions.firestore
       console.log(`Deducted 10 points from ${callerId} for call connection.`);
     }
   });
+
+// 5. Stripe webhook - credits points after confirmed payment
+// Set STRIPE_SECRET (Signing secret) and STRIPE_PRICE_MAP ({"starter": "price_xxx", ...}) in firebase functions config:
+//   firebase functions:config:set stripe.secret="whsec_..." stripe.price_map="{\"starter\":\"price_x\",\"basic\":\"price_y\",\"pro\":\"price_z\",\"premium\":\"price_w\"}"
+// Test locally with: stripe listen --forward-to http://localhost:5001/<project>/<region>/stripeWebhook
+exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
+  const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY || "", {
+    apiVersion: "2023-10-16",
+  });
+
+  const sig = req.headers["stripe-signature"];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
+
+  if (!sig || !endpointSecret) {
+    res.status(500).send("Webhook não configurado (STRIPE_WEBHOOK_SECRET).");
+    return;
+  }
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
+  } catch (err) {
+    console.error("Stripe signature verification failed:", err.message);
+    res.status(400).send(`Webhook Error: ${err.message}`);
+    return;
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    const purchaseId = session.client_reference_id;
+
+    if (!purchaseId) {
+      console.warn("checkout.session.completed sem client_reference_id; ignorado.");
+      res.json({ received: true });
+      return;
+    }
+
+    const purchaseRef = admin.firestore().collection("purchases").doc(purchaseId);
+    const purchaseDoc = await purchaseRef.get();
+
+    if (!purchaseDoc.exists) {
+      console.error(`Compra ${purchaseId} não encontrada.`);
+      res.json({ received: true, error: "purchase-not-found" });
+      return;
+    }
+
+    const purchase = purchaseDoc.data();
+
+    if (purchase.status === "confirmed") {
+      console.log(`Compra ${purchaseId} já confirmada.`);
+      res.json({ received: true });
+      return;
+    }
+
+    await purchaseRef.update({
+      status: "confirmed",
+      confirmedAt: admin.firestore.FieldValue.serverTimestamp(),
+      confirmedBy: "stripe-webhook",
+      stripeSessionId: session.id,
+      stripeAmount: session.amount_total || null,
+    });
+
+    const userRef = admin.firestore().collection("users").doc(purchase.userId);
+    await userRef.update({
+      points: admin.firestore.FieldValue.increment(purchase.points || 0),
+    });
+
+    await admin.firestore().collection("notifications").add({
+      userId: purchase.userId,
+      type: "purchase",
+      message: `${purchase.points} pontos foram creditados na tua conta (pagamento Stripe confirmado).`,
+      actorId: "system",
+      actorName: "Connected",
+      actorAvatar: "",
+      link: "",
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log(`Compra ${purchaseId} confirmada via Stripe; ${purchase.points} pts creditados.`);
+  }
+
+  res.json({ received: true });
+});
+
+// 6. Auto-confirm purchases (fallback if webhook misses) - triggered by reference match
+exports.autoConfirmPurchases = functions.pubsub
+  .schedule("every 24 hours")
+  .onRun(async (context) => {
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const cutoff = now - dayMs;
+
+    const pending = await admin.firestore()
+      .collection("purchases")
+      .where("status", "==", "pending")
+      .where("createdAt", "<", cutoff)
+      .get();
+
+    pending.forEach(async (snap) => {
+      const p = snap.data();
+      if (p.provider === "bank" && p.reference && p.reference.startsWith("CONN-")) {
+        const ref = admin.firestore().collection("purchases").doc(snap.id);
+        await ref.update({ status: "expired", note: "Expirada automaticamente após 24h sem confirmação." });
+        console.log(`Compra ${snap.id} expirada.`);
+      }
+    });
+
+    console.log(`autoConfirmPurchases: ${pending.size} compras antigas processadas.`);
+  });

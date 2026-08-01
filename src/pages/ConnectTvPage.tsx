@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Tv, MessageSquare, Play, Send, X } from 'lucide-react';
+import { Tv, MessageSquare, Play, Send, X, Gift, Trash2, Eye, Activity } from 'lucide-react';
 import { ThermalBadge } from '../components/ThermalBadge';
 import { calculateTemperature } from '../lib/thermal-utils';
-import { updateDoc, doc } from 'firebase/firestore';
+import { updateDoc, doc, addDoc, collection, deleteDoc, increment, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+
+const TV_GIFTS = [
+  { emoji: '💖', name: 'Coração', points: 5 },
+  { emoji: '🎉', name: 'Festa', points: 10 },
+  { emoji: '👑', name: 'Coroa', points: 20 },
+  { emoji: '🚀', name: 'Foguete', points: 50 },
+  { emoji: '🌟', name: 'Estrela', points: 100 },
+];
 
 interface ConnectTvPageProps {
   user: any;
@@ -43,6 +51,74 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
   isSendingTvChat,
 }) => {
   const [tvSubTab, setTvSubTab] = useState<'jukebox' | 'programacao' | 'classicos'>('jukebox');
+  const [userPoints, setUserPoints] = useState(0);
+  const [isSendingGift, setIsSendingGift] = useState(false);
+  const [giftAnim, setGiftAnim] = useState<string | null>(null);
+  const isModerator = profileData?.role === 'admin' || (user && user.email === 'ocerebro936@gmail.com');
+
+  useEffect(() => {
+    if (user?.uid) {
+      getDoc(doc(db, 'users', user.uid)).then((snap) => {
+        if (snap.exists()) setUserPoints(snap.data().points || 0);
+      });
+    }
+  }, [user]);
+
+  const playingVideo = tvQueue.find((v: any) => v.status === 'playing');
+
+  const sendGift = async (gift: { emoji: string; name: string; points: number }) => {
+    if (!user || !playingVideo) return;
+    if (userPoints < gift.points) {
+      alert(`Pontos insuficientes! Este presente custa ${gift.points} pts.`);
+      return;
+    }
+    setIsSendingGift(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), { points: increment(-gift.points) });
+      setUserPoints((p) => Math.max(0, p - gift.points));
+      await addDoc(collection(db, 'gifts'), {
+        senderId: user.uid,
+        senderName: profileData.displayName || user.email?.split('@')[0] || 'Unknown',
+        senderAvatar: profileData.photoURL || '',
+        receiverId: playingVideo.userId || '',
+        receiverName: playingVideo.authorName || 'Connect TV',
+        gift: gift.name,
+        emoji: gift.emoji,
+        points: gift.points,
+        createdAt: Date.now(),
+      });
+      await addDoc(collection(db, 'tv_chat'), {
+        userId: user.uid,
+        authorName: profileData.displayName || user.email?.split('@')[0] || 'Unknown',
+        authorAvatar: profileData.photoURL || '',
+        content: `🎁 enviou ${gift.emoji} ${gift.name} (${gift.points} pts)`,
+        isGift: true,
+        createdAt: Date.now(),
+      });
+      setGiftAnim(gift.emoji);
+      setTimeout(() => setGiftAnim(null), 2500);
+    } catch (e) {
+      console.error('Error sending gift:', e);
+    } finally {
+      setIsSendingGift(false);
+    }
+  };
+
+  const deleteTvMessage = async (msgId: string) => {
+    try {
+      await deleteDoc(doc(db, 'tv_chat', msgId));
+    } catch (e) {
+      console.error('Error deleting message:', e);
+    }
+  };
+
+  const realViewers = 5 + Math.min(tvChatMessages.length * 2, 95);
+  const realTemp = calculateTemperature(
+    tvChatMessages.length + playingVideo ? (playingVideo as any)?.views || 0 : 0,
+    tvQueue.filter((v: any) => v.status === 'pending').length,
+    realViewers * 3
+  );
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
       {/* Sub-abas Connect TV */}
@@ -69,6 +145,11 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
       {tvSubTab === 'jukebox' && (
         <>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {giftAnim && (
+          <div className="fixed inset-0 z-[70] pointer-events-none flex items-center justify-center animate-in zoom-in-95">
+            <div className="text-8xl animate-bounce drop-shadow-2xl">{giftAnim}</div>
+          </div>
+        )}
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
             <Tv className="h-6 w-6 text-primary" /> Connect TV
@@ -118,7 +199,7 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
                     <img src={playingVideo.thumbnailUrl} alt="TV Background" className="absolute inset-0 w-full h-full object-cover" />
                   )}
                   <div className="absolute top-4 left-4 z-10 flex gap-2">
-                    <span className="inline-flex items-center rounded-full border border-rose-500/50 px-3 py-1 text-xs font-bold transition-colors bg-rose-500/80 text-white shadow-lg backdrop-blur-md">
+                    <span className="inline-flex items-center rounded-full border border-emerald-500/50 px-3 py-1 text-xs font-bold transition-colors bg-emerald-500/80 text-white shadow-lg backdrop-blur-md">
                       <span className="w-2 h-2 rounded-full bg-white mr-2 animate-pulse"></span> AO VIVO
                     </span>
                     <Button size="sm" variant="outline" className="h-6 text-[10px] bg-black/50 border-white/20 text-white hover:bg-black/70 px-2" onClick={async () => {
@@ -144,9 +225,14 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
                       <div className="text-left flex-1">
                         <div className="flex items-center gap-2">
                           <h3 className="text-xl font-bold text-white drop-shadow-md">{playingVideo.title}</h3>
-                          <ThermalBadge temperature={calculateTemperature(Math.floor(Math.random() * 60) + 10, Math.floor(Math.random() * 40) + 5, Math.floor(Math.random() * 500) + 50)} />
+                          <ThermalBadge temperature={realTemp} />
                         </div>
-                        <p className="text-sm text-white/80 font-medium">Enviado por {playingVideo.authorName}</p>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <p className="text-sm text-white/80 font-medium">Enviado por {playingVideo.authorName}</p>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white/90 bg-emerald-500/70 rounded-full px-2 py-0.5">
+                            <Eye className="h-3 w-3" /> {realViewers} a ver
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -207,39 +293,71 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-slate-200 flex flex-col-reverse">
                   {tvChatMessages.length > 0 ? (
                     tvChatMessages.map((msg: any) => (
-                      <div key={msg.id} className="flex gap-2">
+                      <div key={msg.id} className={`flex gap-2 ${msg.isGift ? 'bg-amber-500/10 border border-amber-300/40 rounded-2xl p-1.5' : ''}`}>
                         <Avatar className="h-8 w-8 shrink-0">
                           <AvatarImage src={msg.authorAvatar} />
                           <AvatarFallback>{msg.authorName[0]}</AvatarFallback>
                         </Avatar>
-                        <div className="bg-white/80 rounded-2xl rounded-tl-sm px-3 py-2 text-sm max-w-[85%] shadow-sm">
+                        <div className={`rounded-2xl rounded-tl-sm px-3 py-2 text-sm max-w-[85%] shadow-sm ${msg.isGift ? 'bg-gradient-to-r from-amber-50 to-pink-50' : 'bg-white/80'}`}>
                           <span className="font-bold text-slate-900 mr-2 text-[11px]">{msg.authorName}</span>
-                          <span className="text-slate-800 break-words">{msg.content}</span>
+                          <span className={`break-words ${msg.isGift ? 'text-amber-700 font-semibold' : 'text-slate-800'}`}>{msg.content}</span>
                         </div>
+                        {isModerator && (
+                          <button onClick={() => deleteTvMessage(msg.id)} className="self-center text-slate-400 hover:text-rose-600 transition-colors shrink-0" title="Apagar mensagem (moderação)">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     ))
                   ) : (
                     <div className="text-slate-400 text-sm text-center py-8">Sem mensagens ainda.</div>
                   )}
                 </div>
-                <div className="mt-3 flex gap-2 pt-3 border-t border-white/40">
-                  <input
-                    type="text"
-                    placeholder="Comentar..."
-                    className="flex-1 glass-input bg-white/50 border-white/50 text-sm px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    value={newTvChatMessage}
-                    onChange={(e) => setNewTvChatMessage(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSendTvChatMessage();
-                    }}
-                  />
-                  <Button
-                    onClick={handleSendTvChatMessage}
-                    disabled={!newTvChatMessage.trim() || isSendingTvChat}
-                    className="rounded-xl px-4 h-9"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+                <div className="mt-3 flex flex-col gap-2 pt-3 border-t border-white/40">
+                  {playingVideo && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide mr-1 flex items-center gap-1">
+                        <Gift className="h-3 w-3 text-pink-500" /> Presentes · {userPoints} pts
+                      </span>
+                      {TV_GIFTS.map((g) => (
+                        <button
+                          key={g.name}
+                          onClick={() => sendGift(g)}
+                          disabled={isSendingGift || userPoints < g.points}
+                          title={`${g.name} — ${g.points} pts`}
+                          className={`text-lg rounded-lg px-1.5 py-0.5 border transition-all ${
+                            userPoints >= g.points
+                              ? 'bg-white/80 border-white/60 hover:scale-110 hover:bg-pink-50'
+                              : 'bg-white/30 border-white/30 opacity-40 cursor-not-allowed'
+                          }`}
+                        >
+                          {g.emoji}
+                        </button>
+                      ))}
+                      <span className="text-[10px] text-slate-500 font-semibold ml-1">
+                        para {playingVideo.authorName}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Comentar..."
+                      className="flex-1 glass-input bg-white/50 border-white/50 text-sm px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      value={newTvChatMessage}
+                      onChange={(e) => setNewTvChatMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSendTvChatMessage();
+                      }}
+                    />
+                    <Button
+                      onClick={handleSendTvChatMessage}
+                      disabled={!newTvChatMessage.trim() || isSendingTvChat}
+                      className="rounded-xl px-4 h-9"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </TabsContent>

@@ -1,7 +1,10 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useRef, useCallback } from 'react';
 import { auth } from './firebase';
 import { 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
+  browserPopupRedirectResolver,
   GoogleAuthProvider, 
   OAuthProvider, 
   onAuthStateChanged,
@@ -9,7 +12,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, onSnapshot, where, increment, limit } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, onSnapshot, where, increment, limit, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from './firebase';
 import { db } from './firebase';
@@ -50,13 +53,19 @@ import {
   Image as ImageIcon,
   Video,
   Send,
-  Settings
+  Settings,
+  Gamepad2,
+  Globe,
+  PhoneOff
 } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from './components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
 import { Progress } from './components/ui/progress';
 import { BackgroundSlider } from './components/BackgroundSlider';
+import { InstallPrompt } from './components/InstallPrompt';
+import { UpdateNotifier } from './components/UpdateNotifier';
+import { CallModal, IncomingCallListener } from './components/CallModal';
 
 const FeedPage = lazy(() => import('./pages/FeedPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -66,6 +75,7 @@ const AiInsightsPage = lazy(() => import('./pages/AiInsightsPage'));
 const NetworkPage = lazy(() => import('./pages/NetworkPage'));
 const GalleryPage = lazy(() => import('./pages/GalleryPage'));
 const ConnectTvPage = lazy(() => import('./pages/ConnectTvPage'));
+const GamesPage = lazy(() => import('./pages/GamesPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 function PageLoader() {
@@ -78,17 +88,33 @@ function PageLoader() {
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
   const [activeTab, setActiveTab] = useState('feed');
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [user, setUser] = useState<any>(null);
 
   const [showShareModal, setShowShareModal] = useState(false);
   const [copiedLinkText, setCopiedLinkText] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
+  const [blockedIds, setBlockedIds] = useState<string[]>([]);
+  const [reportModal, setReportModal] = useState<{ type: 'post' | 'user'; targetId: string; authorName?: string } | null>(null);
+  const [reportReason, setReportReason] = useState('');
+  const [incomingCall, setIncomingCall] = useState<any>(null);
+  const [incomingCallAccepted, setIncomingCallAccepted] = useState(false);
+
+  const handleIncomingCall = useCallback((call: any) => {
+    setIncomingCall(call);
+    setIncomingCallAccepted(false);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['feed', 'profile', 'overview', 'connections', 'ai', 'network', 'gallery', 'connect-tv', 'settings'].includes(tabParam)) {
+    if (tabParam && ['feed', 'profile', 'overview', 'connections', 'ai', 'network', 'gallery', 'connect-tv', 'games', 'settings'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, []);
@@ -135,6 +161,46 @@ export default function App() {
   const lastTvChatTimeRef = React.useRef<number>(0);
   const lastQueueTimeRef = React.useRef<number>(0);
 
+  const [friendRequests, setFriendRequests] = useState<any[]>([]);
+
+  const sendFriendRequest = async (toUserId: string, toName: string, toAvatar: string) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'friendRequests'), {
+        from: user.uid,
+        fromName: profileData.displayName || user.email?.split('@')[0] || 'Unknown',
+        fromAvatar: profileData.photoURL || '',
+        to: toUserId,
+        toName,
+        toAvatar,
+        participants: [user.uid, toUserId],
+        status: 'pending',
+        createdAt: Date.now(),
+      });
+      await createNotification(toUserId, 'friend_request', 'enviou-te um pedido de amizade', profileData.displayName || user.email?.split('@')[0] || 'Unknown', profileData.photoURL, '?tab=connections');
+    } catch (e) {
+      console.error('Error sending friend request:', e);
+      alert('Erro ao enviar pedido de amizade.');
+    }
+  };
+
+  const acceptFriendRequest = async (requestId: string) => {
+    try {
+      await updateDoc(doc(db, 'friendRequests', requestId), { status: 'accepted' });
+    } catch (e) {
+      console.error('Error accepting friend request:', e);
+      alert('Erro ao aceitar pedido de amizade.');
+    }
+  };
+
+  const rejectFriendRequest = async (requestId: string) => {
+    try {
+      await updateDoc(doc(db, 'friendRequests', requestId), { status: 'rejected' });
+    } catch (e) {
+      console.error('Error rejecting friend request:', e);
+    }
+  };
+
   const logSecurityEvent = async (userId: string, eventType: string, details: string) => {
     try {
       await addDoc(collection(db, 'security_logs'), {
@@ -171,10 +237,6 @@ export default function App() {
   const photoInputRef = React.useRef<HTMLInputElement>(null);
   const coverInputRef = React.useRef<HTMLInputElement>(null);
 
-  const handleComingSoon = () => {
-    alert("Esta funcionalidade estará disponível em breve!");
-  };
-
   const toggleNetworkConnection = (id: number) => {
     setNetworkConnections(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -183,7 +245,7 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setIsAuthenticated(!!currentUser);
-      
+
       if (currentUser) {
         try {
           const userRef = doc(db, 'users', currentUser.uid);
@@ -227,16 +289,27 @@ export default function App() {
       
       setIsAuthReady(true);
     });
+
+    getRedirectResult(auth).catch(() => {});
+
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const postsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const postsData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const ratings = data.ratings || { totalScore: 0, count: 0, userRatings: {} };
+        return {
+          id: doc.id,
+          ...data,
+          averageRating: ratings.count > 0 ? (ratings.totalScore || 0) / ratings.count : 0,
+          totalRatings: ratings.count || 0,
+          currentUserRating: ratings.userRatings?.[user?.uid || ''] || 0,
+          isLiked: (data.userLikes || []).includes(user?.uid || ''),
+        };
+      });
       setPosts(postsData);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'posts');
@@ -306,6 +379,18 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
+    if (!user) { setFriendRequests([]); return; }
+    const fq = query(
+      collection(db, 'friendRequests'),
+      where('participants', 'array-contains', user.uid)
+    );
+    const unsub = onSnapshot(fq, (snapshot) => {
+      setFriendRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, error => console.error('Friend requests error:', error));
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
     if (!user) return;
     const uq = query(collection(db, 'users'));
     const unsub = onSnapshot(uq, (snapshot) => {
@@ -313,6 +398,155 @@ export default function App() {
     }, error => handleFirestoreError(error, OperationType.LIST, 'users'));
     return () => unsub();
   }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setFollowingIds([]);
+      setBlockedIds([]);
+      return;
+    }
+    const nq = query(collection(db, 'notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
+    const unsubN = onSnapshot(nq, (snapshot) => {
+      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, error => console.error('Notifications error:', error));
+
+    const fq = query(collection(db, 'follows'), where('followerId', '==', user.uid));
+    const unsubF = onSnapshot(fq, (snapshot) => {
+      setFollowingIds(snapshot.docs.map(d => d.data().followingId));
+    }, error => console.error('Follows error:', error));
+
+    const bq = query(collection(db, 'blocks'), where('blockerId', '==', user.uid));
+    const unsubB = onSnapshot(bq, (snapshot) => {
+      setBlockedIds(snapshot.docs.map(d => d.data().blockedId));
+    }, error => console.error('Blocks error:', error));
+
+    return () => {
+      unsubN();
+      unsubF();
+      unsubB();
+    };
+  }, [user]);
+
+  const createNotification = async (toUserId: string, type: string, message: string, actorName: string, actorAvatar?: string, link?: string) => {
+    if (!user || toUserId === user.uid) return;
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        userId: toUserId,
+        type,
+        message,
+        actorId: user.uid,
+        actorName,
+        actorAvatar: actorAvatar || '',
+        link: link || '',
+        read: false,
+        createdAt: Date.now(),
+      });
+    } catch (e) {
+      console.error('Error creating notification:', e);
+    }
+  };
+
+  const handleFollow = async (targetId: string, targetName: string, targetAvatar?: string) => {
+    if (!user || targetId === user.uid) return;
+    const isFollowing = followingIds.includes(targetId);
+    try {
+      if (isFollowing) {
+        await deleteDoc(doc(db, 'follows', `${user.uid}_${targetId}`));
+      } else {
+        await setDoc(doc(db, 'follows', `${user.uid}_${targetId}`), {
+          followerId: user.uid,
+          followingId: targetId,
+          followerName: profileData.displayName || user.email?.split('@')[0] || 'Unknown',
+          followerAvatar: profileData.photoURL || '',
+          createdAt: Date.now(),
+        });
+        await createNotification(targetId, 'follow', 'começou a seguir-te', profileData.displayName || user.email?.split('@')[0] || 'Unknown', profileData.photoURL, `?tab=profile&user=${user.uid}`);
+      }
+    } catch (e) {
+      console.error('Error following:', e);
+      handleFirestoreError(e, isFollowing ? OperationType.DELETE : OperationType.CREATE, 'follows');
+    }
+  };
+
+  const handleLikePost = async (post: any) => {
+    if (!user) return;
+    const postRef = doc(db, 'posts', post.id);
+    const isLiked = (post.userLikes || []).includes(user.uid);
+    try {
+      if (isLiked) {
+        await updateDoc(postRef, {
+          likes: increment(-1),
+          userLikes: arrayRemove(user.uid),
+        });
+      } else {
+        await updateDoc(postRef, {
+          likes: increment(1),
+          userLikes: arrayUnion(user.uid),
+        });
+        await createNotification(post.userId, 'like', `gostou da tua publicação`, profileData.displayName || user.email?.split('@')[0] || 'Unknown', profileData.photoURL, `?tab=feed&post=${post.id}`);
+      }
+    } catch (e) {
+      console.error('Error liking post:', e);
+      handleFirestoreError(e, OperationType.UPDATE, `posts/${post.id}`);
+    }
+  };
+
+  const handleBlockUser = async (targetId: string) => {
+    if (!user || targetId === user.uid) return;
+    try {
+      await setDoc(doc(db, 'blocks', `${user.uid}_${targetId}`), {
+        blockerId: user.uid,
+        blockedId: targetId,
+        createdAt: Date.now(),
+      });
+    } catch (e) {
+      console.error('Error blocking:', e);
+      handleFirestoreError(e, OperationType.CREATE, 'blocks');
+    }
+  };
+
+  const handleUnblockUser = async (targetId: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'blocks', `${user.uid}_${targetId}`));
+    } catch (e) {
+      console.error('Error unblocking:', e);
+      handleFirestoreError(e, OperationType.DELETE, 'blocks');
+    }
+  };
+
+  const handleSubmitReport = async () => {
+    if (!user || !reportModal || !reportReason.trim()) return;
+    try {
+      await addDoc(collection(db, 'reports'), {
+        reporterId: user.uid,
+        type: reportModal.type,
+        targetId: reportModal.targetId,
+        reason: reportReason.trim(),
+        status: 'pending',
+        createdAt: Date.now(),
+      });
+      logSecurityEvent(user.uid, 'REPORT_SUBMITTED', `${reportModal.type} ${reportModal.targetId}`);
+      setReportModal(null);
+      setReportReason('');
+      alert('Denúncia enviada. A moderação da Connected vai analisar.');
+    } catch (e) {
+      console.error('Error submitting report:', e);
+      handleFirestoreError(e, OperationType.CREATE, 'reports');
+    }
+  };
+
+  const markNotificationsRead = async () => {
+    if (!user || notifications.length === 0) return;
+    const unread = notifications.filter(n => !n.read);
+    if (unread.length === 0) return;
+    try {
+      await Promise.all(unread.map(n => updateDoc(doc(db, 'notifications', n.id), { read: true })));
+    } catch (e) {
+      console.error('Error marking notifications read:', e);
+    }
+  };
 
   const handleEmailAuth = async (isSignUp: boolean) => {
     setAuthError('');
@@ -459,6 +693,7 @@ export default function App() {
         authorHandle: `@${(profileData.displayName || user.email?.split('@')[0] || 'user').toLowerCase().replace(/\s+/g, '')}`,
         authorAvatar: profileData.photoURL || 'https://github.com/shadcn.png',
         content: newPostContent.trim(),
+        ratings: { totalScore: 0, count: 0, userRatings: {} },
         likes: 0,
         comments: 0,
         createdAt: Date.now()
@@ -535,6 +770,7 @@ export default function App() {
       const postDoc = await getDoc(postRef);
       if (postDoc.exists()) {
         await updateDoc(postRef, { comments: (postDoc.data().comments || 0) + 1 });
+        await createNotification(postDoc.data().userId, 'comment', `comentou na tua publicação: "${content.trim().slice(0, 60)}"`, profileData.displayName || user.email?.split('@')[0] || 'Unknown', profileData.photoURL, `?tab=feed&post=${postId}`);
       }
     } catch (e) {
       console.error('Error adding comment:', e);
@@ -545,14 +781,51 @@ export default function App() {
     }
   };
 
-  const handleLikePost = async (postId: string) => {
+  const handleRatePost = async (postId: string, score: number) => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, 'posts', postId), { likes: increment(1) });
+      const postRef = doc(db, 'posts', postId);
+      const postSnap = await getDoc(postRef);
+      if (!postSnap.exists()) return;
+      const data = postSnap.data();
+      const ratings = data.ratings || { totalScore: 0, count: 0, userRatings: {} };
+      const oldScore = ratings.userRatings?.[user.uid] || 0;
+      const isNew = !ratings.userRatings?.[user.uid];
+
+      const updateData: any = {
+        [`ratings.userRatings.${user.uid}`]: score,
+        'ratings.totalScore': (ratings.totalScore || 0) - oldScore + score,
+      };
+      if (isNew) {
+        updateData['ratings.count'] = (ratings.count || 0) + 1;
+      }
+      await updateDoc(postRef, updateData);
+      if (postSnap.data().userId !== user.uid) {
+        await createNotification(postSnap.data().userId, 'rating', `avaliou a tua publicação com ${score}/10`, profileData.displayName || user.email?.split('@')[0] || 'Unknown', profileData.photoURL, `?tab=feed&post=${postId}`);
+      }
     } catch (e) {
-      console.error('Error liking post', e);
+      console.error('Error rating post', e);
       handleFirestoreError(e, OperationType.UPDATE, `posts/${postId}`);
     }
+  };
+
+  const handleSharePost = async (post: any) => {
+    const url = `https://ocerebro936-big.github.io/CONNECTD/?post=${post.id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: post.content?.slice(0, 80), text: `Publicação de ${post.authorName} na Connected`, url });
+      } catch {}
+    } else {
+      navigator.clipboard.writeText(url);
+      setCopiedLinkText('Link da publicação copiado!');
+      setTimeout(() => setCopiedLinkText(null), 3000);
+    }
+  };
+
+  const [moreMenuPost, setMoreMenuPost] = useState<any>(null);
+
+  const handleMoreOptions = (post: any) => {
+    setMoreMenuPost(post);
   };
 
   const handleSendTvChatMessage = async () => {
@@ -661,6 +934,9 @@ export default function App() {
   };
 
   const handleLogin = async (providerName: 'google' | 'microsoft' | 'yahoo') => {
+    if (isLoggingIn) return;
+    setAuthError('');
+    setIsLoggingIn(true);
     try {
       let provider;
       if (providerName === 'google') {
@@ -672,11 +948,53 @@ export default function App() {
       }
       
       if (provider) {
-        await signInWithPopup(auth, provider);
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        try {
+          await signInWithPopup(auth, provider);
+        } catch (popupError: any) {
+          if (popupError.code === 'auth/popup-blocked') {
+            await signInWithRedirect(auth, provider);
+          } else if (popupError.code === 'auth/cancelled-popup-request') {
+            return;
+          } else {
+            throw popupError;
+          }
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
-      alert("Erro ao fazer login. Certifique-se de que o provedor está ativado no Firebase Console.");
+      let msg = '';
+      switch (error.code) {
+        case 'auth/unauthorized-domain':
+          msg = 'Domínio não autorizado. Adiciona este domínio no Firebase Console > Authentication > Authorized domains.';
+          break;
+        case 'auth/operation-not-allowed':
+          msg = 'Provedor não ativado. Ativa no Firebase Console > Authentication > Sign-in method.';
+          break;
+        case 'auth/popup-blocked':
+          msg = 'Popup bloqueado. Usa o login com Email ou clica "Modo Convidado".';
+          break;
+        case 'auth/popup-closed-by-user':
+          setIsLoggingIn(false);
+          return;
+        case 'auth/credential-already-in-use':
+          msg = 'Esta conta já está associada a outro método de login.';
+          break;
+        case 'auth/invalid-api-key':
+          msg = 'API Key inválida. Verifica o ficheiro firebase-applet-config.json.';
+          break;
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+          setIsLoggingIn(false);
+          return;
+        default:
+          msg = `Erro (${error.code || 'desconhecido'}). Usa o Email ou Modo Convidado como alternativa.`;
+      }
+      setAuthError(msg);
+      setShowEmailLogin(true);
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -686,6 +1004,18 @@ export default function App() {
     } catch (error) {
       console.error("Logout error:", error);
     }
+  };
+
+  const handleGuestLogin = () => {
+    setIsGuest(true);
+    setIsAuthenticated(true);
+    setUser({ uid: 'guest', displayName: 'Convidado', email: 'convidado@connected.local', isGuest: true });
+    setProfileData(prev => ({
+      ...prev,
+      displayName: 'Convidado',
+      photoURL: '',
+      points: 0,
+    }));
   };
 
   if (!isAuthReady) {
@@ -701,20 +1031,39 @@ export default function App() {
       <>
         <BackgroundSlider />
         <div className="flex h-screen w-full items-center justify-center">
-          <div className="glass-card p-8 rounded-2xl max-w-md w-full text-center space-y-6 flex flex-col items-center mx-4 border border-white/20 shadow-lg">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md">
-              <Activity className="h-8 w-8" />
+          <div className="glass-card p-8 rounded-2xl max-w-md w-full mx-4 border border-white/20 shadow-lg space-y-6">
+            {/* Branding */}
+            <div className="text-center space-y-3">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md mx-auto">
+                <Activity className="h-8 w-8" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Connected</h1>
+                <p className="text-slate-700 font-medium text-base">O teu centro de controlo do mundo digital.</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">Connected</h1>
-              <p className="text-slate-700 font-medium text-base">O teu centro de controlo do mundo digital.</p>
+
+            {/* Domain Info */}
+            <div className="text-center space-y-1.5">
+              <p className="text-[10px] text-slate-500 font-mono bg-white/50 border border-white/40 rounded-full px-3 py-1.5 inline-block">
+                🔗 <span className="text-emerald-600 font-bold">https://ocerebro936-big.github.io/CONNECTD/</span>
+              </p>
+              <p className="text-[10px] text-slate-400">Acesso rápido e seguro em qualquer lugar</p>
             </div>
-            
-            <div className="w-full space-y-3 pt-4">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="w-full text-sm h-11 rounded-xl shadow-sm hover:scale-[1.02] transition-transform bg-white/80 border-white/40 text-slate-900 font-semibold" 
+
+            {/* Auth Buttons */}
+            <div className="w-full space-y-3 pt-2">
+              {authError && (
+                <div className="bg-rose-500/10 border border-rose-500/50 text-rose-600 text-sm p-3 rounded-xl flex items-start gap-2 text-left">
+                  <AlertCircle className="h-5 w-5 shrink-0" />
+                  <p className="font-medium">{authError}</p>
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={isLoggingIn}
+                className="w-full text-sm h-12 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform bg-white/80 border-white/40 text-slate-900 font-semibold disabled:opacity-60 disabled:hover:scale-100"
                 onClick={() => handleLogin('google')}
               >
                 <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
@@ -723,31 +1072,33 @@ export default function App() {
                   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                 </svg>
-                Continuar com Google
+                {isLoggingIn ? 'A conectar ao Google...' : 'Entrar com a Conta Google'}
               </Button>
-              
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="w-full text-sm h-11 rounded-xl shadow-sm hover:scale-[1.02] transition-transform bg-white/80 border-white/40 text-slate-900 font-semibold" 
+
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={isLoggingIn}
+                className="w-full text-sm h-12 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform bg-white/80 border-white/40 text-slate-900 font-semibold disabled:opacity-60 disabled:hover:scale-100"
                 onClick={() => handleLogin('microsoft')}
               >
                 <svg className="mr-2 h-5 w-5" viewBox="0 0 21 21">
                   <path fill="#f35325" d="M1 1h9v9H1z"/><path fill="#81bc06" d="M11 1h9v9h-9z"/><path fill="#05a6f0" d="M1 11h9v9H1z"/><path fill="#ffba08" d="M11 11h9v9h-9z"/>
                 </svg>
-                Continuar com Microsoft
+                Entrar com a Microsoft
               </Button>
 
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="w-full text-sm h-11 rounded-xl shadow-sm hover:scale-[1.02] transition-transform bg-white/80 border-white/40 text-slate-900 font-semibold" 
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full text-sm h-12 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform bg-white/80 border-white/40 text-slate-900 font-semibold disabled:opacity-60 disabled:hover:scale-100"
                 onClick={() => handleLogin('yahoo')}
+                disabled={isLoggingIn}
               >
                 <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="#6001D2">
                   <path d="M22.77 4.5l-8.6 11.83v7.17h-4.34v-7.17L1.23 4.5h4.86l5.91 8.82 5.91-8.82z"/>
                 </svg>
-                Continuar com Yahoo
+                Entrar com o Yahoo
               </Button>
 
               <div className="relative py-2">
@@ -767,16 +1118,16 @@ export default function App() {
                       <p className="font-medium">{authError}</p>
                     </div>
                   )}
-                  <input 
-                    type="email" 
-                    placeholder="Seu email" 
+                  <input
+                    type="email"
+                    placeholder="Seu email"
                     className="w-full glass-input rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 text-slate-900 font-medium placeholder:text-slate-500 shadow-sm"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
-                  <input 
-                    type="password" 
-                    placeholder="Sua senha" 
+                  <input
+                    type="password"
+                    placeholder="Sua senha"
                     className="w-full glass-input rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 text-slate-900 font-medium placeholder:text-slate-500 shadow-sm"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -788,20 +1139,47 @@ export default function App() {
                   <Button variant="ghost" size="sm" className="w-full text-slate-700" onClick={() => setShowEmailLogin(false)}>Voltar</Button>
                 </div>
               ) : (
-                <Button 
-                  variant="outline" 
-                  size="lg" 
-                  className="w-full text-sm h-11 rounded-xl shadow-sm hover:scale-[1.02] transition-transform bg-white/80 border-white/40 text-slate-900 font-semibold" 
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full text-sm h-11 rounded-xl shadow-sm hover:scale-[1.02] transition-transform bg-white/80 border-white/40 text-slate-900 font-semibold"
                   onClick={() => setShowEmailLogin(true)}
                 >
                   <Mail className="mr-2 h-5 w-5 text-slate-700" />
                   Continuar com Email
                 </Button>
               )}
+
+              <div className="relative py-1">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-slate-200/50" />
+                </div>
+                <div className="relative flex justify-center text-[10px]">
+                  <span className="bg-transparent px-2 text-slate-400 font-medium">OU EXPLORA SEM CONTA</span>
+                </div>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs h-9 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-white/40 font-medium border border-dashed border-slate-200/50"
+                onClick={handleGuestLogin}
+              >
+                🧑‍💻 Modo Convidado (explorar sem login)
+              </Button>
             </div>
 
-            <p className="text-xs text-slate-700 font-medium mt-4">
-              Ao continuar, você concorda com nossos Termos de Serviço.
+            {/* Custom Domain Option */}
+            <div className="pt-3 border-t border-slate-200/40 text-center">
+              <p className="text-[10px] font-bold text-amber-600">🛠️ Usar Domínio Próprio</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                Podes apontar o teu CNAME para a Connected e usar o teu próprio domínio.
+              </p>
+            </div>
+
+            {/* Legal */}
+            <p className="text-xs text-slate-700 font-medium text-center">
+              Ao continuar, concordas com os nossos Termos de Serviço.
             </p>
           </div>
         </div>
@@ -812,6 +1190,11 @@ export default function App() {
   return (
     <>
       <BackgroundSlider />
+      <UpdateNotifier />
+      <InstallPrompt />
+      {isAuthenticated && (
+        <IncomingCallListener user={user} onIncoming={handleIncomingCall} />
+      )}
       <div className="flex h-screen w-full text-slate-900 overflow-hidden">
       
       {/* Mobile Menu Overlay */}
@@ -894,6 +1277,13 @@ export default function App() {
               Connect TV
             </button>
             <button 
+              onClick={() => handleTabSelect('games')}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'games' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+            >
+              <Gamepad2 className="h-5 w-5" />
+              Games Online
+            </button>
+            <button 
               onClick={() => handleTabSelect('settings')}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'settings' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
             >
@@ -919,8 +1309,37 @@ export default function App() {
         </div>
       </aside>
 
+      {/* Mobile Bottom Navigation */}
+      <nav className="fixed bottom-0 inset-x-0 z-50 sm:hidden glass border-t border-white/30 pb-[env(safe-area-inset-bottom)]">
+        <div className="grid grid-cols-5">
+          {[
+            { id: 'feed', label: 'Feed', icon: Home },
+            { id: 'network', label: 'Rede', icon: Users },
+            { id: 'games', label: 'Games', icon: Gamepad2 },
+            { id: 'connect-tv', label: 'TV', icon: Tv },
+            { id: 'profile', label: 'Perfil', icon: UserCircle },
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => handleTabSelect(id)}
+              className={`flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-bold transition-all ${
+                activeTab === id
+                  ? 'text-primary'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Icon className={`h-5 w-5 ${activeTab === id ? 'scale-110' : ''} transition-transform`} />
+              {label}
+              {activeTab === id && (
+                <span className="w-4 h-0.5 rounded-full bg-primary" />
+              )}
+            </button>
+          ))}
+        </div>
+      </nav>
+
       {/* Main Content */}
-      <main className="flex flex-1 flex-col overflow-hidden relative z-0 w-full">
+      <main className="flex flex-1 flex-col overflow-hidden relative z-0 w-full pb-14 sm:pb-0">
         <header className="flex h-16 items-center gap-4 border-b border-white/20 glass px-4 sm:px-6 justify-between shadow-sm">
           <div className="flex items-center gap-2 sm:gap-4 w-full flex-1">
             <button 
@@ -929,12 +1348,20 @@ export default function App() {
             >
               <Menu className="h-6 w-6" />
             </button>
-            <form className="flex-1 max-w-md" onSubmit={(e) => { e.preventDefault(); handleComingSoon(); }}>
+            <form className="flex-1 max-w-md" onSubmit={(e) => {
+              e.preventDefault();
+              if (searchQuery.trim()) {
+                handleTabSelect('feed');
+                setSearchQuery('');
+              }
+            }}>
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
                 <input
                   type="search"
-                  placeholder="Pesquisar..."
+                  placeholder="Pesquisar publicações ou utilizadores..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full appearance-none glass-input shadow-none h-10 rounded-xl px-4 pl-10 py-2 text-sm transition-colors placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 text-slate-900 font-medium"
                 />
               </div>
@@ -951,10 +1378,57 @@ export default function App() {
               <span className="hidden sm:inline">Partilhar Link da Rede</span>
               <span className="sm:hidden">Partilhar</span>
             </Button>
-            <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl glass-input border-white/40 text-slate-700 hover:text-slate-900 shadow-sm" onClick={handleComingSoon}>
-              <Bell className="h-5 w-5" />
-              <span className="sr-only">Notificações</span>
-            </Button>
+            <div className="relative">
+              <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl glass-input border-white/40 text-slate-700 hover:text-slate-900 shadow-sm relative" onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markNotificationsRead(); }}>
+                <Bell className="h-5 w-5" />
+                <span className="sr-only">Notificações</span>
+                {notifications.some(n => !n.read) && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-bold border-2 border-white shadow">
+                    {notifications.filter(n => !n.read).length > 9 ? '9+' : notifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </Button>
+              {showNotifications && (
+                <div className="absolute right-0 top-12 w-80 glass-card border border-white/30 rounded-2xl shadow-xl p-3 animate-in fade-in slide-in-from-top-2 z-50 max-h-[70vh] overflow-auto">
+                  <h4 className="text-sm font-bold text-slate-900 mb-2 px-1">Notificações</h4>
+                  {notifications.length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-4">Nenhuma notificação nova</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {notifications.map((n) => (
+                        <button
+                          key={n.id}
+                          onClick={() => {
+                            setShowNotifications(false);
+                            if (n.link) {
+                              const params = new URLSearchParams(n.link.replace('?', ''));
+                              const tab = params.get('tab');
+                              if (tab) handleTabSelect(tab);
+                            }
+                          }}
+                          className={`w-full flex items-start gap-2.5 p-2 rounded-xl text-left hover:bg-white/60 transition-colors ${!n.read ? 'bg-white/40' : ''}`}
+                        >
+                          <Avatar className="h-8 w-8 border border-white/50 shrink-0">
+                            <AvatarImage src={n.actorAvatar} />
+                            <AvatarFallback className="text-[10px]">{n.actorName?.[0] || 'C'}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-slate-700 leading-snug">
+                              <b className="text-slate-900">{n.actorName}</b> {n.message}
+                            </p>
+                            <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                              {new Date(n.createdAt).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          {!n.read && <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <Button variant="ghost" size="sm" className="w-full text-xs text-slate-600 mt-1" onClick={() => setShowNotifications(false)}>Fechar</Button>
+                </div>
+              )}
+            </div>
             <Avatar className="h-10 w-10 border border-white/40 shadow-sm cursor-pointer hover:scale-105 transition-transform" onClick={() => handleTabSelect('profile')}>
               <AvatarImage src={profileData.photoURL || "https://github.com/shadcn.png"} alt="@shadcn" />
               <AvatarFallback>CN</AvatarFallback>
@@ -973,7 +1447,11 @@ export default function App() {
                 setNewPostContent={setNewPostContent}
                 isPosting={isPosting}
                 handlePublish={handlePublish}
+                handleRatePost={handleRatePost}
                 handleLikePost={handleLikePost}
+                handleSharePost={handleSharePost}
+                handleMoreOptions={handleMoreOptions}
+                followingIds={followingIds}
                 toggleComments={toggleComments}
                 expandedComments={expandedComments}
                 postComments={postComments}
@@ -981,7 +1459,6 @@ export default function App() {
                 setCommentInputs={setCommentInputs}
                 handleAddComment={handleAddComment}
                 isCommenting={isCommenting}
-                handleComingSoon={handleComingSoon}
               />
             )}
             {activeTab === 'profile' && (
@@ -997,17 +1474,28 @@ export default function App() {
               />
             )}
             {activeTab === 'overview' && (
-              <DashboardPage handleComingSoon={handleComingSoon} />
+              <DashboardPage user={user} posts={posts} />
             )}
             {activeTab === 'connections' && (
               <ConnectionsPage
                 user={user}
                 profileData={profileData}
-                toggleConnection={toggleConnection}
+                allUsers={allUsers}
+                friendRequests={friendRequests}
+                sendFriendRequest={sendFriendRequest}
+                acceptFriendRequest={acceptFriendRequest}
+                rejectFriendRequest={rejectFriendRequest}
+                followingIds={followingIds}
+                handleFollow={handleFollow}
               />
             )}
             {activeTab === 'ai' && (
-              <AiInsightsPage handleComingSoon={handleComingSoon} />
+              <AiInsightsPage
+                user={user}
+                allUsers={allUsers}
+                posts={posts}
+                messages={messages}
+              />
             )}
             {activeTab === 'network' && (
               <NetworkPage
@@ -1029,7 +1517,6 @@ export default function App() {
                 isPurchasing={isPurchasing}
                 handleBuyGalleryItem={handleBuyGalleryItem}
                 handleAddToTvQueue={handleAddToTvQueue}
-                handleComingSoon={handleComingSoon}
               />
             )}
             {activeTab === 'connect-tv' && (
@@ -1050,12 +1537,14 @@ export default function App() {
                 isSendingTvChat={isSendingTvChat}
               />
             )}
+            {activeTab === 'games' && (
+              <GamesPage user={user} profileData={profileData} />
+            )}
             {activeTab === 'settings' && (
               <SettingsPage
                 user={user}
                 profileData={profileData}
                 toggleConnection={toggleConnection}
-                handleComingSoon={handleComingSoon}
               />
             )}
           </Suspense>
@@ -1063,150 +1552,274 @@ export default function App() {
       </main>
     </div>
 
-    {/* Modal de Partilha do Link da Rede */}
-    {showShareModal && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-        <Card className="w-full max-w-lg glass-card border-white/40 shadow-2xl overflow-hidden relative">
-          <button 
-            onClick={() => setShowShareModal(false)}
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-200/50 text-slate-700 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
-                <Share2 className="h-5 w-5" />
+      {/* Modal de Partilha do Link da Rede */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <Card className="w-full max-w-lg glass-card border-white/40 shadow-2xl overflow-hidden relative">
+            <button
+              onClick={() => setShowShareModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-200/50 text-slate-700 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
+                  <Share2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-bold text-slate-900">Link Oficial da Rede Connected</CardTitle>
+                  <CardDescription className="text-xs text-slate-600 font-medium">Usa estes links para aceder ou convidar outros utilizadores.</CardDescription>
+                </div>
               </div>
-              <div>
-                <CardTitle className="text-lg font-bold text-slate-900">Link Oficial da Rede Connected</CardTitle>
-                <CardDescription className="text-xs text-slate-600 font-medium">Use estes links diretos e operacionais para aceder ou convidar outros utilizadores.</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
+            </CardHeader>
 
-          <CardContent className="space-y-4 pt-2">
-            {copiedLinkText && (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs font-bold rounded-xl flex items-center gap-2 animate-in fade-in">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>{copiedLinkText}</span>
-              </div>
-            )}
+            <CardContent className="space-y-4 pt-2">
+              {copiedLinkText && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs font-bold rounded-xl flex items-center gap-2 animate-in fade-in">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>{copiedLinkText}</span>
+                </div>
+              )}
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Activity className="h-3.5 w-3.5 text-primary" />
-                Link Público da Aplicação (Partilhar com Amigos):
-              </label>
-              <div className="flex gap-2">
-                <input 
-                  readOnly
-                  value="https://ais-pre-t2irrv5u27qp7rp3f63ddg-577495117823.europe-west2.run.app"
-                  className="flex-1 bg-white/80 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 font-semibold selection:bg-primary/20"
-                />
-                <Button 
-                  size="sm" 
-                  className="rounded-xl text-xs font-bold shrink-0"
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Globe className="h-3.5 w-3.5 text-primary" />
+                  Domínio Principal (Connected):
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    value="https://ocerebro936-big.github.io/CONNECTD/"
+                    className="flex-1 bg-white/80 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 font-semibold selection:bg-primary/20"
+                  />
+                  <Button
+                    size="sm"
+                    className="rounded-xl text-xs font-bold shrink-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText("https://ocerebro936-big.github.io/CONNECTD/");
+                      setCopiedLinkText('Link copiado com sucesso!');
+                      setTimeout(() => setCopiedLinkText(null), 3000);
+                    }}
+                  >
+                    Copiar
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-cyan-500" />
+                  Link Curto (Connected):
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    value="https://ocerebro936-big.github.io/CONNECTD/"
+                    className="flex-1 bg-white/80 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 font-semibold selection:bg-primary/20"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl text-xs font-bold shrink-0 border-slate-300 bg-white/90"
+                    onClick={() => {
+                      navigator.clipboard.writeText("https://ocerebro936-big.github.io/CONNECTD/");
+                      setCopiedLinkText('Link curto copiado!');
+                      setTimeout(() => setCopiedLinkText(null), 3000);
+                    }}
+                  >
+                    Copiar
+                  </Button>
+                </div>
+                <p className="text-[10px] text-slate-500">Usa o domínio <b>www.connected.org-github.io</b> ou aponta o teu próprio CNAME.</p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200/60">
+                <span className="text-xs font-bold text-slate-700 block mb-2">Atalhos para Módulos Específicos:</span>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {[
+                    { label: '📺 Connect TV', tab: 'connect-tv' },
+                    { label: '🤝 Networking', tab: 'network' },
+                    { label: '🛍️ Galeria', tab: 'gallery' },
+                    { label: '💬 Feed Social', tab: 'feed' },
+                  ].map(({ label, tab }) => (
+                    <button
+                      key={tab}
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://ocerebro936-big.github.io/CONNECTD/?tab=${tab}`);
+                        setCopiedLinkText(`Link de ${label.replace(/^.{2}/, '')} copiado!`);
+                        setTimeout(() => setCopiedLinkText(null), 3000);
+                      }}
+                      className="p-2 bg-white/60 hover:bg-white rounded-xl border border-slate-200 text-left font-semibold text-slate-800 flex items-center justify-between"
+                    >
+                      <span>{label}</span>
+                      <span className="text-[10px] text-primary">Copiar</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+
+            <CardFooter className="bg-slate-100/60 p-4 border-t border-slate-200/60 flex justify-end">
+              <Button variant="default" className="rounded-xl font-bold text-xs" onClick={() => setShowShareModal(false)}>
+                Fechar
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      {moreMenuPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setMoreMenuPost(null)}>
+          <Card className="w-full max-w-sm glass-card border-white/40 shadow-2xl overflow-hidden relative animate-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10 border border-white/50">
+                  <AvatarImage src={moreMenuPost.authorAvatar} />
+                  <AvatarFallback>{moreMenuPost.authorName?.[0] || 'U'}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <CardTitle className="text-sm font-bold text-slate-900">Publicação de {moreMenuPost.authorName}</CardTitle>
+                  <CardDescription className="text-xs text-slate-600 font-medium">Opções da publicação</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-1.5 p-4">
+              <Button
+                variant="ghost"
+                className="w-full justify-start rounded-xl text-slate-800 hover:bg-white/60 font-semibold text-sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(`https://ocerebro936-big.github.io/CONNECTD/?post=${moreMenuPost.id}`);
+                  setCopiedLinkText('Link da publicação copiado!');
+                  setTimeout(() => setCopiedLinkText(null), 3000);
+                  setMoreMenuPost(null);
+                }}
+              >
+                <LinkIcon className="h-4 w-4 mr-2 text-primary" /> Copiar Link
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start rounded-xl text-slate-800 hover:bg-white/60 font-semibold text-sm"
+                onClick={() => {
+                  setReportModal({ type: 'post', targetId: moreMenuPost.id, authorName: moreMenuPost.authorName });
+                  setMoreMenuPost(null);
+                }}
+              >
+                <AlertCircle className="h-4 w-4 mr-2 text-amber-500" /> Denunciar Publicação
+              </Button>
+              {user && moreMenuPost.userId !== user.uid && (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start rounded-xl text-rose-600 hover:bg-rose-50 font-semibold text-sm"
                   onClick={() => {
-                    navigator.clipboard.writeText("https://ais-pre-t2irrv5u27qp7rp3f63ddg-577495117823.europe-west2.run.app");
-                    setCopiedLinkText('Link público copiado com sucesso!');
-                    setTimeout(() => setCopiedLinkText(null), 3000);
+                    handleBlockUser(moreMenuPost.userId);
+                    setMoreMenuPost(null);
+                    alert(`Utilizador ${moreMenuPost.authorName} bloqueado.`);
                   }}
                 >
-                  Copiar
+                  <X className="h-4 w-4 mr-2" /> Bloquear {moreMenuPost.authorName}
                 </Button>
-              </div>
-            </div>
+              )}
+            </CardContent>
+            <CardFooter className="p-3 pt-0">
+              <Button variant="ghost" size="sm" className="w-full text-xs text-slate-500" onClick={() => setMoreMenuPost(null)}>Fechar</Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                Link de Desenvolvimento Direto (Local/Dev):
-              </label>
-              <div className="flex gap-2">
-                <input 
-                  readOnly
-                  value="https://ais-dev-t2irrv5u27qp7rp3f63ddg-577495117823.europe-west2.run.app"
-                  className="flex-1 bg-white/80 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 font-semibold selection:bg-primary/20"
-                />
-                <Button 
-                  variant="outline"
-                  size="sm" 
-                  className="rounded-xl text-xs font-bold shrink-0 border-slate-300 bg-white/90"
-                  onClick={() => {
-                    navigator.clipboard.writeText("https://ais-dev-t2irrv5u27qp7rp3f63ddg-577495117823.europe-west2.run.app");
-                    setCopiedLinkText('Link de desenvolvimento copiado!');
-                    setTimeout(() => setCopiedLinkText(null), 3000);
-                  }}
-                >
-                  Copiar
-                </Button>
+      {incomingCall && !incomingCallAccepted && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <Card className="w-full max-w-sm glass-card border-white/40 shadow-2xl overflow-hidden text-center animate-in zoom-in-95">
+            <CardHeader className="pb-2 pt-8">
+              <div className="flex justify-center mb-3">
+                <div className="rounded-full p-1 bg-gradient-to-tr from-cyan-400 to-primary">
+                  <Avatar className="h-20 w-20 border-2 border-white shadow-xl">
+                    <AvatarImage src={incomingCall.callerAvatar} />
+                    <AvatarFallback className="text-2xl">{incomingCall.callerName?.[0] || '?'}</AvatarFallback>
+                  </Avatar>
+                </div>
               </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-200/60">
-              <span className="text-xs font-bold text-slate-700 block mb-2">Atalhos para Módulos Específicos:</span>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <button 
-                  onClick={() => {
-                    const link = "https://ais-pre-t2irrv5u27qp7rp3f63ddg-577495117823.europe-west2.run.app/?tab=connect-tv";
-                    navigator.clipboard.writeText(link);
-                    setCopiedLinkText('Link da Connect TV copiado!');
-                    setTimeout(() => setCopiedLinkText(null), 3000);
+              <CardTitle className="text-xl font-bold text-slate-900">{incomingCall.callerName || 'Utilizador'}</CardTitle>
+              <CardDescription className="text-sm text-slate-600 font-medium flex items-center justify-center gap-2 mt-1">
+                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                Chamada de vídeo recebida
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-8">
+              <p className="text-xs text-slate-500 font-medium mb-6">Custo: 10 pontos · Facturado ao minuto</p>
+              <div className="flex justify-center gap-6">
+                <button
+                  onClick={async () => {
+                    await updateDoc(doc(db, 'calls', incomingCall.id), { status: 'declined' }).catch(() => {});
+                    setIncomingCall(null);
                   }}
-                  className="p-2 bg-white/60 hover:bg-white rounded-xl border border-slate-200 text-left font-semibold text-slate-800 flex items-center justify-between"
+                  className="flex flex-col items-center gap-2 group"
                 >
-                  <span>📺 Connect TV</span>
-                  <span className="text-[10px] text-primary">Copiar</span>
+                  <span className="h-14 w-14 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
+                    <PhoneOff className="h-6 w-6" />
+                  </span>
+                  <span className="text-xs font-bold text-slate-700">Recusar</span>
                 </button>
-                <button 
-                  onClick={() => {
-                    const link = "https://ais-pre-t2irrv5u27qp7rp3f63ddg-577495117823.europe-west2.run.app/?tab=network";
-                    navigator.clipboard.writeText(link);
-                    setCopiedLinkText('Link de Networking copiado!');
-                    setTimeout(() => setCopiedLinkText(null), 3000);
-                  }}
-                  className="p-2 bg-white/60 hover:bg-white rounded-xl border border-slate-200 text-left font-semibold text-slate-800 flex items-center justify-between"
+                <button
+                  onClick={() => setIncomingCallAccepted(true)}
+                  className="flex flex-col items-center gap-2 group"
                 >
-                  <span>🤝 Networking</span>
-                  <span className="text-[10px] text-primary">Copiar</span>
-                </button>
-                <button 
-                  onClick={() => {
-                    const link = "https://ais-pre-t2irrv5u27qp7rp3f63ddg-577495117823.europe-west2.run.app/?tab=gallery";
-                    navigator.clipboard.writeText(link);
-                    setCopiedLinkText('Link da Galeria copiado!');
-                    setTimeout(() => setCopiedLinkText(null), 3000);
-                  }}
-                  className="p-2 bg-white/60 hover:bg-white rounded-xl border border-slate-200 text-left font-semibold text-slate-800 flex items-center justify-between"
-                >
-                  <span>🛍️ Galeria</span>
-                  <span className="text-[10px] text-primary">Copiar</span>
-                </button>
-                <button 
-                  onClick={() => {
-                    const link = "https://ais-pre-t2irrv5u27qp7rp3f63ddg-577495117823.europe-west2.run.app/?tab=feed";
-                    navigator.clipboard.writeText(link);
-                    setCopiedLinkText('Link do Feed copiado!');
-                    setTimeout(() => setCopiedLinkText(null), 3000);
-                  }}
-                  className="p-2 bg-white/60 hover:bg-white rounded-xl border border-slate-200 text-left font-semibold text-slate-800 flex items-center justify-between"
-                >
-                  <span>💬 Feed Social</span>
-                  <span className="text-[10px] text-primary">Copiar</span>
+                  <span className="h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center shadow-lg animate-pulse transition-transform group-hover:scale-110">
+                    <Phone className="h-6 w-6" />
+                  </span>
+                  <span className="text-xs font-bold text-slate-700">Atender</span>
                 </button>
               </div>
-            </div>
-          </CardContent>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-          <CardFooter className="bg-slate-100/60 p-4 border-t border-slate-200/60 flex justify-end">
-            <Button variant="default" className="rounded-xl font-bold text-xs" onClick={() => setShowShareModal(false)}>
-              Fechar
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    )}
+      {incomingCallAccepted && incomingCall && (
+        <CallModal
+          user={user}
+          targetUser={{ id: incomingCall.callerId, displayName: incomingCall.callerName, photoURL: incomingCall.callerAvatar }}
+          onClose={() => { setIncomingCall(null); setIncomingCallAccepted(false); }}
+          role="callee"
+          incomingCallId={incomingCall.id}
+        />
+      )}
+
+      {reportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setReportModal(null)}>
+          <Card className="w-full max-w-md glass-card border-white/40 shadow-2xl overflow-hidden relative animate-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 shadow-sm">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-bold text-slate-900">Denunciar {reportModal.type === 'post' ? 'Publicação' : 'Utilizador'}</CardTitle>
+                  <CardDescription className="text-xs text-slate-600 font-medium">
+                    {reportModal.authorName ? `Conteúdo de ${reportModal.authorName}` : 'Ajuda-nos a manter a Connected segura'}
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 p-4">
+              <textarea
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                placeholder="Descreve o motivo da denúncia (conteúdo impróprio, assédio, spam...)"
+                className="w-full glass-input bg-white/60 border-white/50 text-sm px-3 py-2.5 rounded-xl min-h-[100px] focus:outline-none focus:ring-2 focus:ring-amber-400/40 text-slate-900"
+              />
+              <p className="text-[10px] text-slate-500 font-medium">A denúncia é anónima para o denunciado e analisada pela moderação da Connected.</p>
+            </CardContent>
+            <CardFooter className="p-4 pt-0 flex justify-end gap-2">
+              <Button variant="ghost" size="sm" className="rounded-xl text-xs text-slate-600" onClick={() => { setReportModal(null); setReportReason(''); }}>Cancelar</Button>
+              <Button size="sm" className="rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white" disabled={!reportReason.trim()} onClick={handleSubmitReport}>
+                Enviar Denúncia
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
     </>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Tag, Tv, ShoppingCart, Sparkles, Crown, Shield, Camera } from 'lucide-react';
@@ -6,6 +6,10 @@ import { ThermalBadge } from '../components/ThermalBadge';
 import { calculateTemperature } from '../lib/thermal-utils';
 import { formatCurrency } from '../lib/currency-utils';
 import { CheckoutModal } from '../components/CheckoutModal';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
+import { addDoc, collection } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface GalleryPageProps {
   user: any;
@@ -13,13 +17,12 @@ interface GalleryPageProps {
   isPurchasing: boolean;
   handleBuyGalleryItem: (itemId: string, title: string, price: number) => void;
   handleAddToTvQueue: (videoUrl: string, title?: string) => void;
-  handleComingSoon: () => void;
 }
 
 const hallOfFame = [
-  { name: 'Nicola Tesla', role: 'Inventor & Visionário', type: 'Histórico', era: '1856–1943', bio: 'Pioneiro da eletricidade moderna, corrente alternada e tecnologia sem fios. O seu legado inspirou a Connected.', color: 'amber' },
-  { name: 'Ada Lovelace', role: 'Primeira Programadora', type: 'Histórico', era: '1815–1852', bio: 'Criou o primeiro algoritmo destinado a ser processado por uma máquina. Mãe da computação.', color: 'amber' },
-  { name: 'Alan Turing', role: 'Pai da IA', type: 'Histórico', era: '1912–1954', bio: 'Matemático e criptoanalista. A sua máquina de Turing é a base de toda a computação moderna.', color: 'amber' },
+  { name: 'Nicola Tesla', role: 'Inventor & Visionário', type: 'Histórico', era: '1856–1943', bio: 'Pioneiro da eletricidade moderna, corrente alternada e tecnologia sem fios. O seu legado inspirou a Connected.', color: 'emerald' },
+  { name: 'Ada Lovelace', role: 'Primeira Programadora', type: 'Histórico', era: '1815–1852', bio: 'Criou o primeiro algoritmo destinado a ser processado por uma máquina. Mãe da computação.', color: 'emerald' },
+  { name: 'Alan Turing', role: 'Pai da IA', type: 'Histórico', era: '1912–1954', bio: 'Matemático e criptoanalista. A sua máquina de Turing é a base de toda a computação moderna.', color: 'emerald' },
   { name: 'Génesis Wine', role: 'Fundador do Connected', type: 'Membro Lendário', era: 'Fundador', bio: 'Arquiteto do ecossistema e da infraestrutura de impacto social. Distintivo do Museu atribuído pelo DIVINO IA.', color: 'indigo' },
 ];
 
@@ -40,20 +43,80 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
   isPurchasing,
   handleBuyGalleryItem,
   handleAddToTvQueue,
-  handleComingSoon,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'gallery' | 'museum' | 'copyright'>('gallery');
   const [showCheckout, setShowCheckout] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [filter, setFilter] = useState<'destaque' | 'recentes' | 'tendencias'>('destaque');
+  const [licensingModal, setLicensingModal] = useState(false);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const dataUrl = ev.target?.result as string;
+        const fileName = `gallery_${Date.now()}_${user.uid}`;
+        const storageRef = ref(storage, `gallery/${fileName}`);
+        await uploadString(storageRef, dataUrl, 'data_url');
+        const url = await getDownloadURL(storageRef);
+        await addDoc(collection(db, 'gallery_items'), {
+          userId: user.uid,
+          imageUrl: url,
+          title: file.name,
+          createdAt: Date.now(),
+          likes: 0,
+        });
+        alert('Mídia publicada com sucesso!');
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading media:', error);
+      alert('Erro ao publicar mídia.');
+    }
+    e.target.value = '';
+  };
 
   const handlePointsSuccess = (points: number) => {
     setShowCheckout(false);
-    alert(`🎉 ${points} pontos adicionados à tua conta!`);
   };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {showCheckout && (
-        <CheckoutModal onClose={() => setShowCheckout(false)} onSuccess={handlePointsSuccess} />
+        <CheckoutModal user={user} onClose={() => setShowCheckout(false)} onSuccess={handlePointsSuccess} />
+      )}
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+
+      {licensingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">Licenciar Meu Conteúdo</h3>
+            <p className="text-sm text-slate-600">
+              Ao licenciar o teu conteúdo na Connected, concordas com os seguintes termos:
+            </p>
+            <ul className="text-sm text-slate-700 space-y-2 list-disc list-inside">
+              <li>O conteúdo deve ser original e de tua autoria.</li>
+              <li>Licença comercial válida por 99 anos após a publicação.</li>
+              <li>Recebes 85% do valor de cada licença vendida.</li>
+              <li>Os direitos morais da obra permanecem contigo.</li>
+              <li>O DIVINO IA pode recomendar o teu conteúdo conforme o impacto social.</li>
+            </ul>
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-slate-700">Título do Conteúdo</label>
+              <input type="text" placeholder="Ex: Fotografia Urbana 4K" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button className="flex-1 rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white" onClick={() => { alert('Pedido de licenciamento submetido! Entraremos em contacto.'); setLicensingModal(false); }}>
+                Submeter Pedido
+              </Button>
+              <Button variant="outline" className="rounded-xl font-semibold" onClick={() => setLicensingModal(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -62,10 +125,10 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
           <p className="text-slate-700 font-medium text-base">Explore, adquira e imortalize — o maior acervo digital da Connected.</p>
         </div>
         <div className="flex gap-2">
-          <Button className="rounded-xl shadow-md gap-2 font-semibold bg-amber-600 hover:bg-amber-500 text-white" onClick={() => setShowCheckout(true)}>
+          <Button className="rounded-xl shadow-md gap-2 font-semibold bg-emerald-600 hover:bg-emerald-500 text-white" onClick={() => setShowCheckout(true)}>
             <Sparkles className="h-4 w-4" /> Carregar Pontos
           </Button>
-          <Button className="rounded-xl shadow-md gap-2 font-semibold" variant="outline" onClick={handleComingSoon}>
+          <Button className="rounded-xl shadow-md gap-2 font-semibold" variant="outline" onClick={() => fileInputRef.current?.click()}>
             <Camera className="h-4 w-4" /> Publicar Mídia
           </Button>
         </div>
@@ -74,7 +137,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
       <div className="flex gap-2 p-1.5 bg-white/70 backdrop-blur-xl rounded-2xl border border-white/40 shadow-sm">
         {([
           { id: 'gallery' as const, label: '🖼️ Galeria', color: 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' },
-          { id: 'museum' as const, label: '🏛️ Museu Dinâmico', color: 'bg-amber-600 text-white shadow-lg shadow-amber-500/30' },
+          { id: 'museum' as const, label: '🏛️ Museu Dinâmico', color: 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30' },
           { id: 'copyright' as const, label: '📜 Direitos Autorais', color: 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30' },
         ]).map((tab) => (
           <button
@@ -97,16 +160,22 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
               <p className="text-sm text-slate-600">Conteúdo visual publicado pelos criadores da Connected.</p>
             </div>
             <div className="flex gap-1 p-0.5 bg-white/60 rounded-lg border border-white/40">
-              {['Em Destaque', 'Mais Recentes', 'Tendências'].map((f) => (
-                <button key={f} className="px-3 py-1.5 rounded-md text-xs font-bold text-slate-600 hover:bg-white/60 transition-all">
-                  {f}
+              {(['destaque', 'recentes', 'tendencias'] as const).map((f) => (
+                <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                  filter === f ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-white/60'
+                }`}>
+                  {f === 'destaque' ? 'Em Destaque' : f === 'recentes' ? 'Mais Recentes' : 'Tendências'}
                 </button>
               ))}
             </div>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {galleryItems.map((i) => (
+            {[...galleryItems].sort((a, b) => {
+              if (filter === 'recentes') return b - a;
+              if (filter === 'tendencias') return (b * 3 + a * 7) % 10 - (a * 3 + b * 7) % 10;
+              return a - b;
+            }).map((i) => (
               <Card key={i} className="glass-card border-white/30 shadow-md overflow-hidden group cursor-pointer hover:shadow-lg transition-all">
                 <div className="relative h-48 w-full overflow-hidden">
                   <img src={`https://picsum.photos/seed/gallery${i}/600/400`} alt="Content" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -129,7 +198,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAddToTvQueue(`https://picsum.photos/seed/gallery${i}/800/450`, `Pacote Natureza ${i} - @criador_${i}`);
-                          alert('Adicionado à Connect TV!');
                         }}
                       >
                         <Tv className="h-4 w-4 mr-2"/> Enviar para TV
@@ -160,9 +228,9 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
 
       {activeSubTab === 'museum' && (
         <div className="space-y-6">
-          <div className="border-b border-amber-200/30 pb-4">
-            <h3 className="text-xl font-bold text-amber-700 flex items-center gap-2">
-              <Crown className="h-5 w-5 text-amber-500" />
+          <div className="border-b border-emerald-200/30 pb-4">
+            <h3 className="text-xl font-bold text-emerald-700 flex items-center gap-2">
+              <Crown className="h-5 w-5 text-emerald-500" />
               Museu Dinâmico & Hall da Fama
             </h3>
             <p className="text-sm text-slate-600">
@@ -180,7 +248,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-extrabold text-slate-900 text-base">{person.name}</h4>
                     {person.type === 'Membro Lendário' && (
-                      <span className="bg-amber-100 text-amber-700 border border-amber-400/50 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                      <span className="bg-emerald-100 text-emerald-700 border border-emerald-400/50 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
                         <Shield className="h-3 w-3" /> Distintivo do Museu
                       </span>
                     )}
@@ -192,13 +260,20 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
             ))}
           </div>
 
-          <div className="bg-gradient-to-r from-amber-50 to-white border border-amber-200/40 rounded-2xl p-6 text-center">
-            <Crown className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+          <div className="bg-gradient-to-r from-emerald-50 to-white border border-emerald-200/40 rounded-2xl p-6 text-center">
+            <Crown className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
             <h4 className="font-bold text-slate-900 text-lg">Tens o que é preciso para entrar no Hall da Fama?</h4>
             <p className="text-sm text-slate-600 max-w-lg mx-auto">
               Acumula Pontos de Impacto Social elevados e sê reconhecido pelo DIVINO IA. O teu perfil pode ser imortalizado no Museu Dinâmico para sempre.
             </p>
-            <Button className="mt-4 rounded-xl font-bold bg-amber-600 hover:bg-amber-500 shadow-md" onClick={handleComingSoon}>
+            <Button className="mt-4 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 shadow-md" onClick={() => alert(
+              'O Hall da Fama do Connected reconhece membros com elevado impacto social.\n\n' +
+              'Requisitos:\n' +
+              '• Acumular Pontos de Impacto Social significativos\n' +
+              '• Ser reconhecido pelo DIVINO IA\n' +
+              '• Contribuir ativamente para o ecossistema\n\n' +
+              'Os homenageados recebem o Distintivo do Museu e ficam imortalizados permanentemente no Museu Dinâmico.'
+            )}>
               Saber Mais
             </Button>
           </div>
@@ -217,7 +292,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
                 Adquira licenças comerciais de fotos e vídeos em qualidade original HD/4K. Transferência automática de direitos.
               </p>
             </div>
-            <Button variant="outline" className="rounded-xl gap-2 font-semibold border-emerald-300 text-emerald-700 hover:bg-emerald-50" onClick={handleComingSoon}>
+            <Button variant="outline" className="rounded-xl gap-2 font-semibold border-emerald-300 text-emerald-700 hover:bg-emerald-50" onClick={() => setLicensingModal(true)}>
               <Tag className="h-4 w-4" /> Licenciar Meu Conteúdo
             </Button>
           </div>

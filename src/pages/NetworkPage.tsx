@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { MessageCircle, Phone, Send, X, Users, Globe, MessageSquare, Award, TrendingUp, Shield, Target, Lightbulb, Sparkles } from 'lucide-react';
 import { CallModal } from '../components/CallModal';
+import { ChatModal } from '../components/ChatModal';
 import { UserLevelBadge } from '../components/UserLevelBadge';
 import { JOB_ROLES } from '../lib/reputation-utils';
 import DivinoIa from './DivinoIa';
 import { DivinoAutonomousPanel } from '../components/DivinoAutonomousPanel';
+import { addDoc, collection } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface NetworkPageProps {
   user: any;
@@ -44,68 +46,13 @@ const NetworkPage: React.FC<NetworkPageProps> = ({
 }) => {
   const [callingUser, setCallingUser] = useState<any | null>(null);
   const [netSubTab, setNetSubTab] = useState<'chat' | 'communities' | 'divino' | 'telecom'>('chat');
+  const [showCreateCommunity, setShowCreateCommunity] = useState(false);
+  const [newCommunity, setNewCommunity] = useState({ name: '', description: '', category: '' });
+  const [smsContent, setSmsContent] = useState('');
+  const [smsSent, setSmsSent] = useState(false);
 
   const renderChatModal = () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <Card className="w-full max-w-md bg-white border-white/20 shadow-2xl overflow-hidden flex flex-col h-[500px]">
-        <div className="p-4 bg-primary text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 border-2 border-white/50">
-              <AvatarImage src={chattingWith.photoURL || "https://github.com/shadcn.png"} />
-              <AvatarFallback>{chattingWith.displayName?.[0] || chattingWith.email?.[0]}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="font-bold text-white">{chattingWith.displayName || chattingWith.email?.split('@')[0]}</h3>
-              <p className="text-xs text-white/80">Online</p>
-            </div>
-          </div>
-          <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={() => setChattingWith(null)}>
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-        <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50 relative">
-          {messages.filter((m: any) =>
-            (m.senderId === user?.uid && m.receiverId === chattingWith.id) ||
-            (m.senderId === chattingWith.id && m.receiverId === user?.uid)
-          ).length === 0 ? (
-            <div className="text-center text-slate-400 font-medium py-10 flex flex-col items-center">
-              <MessageCircle className="h-10 w-10 mb-2 opacity-50" />
-              Diga olá a {chattingWith.displayName || 'este utilizador'}!
-            </div>
-          ) : (
-            messages.filter((m: any) =>
-              (m.senderId === user?.uid && m.receiverId === chattingWith.id) ||
-              (m.senderId === chattingWith.id && m.receiverId === user?.uid)
-            ).map((m: any) => {
-              const isMe = m.senderId === user?.uid;
-              return (
-                <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                  <div className={`px-4 py-2 rounded-2xl max-w-[80%] text-sm shadow-sm ${isMe ? 'bg-primary text-white rounded-tr-sm' : 'bg-white text-slate-800 border border-slate-100 rounded-tl-sm'}`}>
-                    {m.content}
-                  </div>
-                  <span className="text-[10px] text-slate-400 mt-1 font-medium">{new Date(m.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                </div>
-              );
-            })
-          )}
-        </div>
-        <div className="p-3 bg-white border-t border-slate-100 flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Digite sua mensagem..."
-            className="flex-1 glass-input bg-slate-100 border-transparent text-sm px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-white"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSendMessage();
-            }}
-          />
-          <Button onClick={handleSendMessage} disabled={!newMessage.trim()} className="rounded-xl px-4 shadow-sm h-10 w-12 p-0 flex justify-center">
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-      </Card>
-    </div>
+    <ChatModal user={user} profileData={profileData} chatUser={chattingWith} onClose={() => setChattingWith(null)} />
   );
 
   return (
@@ -209,10 +156,40 @@ const NetworkPage: React.FC<NetworkPageProps> = ({
               <h3 className="text-lg font-bold text-slate-900">Comunidades da Connected</h3>
               <p className="text-sm text-slate-600">Junte-se a grupos existentes ou funde a sua própria comunidade.</p>
             </div>
-            <Button className="rounded-xl shadow-md gap-2 font-semibold bg-emerald-600 hover:bg-emerald-500" onClick={() => alert('Funcionalidade de criar comunidade em breve!')}>
+            <Button className="rounded-xl shadow-md gap-2 font-semibold bg-emerald-600 hover:bg-emerald-500" onClick={() => setShowCreateCommunity(true)}>
               <Users className="h-4 w-4" /> Criar Comunidade
             </Button>
           </div>
+          {showCreateCommunity && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <Card className="w-full max-w-md bg-white shadow-2xl">
+                <CardHeader>
+                  <CardTitle>Criar Comunidade</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <input placeholder="Nome da comunidade" className="w-full glass-input bg-slate-100 text-sm px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40" value={newCommunity.name} onChange={(e) => setNewCommunity({ ...newCommunity, name: e.target.value })} />
+                  <textarea placeholder="Descrição" className="w-full glass-input bg-slate-100 text-sm px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40" rows={3} value={newCommunity.description} onChange={(e) => setNewCommunity({ ...newCommunity, description: e.target.value })} />
+                  <input placeholder="Categoria" className="w-full glass-input bg-slate-100 text-sm px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40" value={newCommunity.category} onChange={(e) => setNewCommunity({ ...newCommunity, category: e.target.value })} />
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowCreateCommunity(false)}>Cancelar</Button>
+                  <Button onClick={async () => {
+                    if (!newCommunity.name.trim()) return;
+                    await addDoc(collection(db, 'communities'), {
+                      name: newCommunity.name,
+                      description: newCommunity.description,
+                      category: newCommunity.category,
+                      createdBy: user?.uid,
+                      createdAt: Date.now(),
+                      members: 1,
+                    });
+                    setShowCreateCommunity(false);
+                    setNewCommunity({ name: '', description: '', category: '' });
+                  }}>Criar</Button>
+                </CardFooter>
+              </Card>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {communities.map((c, i) => (
               <Card key={i} className="border-white/30 shadow-md hover:shadow-lg transition-all">
@@ -220,7 +197,14 @@ const NetworkPage: React.FC<NetworkPageProps> = ({
                   <h4 className="font-bold text-slate-900 text-base mb-1">{c.name}</h4>
                   <p className="text-xs text-slate-500 font-medium mb-3">{c.members} Membros</p>
                   <p className="text-sm text-slate-700 mb-4">{c.desc}</p>
-                  <Button variant="outline" className="w-full rounded-xl text-xs font-bold" size="sm">
+                  <Button variant="outline" className="w-full rounded-xl text-xs font-bold" size="sm" onClick={async () => {
+                    await addDoc(collection(db, 'community_members'), {
+                      userId: user?.uid,
+                      communityId: c.name,
+                      joinedAt: Date.now(),
+                    });
+                    alert(`Você entrou na comunidade ${c.name}!`);
+                  }}>
                     Participar
                   </Button>
                 </CardContent>
@@ -233,7 +217,7 @@ const NetworkPage: React.FC<NetworkPageProps> = ({
       {netSubTab === 'divino' && (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2">
-            <DivinoIa />
+            <DivinoIa user={user} profileData={profileData} />
           </div>
           <div className="xl:col-span-1">
             <DivinoAutonomousPanel />
@@ -262,7 +246,13 @@ const NetworkPage: React.FC<NetworkPageProps> = ({
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <span className="text-emerald-600">{(profileData.points || 0) >= 10 ? '✅ Saldo suficiente' : `${10 - (profileData.points || 0)} pts em falta`}</span>
                 </div>
-                <Button className="w-full rounded-xl font-bold" disabled={(profileData.points || 0) < 10} onClick={() => alert('Selecione um utilizador na aba Chat Normal para iniciar uma chamada.')}>
+                <Button className="w-full rounded-xl font-bold" disabled={(profileData.points || 0) < 10} onClick={() => {
+                  if (!chattingWith) {
+                    alert('Selecione um utilizador na aba Chat Normal para iniciar uma chamada.');
+                    return;
+                  }
+                  setCallingUser(chattingWith);
+                }}>
                   Iniciar Chamada
                 </Button>
               </CardContent>
@@ -277,14 +267,44 @@ const NetworkPage: React.FC<NetworkPageProps> = ({
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <span className="text-blue-600">{(profileData.points || 0) >= 2 ? '✅ Saldo suficiente' : `${2 - (profileData.points || 0)} pts em falta`}</span>
                 </div>
-                <Button className="w-full rounded-xl font-bold" disabled={(profileData.points || 0) < 2} onClick={() => alert('Selecione um utilizador na aba Chat Normal para enviar SMS offline.')}>
-                  Enviar SMS
-                </Button>
+                {!smsContent && !smsSent ? (
+                  <Button className="w-full rounded-xl font-bold" disabled={(profileData.points || 0) < 2} onClick={() => {
+                    if (!chattingWith) {
+                      alert('Selecione um utilizador na aba Chat Normal para enviar SMS offline.');
+                      return;
+                    }
+                    setSmsContent('');
+                  }}>
+                    Enviar SMS
+                  </Button>
+                ) : smsSent ? (
+                  <p className="text-sm text-emerald-600 font-semibold text-center">SMS enviado com sucesso!</p>
+                ) : (
+                  <div className="space-y-2">
+                    <input type="text" placeholder="Digite sua mensagem SMS..." className="w-full glass-input bg-slate-100 text-sm px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40" value={smsContent} onChange={(e) => setSmsContent(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') document.querySelector<HTMLButtonElement>('#send-sms-btn')?.click(); }} />
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => { setSmsContent(''); setSmsSent(false); }}>Cancelar</Button>
+                      <Button id="send-sms-btn" size="sm" disabled={!smsContent.trim()} onClick={async () => {
+                        await addDoc(collection(db, 'offline_sms'), {
+                          senderId: user?.uid,
+                          senderName: user?.displayName || user?.email?.split('@')[0],
+                          receiverId: chattingWith?.id,
+                          receiverName: chattingWith?.displayName || chattingWith?.email?.split('@')[0],
+                          content: smsContent,
+                          timestamp: Date.now(),
+                          read: false,
+                        });
+                        setSmsSent(true);
+                        setSmsContent('');
+                      }}>Enviar SMS</Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          <Card className="border-amber-200/40 shadow-md bg-gradient-to-r from-amber-50 to-white">
+          <Card className="border-emerald-200/40 shadow-md bg-gradient-to-r from-emerald-50 to-white">
             <CardContent className="p-5 flex items-start gap-4">
               <Lightbulb className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
               <div>

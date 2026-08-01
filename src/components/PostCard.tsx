@@ -1,0 +1,313 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardFooter } from './ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Button } from './ui/button';
+import { MessageSquare, Share2, MoreHorizontal, Send, Play, ImageIcon, Heart } from 'lucide-react';
+import { ThermalBadge } from './ThermalBadge';
+import { StarRating } from './StarRating';
+import { calculateTemperature } from '../lib/thermal-utils';
+
+export type PostMediaType = 'photo' | 'video' | 'reel' | 'album' | 'panorama' | 'text';
+
+interface PostMedia {
+  type: PostMediaType;
+  url: string;
+  thumbnailUrl?: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+  album?: string[];
+}
+
+interface PostComment {
+  id?: string;
+  authorName: string;
+  authorAvatar?: string;
+  content: string;
+  createdAt?: number;
+}
+
+interface PostCardProps {
+  post: {
+    id: string;
+    authorName: string;
+    authorHandle?: string;
+    authorAvatar?: string;
+    content: string;
+    media?: PostMedia;
+    likes?: number;
+    userLikes?: string[];
+    isLiked?: boolean;
+    comments?: number;
+    averageRating?: number;
+    totalRatings?: number;
+    currentUserRating?: number;
+    createdAt?: number;
+    userId?: string;
+  };
+  profileData: {
+    displayName?: string;
+    photoURL?: string;
+  };
+  expandedComments: Record<string, boolean>;
+  postComments: Record<string, PostComment[]>;
+  commentInputs: Record<string, string>;
+  isCommenting: Record<string, boolean>;
+  onToggleComments: (postId: string) => void;
+  onAddComment: (postId: string) => void;
+  onSetCommentInput: (postId: string, value: string) => void;
+  onRate: (postId: string, score: number) => void;
+  onLike: (post: any) => void;
+  onShare: (post: any) => void;
+  onMoreOptions: (post: any) => void;
+}
+
+const PostCard: React.FC<PostCardProps> = ({
+  post,
+  profileData,
+  expandedComments,
+  postComments,
+  commentInputs,
+  isCommenting,
+  onToggleComments,
+  onAddComment,
+  onSetCommentInput,
+  onRate,
+  onLike,
+  onShare,
+  onMoreOptions,
+}) => {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
+  const [mediaType, setMediaType] = useState<PostMediaType>(post.media?.type || 'text');
+
+  useEffect(() => {
+    if (post.media?.type) {
+      setMediaType(post.media.type);
+    } else if (imgRef.current && imgRef.current.complete) {
+      detectRatio();
+    }
+  }, [post.media]);
+
+  const detectRatio = () => {
+    const img = imgRef.current;
+    if (!img) return;
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    if (!w || !h) return;
+    const ratio = w / h;
+    setAspectRatio(ratio);
+    if (ratio > 2.5) setMediaType('panorama');
+    else if (ratio > 1.2) setMediaType('photo');
+    else if (ratio < 0.8) setMediaType('reel');
+    else setMediaType('photo');
+  };
+
+  const temp = calculateTemperature(
+    post.averageRating ? Math.round(post.averageRating * (post.totalRatings || 1)) : post.likes || 0,
+    post.comments || 0
+  );
+
+  const getMediaLayoutClass = () => {
+    switch (mediaType) {
+      case 'panorama':
+        return 'aspect-[21/9]';
+      case 'reel':
+      case 'video':
+        return 'aspect-[9/16] max-h-[70vh]';
+      case 'album':
+        return 'aspect-square';
+      case 'photo':
+      default:
+        if (aspectRatio && aspectRatio > 1) return 'aspect-video';
+        return 'aspect-[4/5] max-h-[500px]';
+    }
+  };
+
+  const renderMedia = () => {
+    if (post.media?.type === 'video') {
+      return (
+        <div className={`relative w-full ${getMediaLayoutClass()} bg-slate-900 flex items-center justify-center group cursor-pointer`}>
+          <video
+            className="w-full h-full object-contain"
+            poster={post.media.thumbnailUrl}
+            controls
+            preload="metadata"
+          >
+            <source src={post.media.url} type="video/mp4" />
+          </video>
+          {!post.media.thumbnailUrl && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Play className="w-8 h-8 text-white fill-white" />
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (post.media?.album && post.media.album.length > 1) {
+      return (
+        <div className="grid grid-cols-2 gap-0.5 w-full aspect-square">
+          {post.media.album.slice(0, 4).map((url, i) => (
+            <div key={i} className="overflow-hidden bg-slate-100">
+              <img src={url} alt={`${post.authorName} album ${i + 1}`} className="w-full h-full object-cover" />
+            </div>
+          ))}
+          {post.media.album.length > 4 && (
+            <div className="relative overflow-hidden bg-slate-100">
+              <img src={post.media.album[4]} alt="More" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                <span className="text-white font-bold text-lg">+{post.media.album.length - 4}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const imageUrl = post.media?.url;
+    if (!imageUrl) return null;
+
+    return (
+      <div className={`w-full ${getMediaLayoutClass()} bg-slate-100/30 overflow-hidden`}>
+        <img
+          ref={imgRef}
+          src={imageUrl}
+          alt="Post content"
+          className="w-full h-full object-cover"
+          onLoad={detectRatio}
+          onError={() => setMediaType('text')}
+        />
+      </div>
+    );
+  };
+
+  const formatDate = (ts?: number) => {
+    if (!ts) return 'Agora';
+    const date = new Date(ts);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    if (diff < 60000) return 'Agora';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h`;
+    return date.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+  };
+
+  return (
+    <Card className="glass-card border-white/30 shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+      <CardHeader className="p-4 sm:p-5 flex flex-row items-center gap-3 space-y-0">
+        <div className="rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 to-primary">
+          <Avatar className="h-11 w-11 border-2 border-white shadow-sm">
+            <AvatarImage src={post.authorAvatar} />
+            <AvatarFallback className="bg-primary/10 text-primary text-sm">{post.authorName?.[0] || 'U'}</AvatarFallback>
+          </Avatar>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-bold text-slate-900 text-[15px] truncate">{post.authorName}</span>
+            <ThermalBadge temperature={temp} />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-500 text-xs font-semibold">{post.authorHandle || '@user'}</span>
+            <span className="text-slate-300 text-xs">·</span>
+            <span className="text-slate-400 text-xs font-medium">{formatDate(post.createdAt)}</span>
+          </div>
+        </div>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-white/50 rounded-full shrink-0" onClick={() => onMoreOptions(post)}>
+          <MoreHorizontal className="h-5 w-5" />
+        </Button>
+      </CardHeader>
+
+      <CardContent className="p-0">
+        <p className="px-4 sm:px-5 pb-3 text-slate-800 font-medium text-[15px] leading-relaxed whitespace-pre-wrap">
+          {post.content}
+        </p>
+        {renderMedia()}
+        <div className="px-4 sm:px-5 py-3">
+          <StarRating
+            postId={post.id}
+            currentUserRating={post.currentUserRating}
+            averageRating={post.averageRating || 0}
+            totalRatings={post.totalRatings || 0}
+            onRate={onRate}
+            size="sm"
+          />
+        </div>
+      </CardContent>
+
+      <CardFooter className="p-2.5 sm:p-3 flex items-center justify-between border-t border-white/20 bg-white/20">
+        <div className="flex gap-1 sm:gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`${post.isLiked ? 'text-rose-600 bg-rose-500/10' : 'text-slate-600'} hover:text-rose-600 hover:bg-white/60 rounded-xl px-3 sm:px-4 h-9 group transition-all`}
+            onClick={() => onLike(post)}
+          >
+            <Heart className={`h-5 w-5 mr-1.5 sm:mr-2 transition-all ${post.isLiked ? 'fill-rose-500 scale-110' : 'group-hover:scale-110'}`} />
+            <span className="font-semibold text-sm">{post.likes || 0}</span>
+          </Button>
+          <Button variant="ghost" size="sm" className="text-slate-600 hover:text-primary hover:bg-white/60 rounded-xl px-3 sm:px-4 h-9 group transition-all" onClick={() => onToggleComments(post.id)}>
+            <MessageSquare className="h-5 w-5 mr-1.5 sm:mr-2 group-hover:fill-blue-100 transition-all" />
+            <span className="font-semibold text-sm">{post.comments || 0}</span>
+          </Button>
+        </div>
+        <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-xl px-3 sm:px-4 h-9 transition-all" onClick={() => onShare(post)}>
+          <Share2 className="h-5 w-5 sm:mr-2" />
+          <span className="font-semibold text-sm hidden sm:inline">Partilhar</span>
+        </Button>
+      </CardFooter>
+
+      {expandedComments[post.id] && (
+        <div className="bg-white/40 border-t border-white/20 p-4">
+          <div className="space-y-4 mb-4">
+            {postComments[post.id] && postComments[post.id].length > 0 ? (
+              postComments[post.id].map((cm: any, idx: number) => (
+                <div key={idx} className="flex gap-3">
+                  <Avatar className="h-8 w-8 border border-white/50 shrink-0">
+                    <AvatarImage src={cm.authorAvatar} />
+                    <AvatarFallback>{cm.authorName?.[0]}</AvatarFallback>
+                  </Avatar>
+                  <div className="bg-white/60 rounded-2xl p-3 text-sm border border-white/40 shadow-sm flex-1">
+                    <div className="font-bold text-slate-900 mb-0.5">{cm.authorName}</div>
+                    <div className="text-slate-800 break-words">{cm.content}</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500 text-center py-2 font-medium">Sê o primeiro a comentar!</p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Avatar className="h-8 w-8 shrink-0">
+              <AvatarImage src={profileData.photoURL} />
+              <AvatarFallback className="text-xs">{profileData.displayName?.[0] || 'U'}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 flex gap-2">
+              <input
+                type="text"
+                placeholder="Escreve um comentário..."
+                className="flex-1 glass-input bg-white/50 border-white/50 text-sm px-3 py-1.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40"
+                value={commentInputs[post.id] || ''}
+                onChange={(e) => onSetCommentInput(post.id, e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') onAddComment(post.id); }}
+              />
+              <Button
+                size="sm"
+                variant="default"
+                className="rounded-xl px-4 shadow-sm"
+                disabled={!commentInputs[post.id]?.trim() || isCommenting[post.id]}
+                onClick={() => onAddComment(post.id)}
+              >
+                {isCommenting[post.id] ? '...' : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+};
+
+export default PostCard;

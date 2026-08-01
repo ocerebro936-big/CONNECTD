@@ -12,7 +12,8 @@ export interface TemperatureStyle {
 }
 
 export function calculateTemperature(likes = 0, comments = 0, views = 0): number {
-  return Math.round((likes * 1.5) + (comments * 3.0) + (views * 0.5));
+  const ratingScore = (likes * 2.0) + (comments * 3.0) + (views * 0.5);
+  return Math.round(Math.min(ratingScore, 999));
 }
 
 export function getTemperatureStyles(temp: number): TemperatureStyle {

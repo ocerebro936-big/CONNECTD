@@ -142,6 +142,126 @@ service cloud.firestore {
              isValidOptionalString('authorAvatar', 0, 1000000);
     }
 
+    function isValidFollow(data) {
+      return hasRequiredFields(['followerId', 'followingId', 'createdAt']) &&
+             data.followerId is string && data.followerId.size() > 0 &&
+             data.followingId is string && data.followingId.size() > 0 &&
+             data.followerId != data.followingId &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             isValidOptionalString('followerName', 0, 100) &&
+             isValidOptionalString('followerAvatar', 0, 1000000);
+    }
+
+    function isValidBlock(data) {
+      return hasRequiredFields(['blockerId', 'blockedId', 'createdAt']) &&
+             data.blockerId is string && data.blockerId.size() > 0 &&
+             data.blockedId is string && data.blockedId.size() > 0 &&
+             data.blockerId != data.blockedId &&
+             (data.createdAt is number || data.createdAt is timestamp);
+    }
+
+    function isValidNotification(data) {
+      return hasRequiredFields(['userId', 'type', 'message', 'actorId', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.type is string && data.type.size() > 0 && data.type.size() <= 50 &&
+             data.message is string && data.message.size() > 0 && data.message.size() <= 500 &&
+             data.actorId is string && data.actorId.size() > 0 &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             (!('read' in data) || data.read is bool) &&
+             isValidOptionalString('actorName', 0, 100) &&
+             isValidOptionalString('actorAvatar', 0, 1000000) &&
+             isValidOptionalString('link', 0, 500);
+    }
+
+    function isValidReport(data) {
+      return hasRequiredFields(['reporterId', 'type', 'targetId', 'reason', 'status', 'createdAt']) &&
+             data.reporterId is string && data.reporterId.size() > 0 &&
+             data.type in ['post', 'user', 'comment'] &&
+             data.targetId is string && data.targetId.size() > 0 &&
+             data.reason is string && data.reason.size() > 0 && data.reason.size() <= 1000 &&
+             data.status in ['pending', 'reviewing', 'resolved', 'dismissed'] &&
+             (data.createdAt is number || data.createdAt is timestamp);
+    }
+
+    function isValidGame(data) {
+      return hasRequiredFields(['title', 'url', 'category', 'status', 'developer', 'createdAt']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             data.url is string && data.url.size() > 0 && data.url.size() <= 1000 &&
+             data.category is string && data.category.size() > 0 && data.category.size() <= 100 &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             data.developer is string && data.developer.size() > 0 &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             isValidOptionalString('cover', 0, 1000000) &&
+             isValidOptionalString('description', 0, 1000) &&
+             isValidOptionalString('rating', 0, 50) &&
+             isValidOptionalString('players', 0, 50) &&
+             isValidOptionalString('ageRating', 0, 50) &&
+             isValidOptionalString('developerId', 0, 128);
+    }
+
+    function isValidStory(data) {
+      return hasRequiredFields(['userId', 'authorName', 'imageUrl', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 100 &&
+             data.imageUrl is string && data.imageUrl.size() > 0 && data.imageUrl.size() <= 1000000 &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             isValidOptionalString('authorAvatar', 0, 1000000) &&
+             isValidOptionalString('expiresAt', 0, 100);
+    }
+
+    function isValidGalleryItem(data) {
+      return hasRequiredFields(['userId', 'title', 'url', 'type', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.url is string && data.url.size() > 0 && data.url.size() <= 1000000 &&
+             data.type is string && data.type.size() > 0 && data.type.size() <= 50 &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             isValidOptionalString('price', 0, 50) &&
+             isValidOptionalString('description', 0, 1000);
+    }
+
+    function isValidCall(data) {
+      return hasRequiredFields(['callerId', 'calleeId', 'type', 'status', 'createdAt']) &&
+             data.callerId is string && data.callerId.size() > 0 &&
+             data.calleeId is string && data.calleeId.size() > 0 &&
+             data.type in ['voice', 'video'] &&
+             data.status in ['ringing', 'answered', 'ended', 'missed', 'declined'] &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             isValidOptionalString('callerName', 0, 100) &&
+             isValidOptionalString('callerAvatar', 0, 1000000) &&
+             isValidOptionalString('offer', 0, 100000) &&
+             isValidOptionalString('answer', 0, 100000) &&
+             isValidOptionalString('roomId', 0, 200) &&
+             isValidOptionalString('durationSeconds', 0, 50);
+    }
+
+    function isValidCommunity(data) {
+      return hasRequiredFields(['name', 'description', 'createdBy', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.description is string && data.description.size() > 0 && data.description.size() <= 1000 &&
+             data.createdBy is string && data.createdBy.size() > 0 &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             isValidOptionalString('avatar', 0, 1000000) &&
+             isValidOptionalString('category', 0, 100);
+    }
+
+    function isValidCommunityMember(data) {
+      return hasRequiredFields(['communityId', 'userId', 'joinedAt']) &&
+             data.communityId is string && data.communityId.size() > 0 &&
+             data.userId is string && data.userId.size() > 0 &&
+             (data.joinedAt is number || data.joinedAt is timestamp);
+    }
+
+    function isValidOfflineSms(data) {
+      return hasRequiredFields(['senderId', 'receiverId', 'content', 'createdAt']) &&
+             data.senderId is string && data.senderId.size() > 0 &&
+             data.receiverId is string && data.receiverId.size() > 0 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 1000 &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             (!('read' in data) || data.read is bool) &&
+             isValidOptionalString('senderName', 0, 100);
+    }
+
     function isValidSecurityLog(data) {
       return hasRequiredFields(['userId', 'eventType', 'details', 'createdAt']) &&
              data.userId is string && data.userId.size() > 0 && data.userId.size() < 128 &&
@@ -160,7 +280,11 @@ service cloud.firestore {
     match /posts/{postId} {
       allow read: if true; // Public feed
       allow create: if isAuthenticated() && isValidPost(request.resource.data) && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && isValidPost(request.resource.data) && (resource.data.userId == request.auth.uid || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+      allow update: if isAuthenticated() && isValidPost(request.resource.data) && (
+        resource.data.userId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'userLikes', 'ratings', 'comments']) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'userLikes'])
+      );
       allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
 
       match /comments/{commentId} {
@@ -171,6 +295,104 @@ service cloud.firestore {
       }
     }
 
+    match /follows/{followId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidFollow(request.resource.data) && request.resource.data.followerId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAuthenticated() && resource.data.followerId == request.auth.uid;
+    }
+
+    match /blocks/{blockId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidBlock(request.resource.data) && request.resource.data.blockerId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAuthenticated() && resource.data.blockerId == request.auth.uid;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidNotification(request.resource.data) && request.resource.data.actorId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAdmin();
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && isValidReport(request.resource.data) && request.resource.data.reporterId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /games/{gameId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidGame(request.resource.data) && (request.resource.data.status == 'pending' || isAdmin());
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.developerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'description', 'cover', 'url', 'category']));
+      allow delete: if isAdmin();
+    }
+
+    match /stories/{storyId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidStory(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+
+    match /gallery_items/{itemId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidGalleryItem(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+
+    match /calls/{callId} {
+      allow read: if isAuthenticated() && (resource.data.callerId == request.auth.uid || resource.data.calleeId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidCall(request.resource.data) && request.resource.data.callerId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.callerId == request.auth.uid || resource.data.calleeId == request.auth.uid);
+      allow delete: if isAdmin();
+
+      match /ice/{iceId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /communities/{communityId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidCommunity(request.resource.data) && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.createdBy == request.auth.uid);
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.createdBy == request.auth.uid);
+
+      match /members/{memberId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && isValidCommunityMember(request.resource.data) && request.resource.data.userId == request.auth.uid;
+        allow update: if false;
+        allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      }
+    }
+
+    match /offline_sms/{smsId} {
+      allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidOfflineSms(request.resource.data) && request.resource.data.senderId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.receiverId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAdmin();
+    }
+
+    match /applications/{appId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && request.resource.data.status == 'pending';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /gifts/{giftId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
     match /tv_queue/{itemId} {
       allow read: if true;
       allow create: if isAuthenticated() && isValidTvQueueItem(request.resource.data) && request.resource.data.userId == request.auth.uid;
@@ -179,17 +401,27 @@ service cloud.firestore {
     }
 
     match /purchases/{purchaseId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow create: if isAuthenticated() && isValidPurchase(request.resource.data) && request.resource.data.userId == request.auth.uid;
-      allow update: if false; // immutable
+      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'confirmedAt', 'confirmedBy', 'note']);
       allow delete: if isAdmin();
     }
 
     match /messages/{messageId} {
       allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid || (resource.data.participants != null && request.auth.uid in resource.data.participants));
       allow create: if isAuthenticated() && isValidMessage(request.resource.data) && request.resource.data.senderId == request.auth.uid;
-      allow update: if false; // immutable direct messages for now
-      allow delete: if isAdmin();
+      allow update: if isAuthenticated() && (
+        (resource.data.senderId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'edited', 'editedAt', 'reactions', 'read'])) ||
+        ((resource.data.receiverId == request.auth.uid || (resource.data.participants != null && request.auth.uid in resource.data.participants)) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'reactions']))
+      );
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.senderId == request.auth.uid);
+    }
+
+    match /typing/{chatId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
     }
 
     match /tv_chat/{messageId} {
