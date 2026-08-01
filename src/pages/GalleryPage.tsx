@@ -1,14 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Tag, Tv, ShoppingCart, Sparkles, Crown, Shield, Camera } from 'lucide-react';
+import { Tag, Tv, ShoppingCart, Sparkles, Crown, Shield, Camera, Trash2, Heart } from 'lucide-react';
 import { ThermalBadge } from '../components/ThermalBadge';
 import { calculateTemperature } from '../lib/thermal-utils';
 import { formatCurrency } from '../lib/currency-utils';
 import { CheckoutModal } from '../components/CheckoutModal';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 interface GalleryPageProps {
@@ -49,6 +49,20 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState<'destaque' | 'recentes' | 'tendencias'>('destaque');
   const [licensingModal, setLicensingModal] = useState(false);
+  const [galleryItems, setGalleryItems] = useState<any[]>([]);
+  const [usersMap, setUsersMap] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    const unsubItems = onSnapshot(query(collection(db, 'gallery_items'), orderBy('createdAt', 'desc')), (snap) => {
+      setGalleryItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, (e) => console.error(e));
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
+      const m: Record<string, any> = {};
+      snap.docs.forEach((d) => { m[d.id] = d.data(); });
+      setUsersMap(m);
+    }, (e) => console.error(e));
+    return () => { unsubItems(); unsubUsers(); };
+  }, []);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -56,24 +70,32 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
     try {
       const reader = new FileReader();
       reader.onload = async (ev) => {
-        const dataUrl = ev.target?.result as string;
-        const fileName = `gallery_${Date.now()}_${user.uid}`;
-        const storageRef = ref(storage, `gallery/${fileName}`);
-        await uploadString(storageRef, dataUrl, 'data_url');
-        const url = await getDownloadURL(storageRef);
-        await addDoc(collection(db, 'gallery_items'), {
-          userId: user.uid,
-          imageUrl: url,
-          title: file.name,
-          createdAt: Date.now(),
-          likes: 0,
-        });
-        alert('Mídia publicada com sucesso!');
+        try {
+          const dataUrl = ev.target?.result as string;
+          const fileName = `gallery_${Date.now()}_${user.uid}`;
+          const storageRef = ref(storage, `gallery/${fileName}`);
+          await uploadString(storageRef, dataUrl, 'data_url');
+          const url = await getDownloadURL(storageRef);
+          const type = file.type.startsWith('video') ? 'video' : 'photo';
+          await addDoc(collection(db, 'gallery_items'), {
+            userId: user.uid,
+            url,
+            imageUrl: url,
+            type,
+            title: file.name.replace(/\.[^.]+$/, ''),
+            createdAt: Date.now(),
+            likes: 0,
+          });
+          alert('Mídia publicada com sucesso!');
+        } catch (err) {
+          console.error('Error uploading media:', err);
+          alert('Erro ao publicar mídia.');
+        }
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error('Error uploading media:', error);
-      alert('Erro ao publicar mídia.');
+      console.error('Error reading file:', error);
+      alert('Erro ao ler o ficheiro.');
     }
     e.target.value = '';
   };
@@ -87,7 +109,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
       {showCheckout && (
         <CheckoutModal user={user} onClose={() => setShowCheckout(false)} onSuccess={handlePointsSuccess} />
       )}
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+      <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
 
       {licensingModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -171,57 +193,79 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {[...galleryItems].sort((a, b) => {
-              if (filter === 'recentes') return b - a;
-              if (filter === 'tendencias') return (b * 3 + a * 7) % 10 - (a * 3 + b * 7) % 10;
-              return a - b;
-            }).map((i) => (
-              <Card key={i} className="glass-card border-white/30 shadow-md overflow-hidden group cursor-pointer hover:shadow-lg transition-all">
-                <div className="relative h-48 w-full overflow-hidden">
-                  <img src={`https://picsum.photos/seed/gallery${i}/600/400`} alt="Content" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-lg text-xs font-semibold">
-                    {i % 3 === 0 ? '🎬 Reel 4K' : '📷 Foto RAW'}
-                  </div>
-                </div>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-bold text-slate-900 text-lg">Pacote Natureza {i}</h3>
-                    <ThermalBadge temperature={calculateTemperature(i * 15, i * 5, i * 100)} />
-                  </div>
-                  <p className="text-sm text-slate-600 font-medium mb-4">Por @criador_{i}</p>
-                  <div className="flex flex-col gap-2">
-                    {i % 3 === 0 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full rounded-lg shadow-sm font-semibold border-primary/20 text-primary hover:bg-primary/5"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddToTvQueue(`https://picsum.photos/seed/gallery${i}/800/450`, `Pacote Natureza ${i} - @criador_${i}`);
-                        }}
-                      >
-                        <Tv className="h-4 w-4 mr-2"/> Enviar para TV
-                      </Button>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-xl text-emerald-600">{formatCurrency(15 * i, 'MZN')}</span>
-                      {purchases.find((p: any) => p.itemId === `gallery-${i}`) ? (
-                        <Button size="sm" variant="secondary" className="rounded-lg shadow-sm gap-2 font-semibold bg-emerald-100 text-emerald-700 hover:bg-emerald-200" disabled>
-                          Comprado
-                        </Button>
+            {[...galleryItems]
+              .sort((a, b) => {
+                if (filter === 'recentes') return (b.createdAt || 0) - (a.createdAt || 0);
+                if (filter === 'tendencias') return (b.likes || 0) - (a.likes || 0);
+                return (b.likes || 0) * 2 - (a.likes || 0) * 2 || (b.createdAt || 0) - (a.createdAt || 0);
+              })
+              .map((item) => {
+                const author = usersMap[item.userId];
+                const authorName = author?.displayName || author?.email?.split('@')[0] || 'Criador Connected';
+                const temperature = calculateTemperature(item.likes || 0, 1, (item.likes || 0) * 100);
+                return (
+                  <Card key={item.id} className="glass-card border-white/30 shadow-md overflow-hidden group hover:shadow-lg transition-all">
+                    <div className="relative w-full overflow-hidden" style={{ height: item.type === 'video' ? 260 : 240 }}>
+                      {item.type === 'video' ? (
+                        <video src={item.url} controls={false} muted loop playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       ) : (
-                        <Button size="sm" className="rounded-lg shadow-sm gap-2 font-semibold" onClick={(e) => {
-                          e.stopPropagation();
-                          handleBuyGalleryItem(`gallery-${i}`, `Pacote Natureza ${i}`, 15 * i);
-                        }} disabled={isPurchasing}>
-                          <ShoppingCart className="h-4 w-4"/> Comprar
-                        </Button>
+                        <img src={item.url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      )}
+                      <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-lg text-xs font-semibold">
+                        {item.type === 'video' ? '🎬 Reel 4K' : '📷 Foto RAW'}
+                      </div>
+                      {user?.uid === item.userId && (
+                        <button
+                          onClick={async () => {
+                            if (!confirm('Apagar esta mídia?')) return;
+                            try { await deleteDoc(doc(db, 'gallery_items', item.id)); } catch (err) { console.error(err); alert('Erro ao apagar mídia.'); }
+                          }}
+                          className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md text-white p-1.5 rounded-lg hover:bg-rose-600 transition-colors"
+                          title="Apagar"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       )}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-bold text-slate-900 text-base truncate">{item.title || 'Sem título'}</h3>
+                        <ThermalBadge temperature={temperature} />
+                      </div>
+                      <p className="text-sm text-slate-600 font-medium mb-3">Por {authorName}</p>
+                      <div className="flex flex-col gap-2">
+                        {item.type === 'video' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full rounded-lg shadow-sm font-semibold border-primary/20 text-primary hover:bg-primary/5"
+                            onClick={() => handleAddToTvQueue(item.url, item.title)}
+                          >
+                            <Tv className="h-4 w-4 mr-2" /> Enviar para TV
+                          </Button>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-sm text-slate-700 flex items-center gap-1">
+                            <Heart className="h-3.5 w-3.5 text-rose-500" /> {item.likes || 0}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-semibold">{new Date(item.createdAt).toLocaleDateString('pt-PT')}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            {galleryItems.length === 0 && (
+              <div className="col-span-full">
+                <Card className="glass-card border-white/30">
+                  <CardContent className="p-10 text-center">
+                    <Camera className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                    <h4 className="font-bold text-slate-900">Ainda não há mídia publicada</h4>
+                    <p className="text-sm text-slate-600 mt-1">Publica a primeira foto ou vídeo da comunidade!</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         </div>
       )}

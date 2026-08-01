@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense, useRef, useCallback } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useRef, useCallback, useMemo } from 'react';
 import { auth } from './firebase';
 import { 
   signInWithPopup, 
@@ -12,7 +12,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, onSnapshot, where, increment, limit, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, onSnapshot, where, increment, limit, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from './firebase';
 import { db } from './firebase';
@@ -67,6 +67,8 @@ import { BackgroundSlider } from './components/BackgroundSlider';
 import { InstallPrompt } from './components/InstallPrompt';
 import { UpdateNotifier } from './components/UpdateNotifier';
 import { CallModal, IncomingCallListener } from './components/CallModal';
+import { ChatModal } from './components/ChatModal';
+import { UserProfileModal } from './components/UserProfileModal';
 import { playSound } from './lib/sound-engine';
 
 const FeedPage = lazy(() => import('./pages/FeedPage'));
@@ -101,6 +103,8 @@ export default function App() {
   const [copiedLinkText, setCopiedLinkText] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showMessagesPanel, setShowMessagesPanel] = useState(false);
+  const [searchResults, setSearchResults] = useState<{ users: any[]; companies: any[]; posts: any[] } | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [blockedIds, setBlockedIds] = useState<string[]>([]);
@@ -173,7 +177,8 @@ export default function App() {
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [chattingWith, setChattingWith] = useState<any | null>(null);
-  const [newMessage, setNewMessage] = useState('');
+  const [viewingUser, setViewingUser] = useState<string | null>(null);
+  const [initialCompanyId, setInitialCompanyId] = useState<string | null>(null);  const [newMessage, setNewMessage] = useState('');
   const [tvChatMessages, setTvChatMessages] = useState<any[]>([]);
   const [newTvChatMessage, setNewTvChatMessage] = useState('');
   const [isSendingTvChat, setIsSendingTvChat] = useState(false);
@@ -325,16 +330,16 @@ export default function App() {
           ...data,
           averageRating: ratings.count > 0 ? (ratings.totalScore || 0) / ratings.count : 0,
           totalRatings: ratings.count || 0,
-          currentUserRating: ratings.userRatings?.[user?.uid || ''] || 0,
-          isLiked: (data.userLikes || []).includes(user?.uid || ''),
+          currentUserRating: user ? (ratings.userRatings?.[user.uid] || 0) : 0,
+          isLiked: user ? (data.userLikes || []).includes(user.uid) : false,
         };
-      });
+      }).filter((p: any) => !blockedIds.includes(p.userId));
       setPosts(postsData);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'posts');
     });
     return () => unsubscribe();
-  }, []);
+  }, [user, blockedIds]);
 
   useEffect(() => {
     const q = query(collection(db, 'tv_queue'), orderBy('submittedAt', 'asc'));
@@ -388,14 +393,21 @@ export default function App() {
       orderBy('createdAt', 'asc')
     );
     const unsubM = onSnapshot(mq, (snapshot) => {
-      setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter((m: any) => !blockedIds.includes(m.senderId) && !blockedIds.includes(m.receiverId));
+      setMessages(msgs);
+      msgs.forEach((m: any) => {
+        if (m.receiverId === user.uid && !m.delivered) {
+          updateDoc(doc(db, 'messages', m.id), { delivered: true }).catch(() => {});
+        }
+      });
     }, error => handleFirestoreError(error, OperationType.LIST, 'messages'));
 
     return () => {
       unsubP();
       unsubM();
     };
-  }, [user]);
+  }, [user, blockedIds]);
 
   useEffect(() => {
     if (!user) { setFriendRequests([]); return; }
@@ -541,6 +553,58 @@ export default function App() {
       handleFirestoreError(e, OperationType.DELETE, 'blocks');
     }
   };
+
+  const runSearch = async (rawQuery: string) => {
+    const q = rawQuery.trim().toLowerCase();
+    if (!q) {
+      setSearchResults(null);
+      return;
+    }
+    const userResults = allUsers
+      .filter((u: any) => (u.displayName || u.email || '').toLowerCase().includes(q))
+      .slice(0, 5);
+    let companyResults: any[] = [];
+    try {
+      const snap = await getDocs(query(collection(db, 'companies'), limit(50)));
+      companyResults = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((c: any) => (c.name || '').toLowerCase().includes(q))
+        .slice(0, 5);
+    } catch (e) {
+      console.error('Search companies error:', e);
+    }
+    const postResults = posts
+      .filter((p: any) => (p.content || '').toLowerCase().includes(q))
+      .slice(0, 5);
+    setSearchResults({ users: userResults, companies: companyResults, posts: postResults });
+  };
+
+  const unreadMessages = (messages as any[]).filter((m) => m.receiverId === user?.uid && !m.read).length;
+
+  const conversations = useMemo(() => {
+    const byUser: Record<string, { other: any; last: any; unread: number; lastAt: number }> = {};
+    (messages as any[]).forEach((m) => {
+      const otherId = m.senderId === user?.uid ? m.receiverId : m.senderId;
+      if (!otherId) return;
+      const prev = byUser[otherId];
+      const other = allUsers.find((u: any) => u.id === otherId) || { id: otherId, displayName: m.senderId === user?.uid ? m.receiverName : m.senderName, photoURL: m.senderId === user?.uid ? m.receiverAvatar : m.senderAvatar };
+      const msg = { ...m, otherName: other.displayName || other.email?.split('@')[0] || 'Utilizador', otherAvatar: other.photoURL || '', otherId };
+      if (!prev || (m.createdAt || 0) > (prev.lastAt || 0)) {
+        byUser[otherId] = {
+          other: msg,
+          last: msg,
+          unread: prev?.unread || 0,
+          lastAt: m.createdAt || 0,
+        };
+      }
+      if (prev) prev.unread = prev.unread || 0;
+      if (m.receiverId === user?.uid && !m.read && otherId !== user?.uid) {
+        if (prev) prev.unread += 1;
+        else byUser[otherId].unread += 1;
+      }
+    });
+    return Object.values(byUser).sort((a, b) => (b.lastAt || 0) - (a.lastAt || 0));
+  }, [messages, allUsers, user?.uid]);
 
   const handleSubmitReport = async () => {
     if (!user || !reportModal || !reportReason.trim()) return;
@@ -794,10 +858,10 @@ export default function App() {
       });
       setCommentInputs({ ...commentInputs, [postId]: '' });
       const postRef = doc(db, 'posts', postId);
-      const postDoc = await getDoc(postRef);
-      if (postDoc.exists()) {
-        await updateDoc(postRef, { comments: (postDoc.data().comments || 0) + 1 });
-        await createNotification(postDoc.data().userId, 'comment', `comentou na tua publicação: "${content.trim().slice(0, 60)}"`, profileData.displayName || user.email?.split('@')[0] || 'Unknown', profileData.photoURL, `?tab=feed&post=${postId}`);
+      const postSnap = await getDoc(postRef);
+      if (postSnap.exists()) {
+        await updateDoc(postRef, { comments: increment(1) });
+        await createNotification(postSnap.data().userId, 'comment', `comentou na tua publicação: "${content.trim().slice(0, 60)}"`, profileData.displayName || user.email?.split('@')[0] || 'Unknown', profileData.photoURL, `?tab=feed&post=${postId}`);
       }
     } catch (e) {
       console.error('Error adding comment:', e);
@@ -1329,11 +1393,23 @@ export default function App() {
         <div className="mt-auto p-4">
           <Card className="glass-card border-white/40 shadow-lg">
             <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm text-slate-900">Nível Criador: Ouro</CardTitle>
-              <CardDescription className="text-slate-700 font-medium">Faltam 2.4k XP para Platina</CardDescription>
+              <CardTitle className="text-sm text-slate-900">
+                {(() => {
+                  const pts = profileData.points || 0;
+                  const level = pts >= 5000 ? 'Platina' : pts >= 1000 ? 'Ouro' : 'Prata';
+                  return `Nível Criador: ${level}`;
+                })()}
+              </CardTitle>
+              <CardDescription className="text-slate-700 font-medium">
+                {(() => {
+                  const pts = profileData.points || 0;
+                  if (pts >= 5000) return 'Nível máximo atingido';
+                  return `Faltam ${5000 - pts} pts para Platina`;
+                })()}
+              </CardDescription>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <Progress value={75} className="h-2 bg-white/50" />
+              <Progress value={Math.min(((profileData.points || 0) / 5000) * 100, 100)} className="h-2 bg-white/50" />
             </CardContent>
           </Card>
           <button onClick={handleLogout} className="flex items-center gap-3 rounded-xl px-4 py-3 mt-2 w-full text-slate-700 hover:bg-white/40 hover:text-rose-600 transition-all font-semibold text-sm">
@@ -1384,22 +1460,85 @@ export default function App() {
             </button>
             <form className="flex-1 max-w-md" onSubmit={(e) => {
               e.preventDefault();
-              if (searchQuery.trim()) {
-                handleTabSelect('feed');
-                setSearchQuery('');
-              }
+              runSearch(searchQuery);
             }}>
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
                 <input
                   type="search"
-                  placeholder="Pesquisar publicações ou utilizadores..."
+                  placeholder="Pesquisar pessoas, empresas, publicações..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    if (!e.target.value.trim()) setSearchResults(null);
+                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') runSearch(searchQuery); }}
                   className="w-full appearance-none glass-input shadow-none h-10 rounded-xl px-4 pl-10 py-2 text-sm transition-colors placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 text-slate-900 font-medium"
                 />
               </div>
             </form>
+            {searchResults && searchQuery.trim() && (
+              <div className="absolute left-4 right-4 sm:left-6 sm:right-auto sm:w-96 top-16 z-50 glass-card border border-white/30 rounded-2xl shadow-xl p-3 max-h-[70vh] overflow-auto animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <h4 className="text-sm font-bold text-slate-900">Resultados para "{searchQuery}"</h4>
+                  <button className="text-slate-500 hover:text-slate-900" onClick={() => setSearchResults(null)}><X className="h-4 w-4" /></button>
+                </div>
+                {searchResults.users.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-1 mb-1">Pessoas</p>
+                    {searchResults.users.map((u: any) => (
+                      <button key={u.id} className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-white/60 transition-colors" onClick={() => { setSearchResults(null); setSearchQuery(''); setViewingUser(u.id); }}>
+                        <Avatar className="h-8 w-8 border border-white/50 shrink-0">
+                          <AvatarImage src={u.photoURL} />
+                          <AvatarFallback className="text-[10px]">{(u.displayName || u.email || 'U')[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-900 truncate">{u.displayName || u.email?.split('@')[0]}</p>
+                          <p className="text-[10px] text-slate-500 truncate">{u.email || ''}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {searchResults.companies.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-1 mb-1">Empresas</p>
+                    {searchResults.companies.map((c: any) => (
+                      <button key={c.id} className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-white/60 transition-colors" onClick={() => { setSearchResults(null); setSearchQuery(''); setInitialCompanyId(c.id); handleTabSelect('empresas'); }}>
+                        <Avatar className="h-8 w-8 border border-white/50 shrink-0 bg-white">
+                          <AvatarImage src={c.logoUrl} />
+                          <AvatarFallback className="text-[10px]">{(c.name || 'E')[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-900 truncate">{c.name}</p>
+                          <p className="text-[10px] text-slate-500 truncate">{c.category} {c.verified ? '· ✓ Verificada' : ''}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {searchResults.posts.length > 0 && (
+                  <div className="mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-1 mb-1">Publicações</p>
+                    {searchResults.posts.map((p: any) => (
+                      <button key={p.id} className="w-full flex items-start gap-2.5 p-2 rounded-xl text-left hover:bg-white/60 transition-colors" onClick={() => { setSearchResults(null); setSearchQuery(''); handleTabSelect('feed'); }}>
+                        <Avatar className="h-8 w-8 border border-white/50 shrink-0">
+                          <AvatarImage src={p.authorAvatar} />
+                          <AvatarFallback className="text-[10px]">{(p.authorName || 'U')[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-slate-900 line-clamp-1">{p.content || (p.media?.type === 'video' ? '🎬 Vídeo' : '📷 Foto')}</p>
+                          <p className="text-[10px] text-slate-500 truncate">{p.authorName} · {new Date(p.createdAt).toLocaleDateString('pt-PT')}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {searchResults.users.length === 0 && searchResults.companies.length === 0 && searchResults.posts.length === 0 && (
+                  <p className="text-xs text-slate-500 text-center py-4">Sem resultados para "{searchQuery}"</p>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <Button 
@@ -1412,6 +1551,56 @@ export default function App() {
               <span className="hidden sm:inline">Partilhar Link da Rede</span>
               <span className="sm:hidden">Partilhar</span>
             </Button>
+            <div className="relative">
+              <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl glass-input border-white/40 text-slate-700 hover:text-slate-900 shadow-sm relative" onClick={() => setShowMessagesPanel(!showMessagesPanel)}>
+                <MessageCircle className="h-5 w-5" />
+                <span className="sr-only">Mensagens</span>
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white text-[10px] font-bold border-2 border-white shadow">
+                    {unreadMessages > 9 ? '9+' : unreadMessages}
+                  </span>
+                )}
+              </Button>
+              {showMessagesPanel && (
+                <div className="absolute right-0 top-12 w-80 glass-card border border-white/30 rounded-2xl shadow-xl p-3 animate-in fade-in slide-in-from-top-2 z-50 max-h-[70vh] overflow-auto">
+                  <h4 className="text-sm font-bold text-slate-900 mb-2 px-1">Mensagens</h4>
+                  {conversations.length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-4">Sem conversas ainda</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {conversations.map((c) => (
+                        <button
+                          key={c.otherId}
+                          onClick={() => {
+                            setShowMessagesPanel(false);
+                            setChattingWith(c.other);
+                          }}
+                          className={`w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-white/60 transition-colors ${c.unread > 0 ? 'bg-white/40' : ''}`}
+                        >
+                          <Avatar className="h-9 w-9 border border-white/50 shrink-0">
+                            <AvatarImage src={c.last.otherAvatar} />
+                            <AvatarFallback className="text-[10px]">{(c.last.otherName || 'U')[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-bold text-slate-900 truncate">{c.last.otherName}</p>
+                              <span className="text-[9px] text-slate-400 font-semibold shrink-0">
+                                {new Date(c.lastAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-[11px] text-slate-600 truncate">{c.last.content || (c.last.type === 'image' ? '📷 Foto' : c.last.type === 'video' ? '🎬 Vídeo' : '📎 Ficheiro')}</p>
+                              {c.unread > 0 && <span className="h-4 min-w-4 px-1 rounded-full bg-primary text-white text-[9px] font-bold flex items-center justify-center shrink-0">{c.unread}</span>}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <Button variant="ghost" size="sm" className="w-full text-xs text-slate-600 mt-1" onClick={() => setShowMessagesPanel(false)}>Fechar</Button>
+                </div>
+              )}
+            </div>
             <div className="relative">
               <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl glass-input border-white/40 text-slate-700 hover:text-slate-900 shadow-sm relative" onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markNotificationsRead(); }}>
                 <Bell className="h-5 w-5" />
@@ -1575,7 +1764,7 @@ export default function App() {
               <GamesPage user={user} profileData={profileData} />
             )}
             {activeTab === 'empresas' && (
-              <CompaniesPage user={user} profileData={profileData} />
+              <CompaniesPage user={user} profileData={profileData} initialCompanyId={initialCompanyId} onConsumedInitial={() => setInitialCompanyId(null)} />
             )}
             {activeTab === 'settings' && (
               <SettingsPage
@@ -1780,11 +1969,11 @@ export default function App() {
               <CardTitle className="text-xl font-bold text-slate-900">{incomingCall.callerName || 'Utilizador'}</CardTitle>
               <CardDescription className="text-sm text-slate-600 font-medium flex items-center justify-center gap-2 mt-1">
                 <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                Chamada de vídeo recebida
+                {incomingCall.type === 'voice' ? 'Chamada de voz recebida' : 'Chamada de vídeo recebida'}
               </CardDescription>
             </CardHeader>
             <CardContent className="pb-8">
-              <p className="text-xs text-slate-500 font-medium mb-6">Custo: 10 pontos · Facturado ao minuto</p>
+              <p className="text-xs text-slate-500 font-medium mb-6">Custo: 10 pontos · Facturado ao minuto · {incomingCall.type === 'voice' ? '🎙️ Voz' : '📹 Vídeo'}</p>
               <div className="flex justify-center gap-6">
                 <button
                   onClick={async () => {
@@ -1820,6 +2009,7 @@ export default function App() {
           onClose={() => { setIncomingCall(null); setIncomingCallAccepted(false); }}
           role="callee"
           incomingCallId={incomingCall.id}
+          initialType={incomingCall.type || 'video'}
         />
       )}
 
@@ -1856,6 +2046,20 @@ export default function App() {
             </CardFooter>
           </Card>
         </div>
+      )}
+      {chattingWith && activeTab !== 'network' && (
+        <ChatModal user={user} profileData={profileData} chatUser={chattingWith} onClose={() => setChattingWith(null)} />
+      )}
+
+      {viewingUser && (
+        <UserProfileModal
+          userId={viewingUser}
+          onClose={() => setViewingUser(null)}
+          onMessage={() => { const u = allUsers.find((x: any) => x.id === viewingUser); if (u) { setChattingWith({ id: u.id, displayName: u.displayName, photoURL: u.photoURL }); } setViewingUser(null); }}
+          followingIds={followingIds}
+          handleFollow={handleFollow}
+          sendFriendRequest={sendFriendRequest}
+        />
       )}
     </>
   );

@@ -49,11 +49,13 @@ interface Campaign {
 interface CompaniesPageProps {
   user: any;
   profileData: any;
+  initialCompanyId?: string | null;
+  onConsumedInitial?: () => void;
 }
 
 const CATEGORIES = ['🛒 Comércio', '🏢 Serviços', '🎨 Criatividade', '💻 Tecnologia', '🍔 Restauração', '📚 Educação', '🏥 Saúde', '🚗 Transportes', '🏗️ Construção', 'Outros'];
 
-export function CompaniesPage({ user, profileData }: CompaniesPageProps) {
+export function CompaniesPage({ user, profileData, initialCompanyId, onConsumedInitial }: CompaniesPageProps) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selected, setSelected] = useState<Company | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -74,6 +76,14 @@ export function CompaniesPage({ user, profileData }: CompaniesPageProps) {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Company));
       setCompanies(list);
       if (user) setMyCompany(list.find((c) => c.ownerId === user.uid) || null);
+      if (initialCompanyId && !selected) {
+        const target = list.find((c) => c.id === initialCompanyId);
+        if (target) {
+          setSelected(target);
+          updateDoc(doc(db, 'companies', target.id), { views: increment(1) }).catch(() => {});
+          onConsumedInitial?.();
+        }
+      }
     }, () => {});
     return () => unsub();
   }, [user]);

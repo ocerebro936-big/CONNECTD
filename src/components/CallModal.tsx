@@ -22,12 +22,14 @@ interface CallModalProps {
   onClose: () => void;
   role?: 'caller' | 'callee';
   incomingCallId?: string;
+  initialType?: 'voice' | 'video';
 }
 
-export function CallModal({ user, targetUser, onClose, role = 'caller', incomingCallId }: CallModalProps) {
+export function CallModal({ user, targetUser, onClose, role = 'caller', incomingCallId, initialType }: CallModalProps) {
   const [callStatus, setCallStatus] = useState<CallStatus>(role === 'callee' ? 'ringing' : 'idle');
   const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOn, setIsVideoOn] = useState(role === 'caller');
+  const [callType, setCallType] = useState<'voice' | 'video'>(initialType || 'video');
+  const [isVideoOn, setIsVideoOn] = useState(role === 'caller' ? (initialType || 'video') === 'video' : true);
   const [error, setError] = useState('');
   const [callDuration, setCallDuration] = useState(0);
   const [userPoints, setUserPoints] = useState(0);
@@ -208,13 +210,14 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
     }
     setCallStatus('calling');
     try {
-      const stream = await startLocalStream(true);
+      const withVideo = callType === 'video';
+      const stream = await startLocalStream(withVideo);
       const callRef = await addDoc(collection(db, 'calls'), {
         callerId: user.uid,
         callerName: user.displayName || user.email?.split('@')[0] || 'Unknown',
         callerAvatar: user.photoURL || '',
         receiverId: targetUser.id,
-        type: 'video',
+        type: callType,
         status: 'ringing',
         createdAt: Date.now(),
         durationSeconds: 0,
@@ -288,7 +291,18 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
         <CardContent className="p-0 relative bg-black">
           <div className="aspect-video bg-slate-950 flex items-center justify-center relative">
             {callStatus === 'connected' ? (
-              <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+              <>
+                <video ref={remoteVideoRef} autoPlay playsInline className={`${callType === 'video' ? 'w-full h-full object-cover' : 'hidden'} absolute inset-0`} />
+                {callType === 'voice' && (
+                  <div className="text-center text-slate-400">
+                    <Avatar className="h-24 w-24 mx-auto mb-3 border-2 border-white/20">
+                      <AvatarImage src={targetUser.photoURL || 'https://github.com/shadcn.png'} />
+                      <AvatarFallback className="text-4xl">{targetUser.displayName?.[0] || '?'}</AvatarFallback>
+                    </Avatar>
+                    <p className="text-sm font-medium">Chamada de voz em curso…</p>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center text-slate-500">
                 <Avatar className="h-24 w-24 mx-auto mb-3 border-2 border-white/20">
@@ -301,7 +315,7 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
               </div>
             )}
 
-            {callStatus === 'connected' && (
+            {callStatus === 'connected' && callType === 'video' && (
               <div className="absolute bottom-4 right-4 w-1/4 aspect-video bg-slate-800 rounded-lg overflow-hidden border-2 border-white/20 shadow-lg">
                 <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
               </div>
@@ -316,14 +330,25 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
 
           <div className="flex items-center justify-center gap-4 p-6 bg-slate-800/50">
             {callStatus === 'idle' && role === 'caller' && (
-              <>
-                <Button onClick={startCall} className="rounded-full h-14 w-14 bg-emerald-500 hover:bg-emerald-600 shadow-lg flex items-center justify-center">
-                  <Phone className="h-6 w-6" />
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => { setCallType('voice'); setCallStatus('idle'); setTimeout(startCall, 50); }}
+                  variant="outline"
+                  className="rounded-2xl h-14 px-5 bg-white/10 border-white/20 text-white hover:bg-white/20 flex items-center gap-2"
+                >
+                  <Phone className="h-5 w-5" /> Chamada de Voz
+                </Button>
+                <Button
+                  onClick={() => { setCallType('video'); setCallStatus('idle'); setTimeout(startCall, 50); }}
+                  className="rounded-full h-14 w-14 bg-emerald-500 hover:bg-emerald-600 shadow-lg flex items-center justify-center"
+                  title="Chamada de Vídeo"
+                >
+                  <Video className="h-6 w-6" />
                 </Button>
                 <Button onClick={onClose} variant="ghost" className="text-slate-400 hover:text-white">
                   <X className="h-5 w-5" />
                 </Button>
-              </>
+              </div>
             )}
 
             {callStatus === 'calling' && (
@@ -364,13 +389,15 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
                 >
                   {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                 </Button>
-                <Button
-                  onClick={() => setIsVideoOn(!isVideoOn)}
-                  variant="outline"
-                  className={`rounded-full h-12 w-12 ${!isVideoOn ? 'bg-rose-500/30 border-rose-500 text-rose-400' : 'bg-white/10 border-white/20 text-white'}`}
-                >
-                  {isVideoOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-                </Button>
+                {callType === 'video' && (
+                  <Button
+                    onClick={() => setIsVideoOn(!isVideoOn)}
+                    variant="outline"
+                    className={`rounded-full h-12 w-12 ${!isVideoOn ? 'bg-rose-500/30 border-rose-500 text-rose-400' : 'bg-white/10 border-white/20 text-white'}`}
+                  >
+                    {isVideoOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+                  </Button>
+                )}
                 <Button onClick={() => endCall()} className="rounded-full h-14 w-14 bg-rose-600 hover:bg-rose-700 shadow-lg flex items-center justify-center">
                   <PhoneOff className="h-6 w-6" />
                 </Button>

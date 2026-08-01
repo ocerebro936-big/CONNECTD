@@ -80,10 +80,10 @@ service cloud.firestore {
     }
 
     function isValidPost(data) {
-      return hasRequiredFields(['userId', 'authorName', 'content', 'createdAt']) &&
+      return hasRequiredFields(['userId', 'authorName', 'createdAt']) &&
              data.userId is string && data.userId.size() > 0 && data.userId.size() < 128 &&
              data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 100 &&
-             data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
+             isValidOptionalString('content', 0, 2000) &&
              (data.createdAt is number || data.createdAt is timestamp) &&
              isValidOptionalString('authorHandle', 0, 100) &&
              isValidOptionalString('authorAvatar', 0, 1000000) &&
@@ -255,7 +255,7 @@ service cloud.firestore {
              data.imageUrl is string && data.imageUrl.size() > 0 && data.imageUrl.size() <= 1000000 &&
              (data.createdAt is number || data.createdAt is timestamp) &&
              isValidOptionalString('authorAvatar', 0, 1000000) &&
-             isValidOptionalString('expiresAt', 0, 100);
+             (!('expiresAt' in data) || data.expiresAt is number || data.expiresAt is timestamp);
     }
 
     function isValidGalleryItem(data) {
@@ -270,9 +270,9 @@ service cloud.firestore {
     }
 
     function isValidCall(data) {
-      return hasRequiredFields(['callerId', 'calleeId', 'type', 'status', 'createdAt']) &&
+      return hasRequiredFields(['callerId', 'receiverId', 'type', 'status', 'createdAt']) &&
              data.callerId is string && data.callerId.size() > 0 &&
-             data.calleeId is string && data.calleeId.size() > 0 &&
+             data.receiverId is string && data.receiverId.size() > 0 &&
              data.type in ['voice', 'video'] &&
              data.status in ['ringing', 'answered', 'ended', 'missed', 'declined'] &&
              (data.createdAt is number || data.createdAt is timestamp) &&
@@ -282,6 +282,20 @@ service cloud.firestore {
              isValidOptionalString('answer', 0, 100000) &&
              isValidOptionalString('roomId', 0, 200) &&
              isValidOptionalString('durationSeconds', 0, 50);
+    }
+
+    function isValidFriendRequest(data) {
+      return hasRequiredFields(['from', 'to', 'status', 'createdAt']) &&
+             data.from is string && data.from.size() > 0 && data.from.size() < 128 &&
+             data.to is string && data.to.size() > 0 && data.to.size() < 128 &&
+             data.from != data.to &&
+             data.status in ['pending', 'accepted', 'rejected'] &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             isValidOptionalString('fromName', 0, 100) &&
+             isValidOptionalString('fromAvatar', 0, 1000000) &&
+             isValidOptionalString('toName', 0, 100) &&
+             isValidOptionalString('toAvatar', 0, 1000000) &&
+             (!('participants' in data) || (data.participants is list && data.participants.size() == 2));
     }
 
     function isValidCommunity(data) {
@@ -302,13 +316,14 @@ service cloud.firestore {
     }
 
     function isValidOfflineSms(data) {
-      return hasRequiredFields(['senderId', 'receiverId', 'content', 'createdAt']) &&
+      return hasRequiredFields(['senderId', 'receiverId', 'content']) &&
              data.senderId is string && data.senderId.size() > 0 &&
              data.receiverId is string && data.receiverId.size() > 0 &&
              data.content is string && data.content.size() > 0 && data.content.size() <= 1000 &&
-             (data.createdAt is number || data.createdAt is timestamp) &&
+             ((data.createdAt is number) || (data.createdAt is timestamp) || (data.timestamp is number)) &&
              (!('read' in data) || data.read is bool) &&
-             isValidOptionalString('senderName', 0, 100);
+             isValidOptionalString('senderName', 0, 100) &&
+             isValidOptionalString('receiverName', 0, 100);
     }
 
     function isValidSecurityLog(data) {
@@ -349,6 +364,13 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidFollow(request.resource.data) && request.resource.data.followerId == request.auth.uid;
       allow update: if false;
       allow delete: if isAuthenticated() && resource.data.followerId == request.auth.uid;
+    }
+
+    match /friendRequests/{requestId} {
+      allow read: if isAuthenticated() && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow create: if isAuthenticated() && isValidFriendRequest(request.resource.data) && request.resource.data.from == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.from == request.auth.uid);
     }
 
     match /blocks/{blockId} {
@@ -394,9 +416,9 @@ service cloud.firestore {
     }
 
     match /calls/{callId} {
-      allow read: if isAuthenticated() && (resource.data.callerId == request.auth.uid || resource.data.calleeId == request.auth.uid);
+      allow read: if isAuthenticated() && (resource.data.callerId == request.auth.uid || resource.data.receiverId == request.auth.uid);
       allow create: if isAuthenticated() && isValidCall(request.resource.data) && request.resource.data.callerId == request.auth.uid;
-      allow update: if isAuthenticated() && (resource.data.callerId == request.auth.uid || resource.data.calleeId == request.auth.uid);
+      allow update: if isAuthenticated() && (resource.data.callerId == request.auth.uid || resource.data.receiverId == request.auth.uid);
       allow delete: if isAdmin();
 
       match /ice/{iceId} {
@@ -419,6 +441,13 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
       }
+    }
+
+    match /community_members/{memberId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && isValidCommunityMember(request.resource.data);
+      allow update: if false;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     match /offline_sms/{smsId} {

@@ -6,7 +6,7 @@ import { ImageIcon, Video, Send, Home, Camera, X, Heart, MessageSquare, Share2, 
 import PostCard from '../components/PostCard';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 
 interface FeedPageProps {
@@ -58,6 +58,8 @@ const FeedPage: React.FC<FeedPageProps> = ({
   const [showStoryCam, setShowStoryCam] = useState(false);
   const [storyPreview, setStoryPreview] = useState<string | null>(null);
   const [isUploadingStory, setIsUploadingStory] = useState(false);
+  const [stories, setStories] = useState<any[]>([]);
+  const [viewingStory, setViewingStory] = useState<any | null>(null);
   const [feedMode, setFeedMode] = useState<'immersive' | 'list'>(() => {
     try {
       return (localStorage.getItem(FEED_MODE_KEY) as 'immersive' | 'list') || 'immersive';
@@ -74,6 +76,29 @@ const FeedPage: React.FC<FeedPageProps> = ({
       localStorage.setItem(FEED_MODE_KEY, feedMode);
     } catch {}
   }, [feedMode]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(query(collection(db, 'stories'), orderBy('createdAt', 'desc')), (snap) => {
+      const now = Date.now();
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        .filter((s: any) => !s.expiresAt || s.expiresAt > now)
+        .filter((s: any) => user ? s.userId !== user.uid : true);
+      setStories(list);
+    }, () => {});
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    if (!viewingStory) return;
+    const t = setTimeout(() => {
+      const byUser = stories.filter((s) => s.userId === viewingStory.userId);
+      const idx = byUser.findIndex((s) => s.id === viewingStory.id);
+      const next = byUser[idx + 1];
+      if (next) setViewingStory(next);
+      else setViewingStory(null);
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [viewingStory, stories]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'photo' | 'video' | 'story') => {
     const file = e.target.files?.[0];
@@ -205,7 +230,38 @@ const FeedPage: React.FC<FeedPageProps> = ({
               </div>
               <span className="text-xs font-semibold text-slate-700">Criar Story</span>
             </div>
+            {Array.from(new Map(stories.map((s) => [s.userId, s])).values()).map((s: any) => (
+              <div key={s.id} className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group" onClick={() => setViewingStory(s)}>
+                <div className="p-[3px] rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-violet-500">
+                  <Avatar className="h-[58px] w-[58px] border-2 border-white shadow-md">
+                    <AvatarImage src={s.authorAvatar} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-lg">{s.authorName?.[0] || 'U'}</AvatarFallback>
+                  </Avatar>
+                </div>
+                <span className="text-xs font-semibold text-slate-700 max-w-[64px] truncate">{s.authorName?.split(' ')[0] || 'Story'}</span>
+              </div>
+            ))}
           </div>
+
+          {/* Story Viewer */}
+          {viewingStory && (
+            <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center animate-in fade-in duration-200" onClick={() => setViewingStory(null)}>
+              <div className="relative max-h-full max-w-full" onClick={(e) => e.stopPropagation()}>
+                <img src={viewingStory.imageUrl} alt="Story" className="max-h-[85vh] max-w-[92vw] rounded-2xl object-contain shadow-2xl" />
+                <div className="absolute top-3 left-3 right-3 flex items-center gap-2">
+                  <Avatar className="h-8 w-8 border-2 border-white/70">
+                    <AvatarImage src={viewingStory.authorAvatar} />
+                    <AvatarFallback className="text-[10px]">{viewingStory.authorName?.[0] || 'U'}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-xs font-bold truncate">{viewingStory.authorName}</p>
+                    <p className="text-white/60 text-[10px]">{new Date(viewingStory.createdAt).toLocaleString('pt-PT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                  <button className="text-white/80 hover:text-white p-1" onClick={() => setViewingStory(null)}><X className="h-5 w-5" /></button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Story Camera Modal */}
           {showStoryCam && (

@@ -178,7 +178,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
       actorAvatar: "",
       link: "",
       read: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: admin.firestore.Timestamp.now().toMillis(),
     });
 
     console.log(`Compra ${purchaseId} confirmada via Stripe; ${purchase.points} pts creditados.`);

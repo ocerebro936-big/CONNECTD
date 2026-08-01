@@ -31,6 +31,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
 }) => {
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [photoCount, setPhotoCount] = useState(0);
+  const [videoCount, setVideoCount] = useState(0);
   const [copiedProfile, setCopiedProfile] = useState(false);
 
   useEffect(() => {
@@ -40,6 +42,18 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     unsubs.push(onSnapshot(fq, (snap) => setFollowersCount(snap.size), (e) => console.error(e)));
     const fg = query(collection(db, 'follows'), where('followerId', '==', user.uid));
     unsubs.push(onSnapshot(fg, (snap) => setFollowingCount(snap.size), (e) => console.error(e)));
+    const pq = query(collection(db, 'posts'), where('userId', '==', user.uid));
+    unsubs.push(onSnapshot(pq, (snap) => {
+      let photos = 0;
+      let videos = 0;
+      snap.docs.forEach((d) => {
+        const m = d.data().media;
+        if (m?.type === 'video') videos += 1;
+        else if (m?.type === 'photo') photos += 1;
+      });
+      setPhotoCount(photos);
+      setVideoCount(videos);
+    }, (e) => console.error(e)));
     return () => unsubs.forEach((u) => u());
   }, [user]);
 
@@ -96,6 +110,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/60 border border-white/40 rounded-full text-xs font-bold text-slate-800 shadow-sm">
                   <UserCircle className="h-3.5 w-3.5 text-cyan-500" />
                   {followingCount} A Seguir
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/60 border border-white/40 rounded-full text-xs font-bold text-slate-800 shadow-sm">
+                  <Camera className="h-3.5 w-3.5 text-rose-500" />
+                  {photoCount} Fotos
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/60 border border-white/40 rounded-full text-xs font-bold text-slate-800 shadow-sm">
+                  <Youtube className="h-3.5 w-3.5 text-emerald-500" />
+                  {videoCount} Vídeos
                 </span>
                 {profileData.youtube && (
                   <a href={profileData.youtube.startsWith('http') ? profileData.youtube : `https://${profileData.youtube}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/60 hover:bg-white border border-white/40 rounded-full shadow-sm transition-all text-red-600">
