@@ -20,14 +20,14 @@ jobs:
       - run: npm run build
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          VITE_BASE: /CONNECTD/
-      - name: Configure Pages (branch gh-pages)
+          VITE_BASE: /
+      - name: Configure Pages (branch gh-pages + custom domain)
         run: |
           curl -sS -X PUT \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/${{ github.repository }}/pages \
-            -d '{"build_type":"legacy","source":{"branch":"gh-pages","path":"/"}}' \
+            -d '{"build_type":"legacy","source":{"branch":"gh-pages","path":"/"},"cname":"connected.org-github.io"}' \
             || echo "Pages config (PUT) falhou/indisponivel — continuando"
       - uses: peaceiris/actions-gh-pages@v4
         with:
