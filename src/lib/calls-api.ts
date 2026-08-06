@@ -1,7 +1,7 @@
 import { auth } from '../firebase';
 import { PartyTracks } from 'partytracks/client';
 
-export const CALLS_API_URL: string = (import.meta.env.VITE_CALLS_API_URL as string) || '';
+export const CALLS_API_URL: string = (import.meta.env.VITE_CALLS_API_URL as string) || 'https://connected-api.ocerebro936.workers.dev';
 
 export const CLOUD_PREFIX = '/api/calls/cloud';
 
