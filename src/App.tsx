@@ -23,6 +23,7 @@ import {
   UserCircle,
   LogOut,
   CheckCircle2,
+  Download,
   Mail,
   MessageCircle,
   Menu,
@@ -157,8 +158,11 @@ export default function App() {
   };
 
   const [showEmailLogin, setShowEmailLogin] = useState(false);
+  const [emailMode, setEmailMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installFeedback, setInstallFeedback] = useState<string | null>(null);
   const [authError, setAuthError] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -1099,6 +1103,42 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    const handlePrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    const handleInstalled = () => {
+      setInstallPrompt(null);
+      setInstallFeedback('Aplicativo instalado ✓');
+    };
+    window.addEventListener('beforeinstallprompt', handlePrompt);
+    window.addEventListener('appinstalled', handleInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handlePrompt);
+      window.removeEventListener('appinstalled', handleInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    setInstallFeedback(null);
+    if (installPrompt) {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice?.outcome === 'accepted') {
+        setInstallFeedback('Aplicativo instalado ✓');
+      }
+      setInstallPrompt(null);
+    } else {
+      const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      setInstallFeedback(
+        isIos
+          ? 'No iPhone/iPad: Partilhar ⬆️ → "Adicionar ao Ecrã Início"'
+          : 'Já instalado, ou instala pelo menu ⋮ → "Instalar aplicação"'
+      );
+    }
+  };
+
   const handleGuestLogin = () => {
     setIsGuest(true);
     setIsAuthenticated(true);
@@ -1131,16 +1171,29 @@ export default function App() {
               <ConnectedLogo className="h-20 w-20 mx-auto" />
               <div>
                 <h1 className="text-3xl font-bold tracking-tight gold-text-gradient">Connected</h1>
-                <p className="text-amber-100/85 font-medium text-base">O teu centro de controlo do mundo digital.</p>
+                <p className="flex items-center justify-center gap-2 text-amber-200/90 font-semibold tracking-wider text-base">
+                  <span>Conecte.</span><span className="text-primary">·</span><span>Compartilhe.</span><span className="text-primary">·</span><span>Cresça.</span>
+                </p>
               </div>
             </div>
 
-            {/* Domain Info */}
-            <div className="text-center space-y-1.5">
-              <p className="text-[10px] text-amber-200/90 font-mono bg-white/10 border border-primary/30 rounded-full px-3 py-1.5 inline-block">
-                🔗 <span className="text-emerald-400 font-bold">https://ocerebro936-big.github.io/CONNECTD/</span>
-              </p>
-              <p className="text-[10px] text-slate-400">Acesso rápido e seguro em qualquer lugar</p>
+            {/* Entrar / Criar Conta */}
+            <div className="flex gap-3 pt-1">
+              <Button
+                size="lg"
+                className="flex-1 h-12 rounded-2xl text-base font-bold shadow-lg shadow-amber-900/30"
+                onClick={() => { setEmailMode('login'); setShowEmailLogin(true); setAuthError(''); }}
+              >
+                Entrar
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="flex-1 h-12 rounded-2xl text-base font-bold bg-white/10 border-primary/25 text-white hover:bg-white/15"
+                onClick={() => { setEmailMode('register'); setShowEmailLogin(true); setAuthError(''); }}
+              >
+                Criar Conta
+              </Button>
             </div>
 
             {/* Auth Buttons */}
@@ -1225,8 +1278,12 @@ export default function App() {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   <div className="flex gap-2">
-                    <Button className="flex-1 rounded-xl shadow-md font-bold text-primary-foreground" onClick={() => handleEmailAuth(false)}>Entrar</Button>
-                    <Button variant="secondary" className="flex-1 rounded-xl shadow-md font-bold" onClick={() => handleEmailAuth(true)}>Criar Conta</Button>
+                    <Button className="flex-1 rounded-xl shadow-md font-bold text-primary-foreground" onClick={() => handleEmailAuth(emailMode === 'register')}>
+                      {emailMode === 'register' ? 'Criar Conta' : 'Entrar'}
+                    </Button>
+                    <Button variant="secondary" className="flex-1 rounded-xl shadow-md font-bold" onClick={() => setEmailMode(emailMode === 'register' ? 'login' : 'register')}>
+                      {emailMode === 'register' ? 'Já tenho conta' : 'Criar Conta'}
+                    </Button>
                   </div>
                   <Button variant="ghost" size="sm" className="w-full text-slate-300" onClick={() => setShowEmailLogin(false)}>Voltar</Button>
                 </div>
@@ -1260,6 +1317,20 @@ export default function App() {
                 🧑‍💻 Modo Convidado (explorar sem login)
               </Button>
             </div>
+
+            {/* Baixar Aplicativo */}
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleInstallClick}
+              className="w-full text-sm h-12 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform bg-white/10 border-primary/25 text-white font-semibold hover:bg-white/15"
+            >
+              <Download className="mr-2 h-5 w-5 text-amber-300" />
+              Baixar Aplicativo
+            </Button>
+            {installFeedback && (
+              <p className="text-[11px] text-amber-200/90 text-center -mt-1">{installFeedback}</p>
+            )}
 
             {/* Custom Domain Option */}
             <div className="pt-3 border-t border-white/15 text-center">
