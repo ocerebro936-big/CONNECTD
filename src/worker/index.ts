@@ -17,6 +17,7 @@ interface Env {
   CALLS_APP_SECRET: string;
   ALLOWED_ORIGINS: string;
   AI: any;
+  ANALYTICS: any;
 }
 
 let jwksCache: { keys: any[]; fetchedAt: number } | null = null;
@@ -113,6 +114,33 @@ function decodeFirestoreFields(fields: any): any {
 
 function callsEnabled(env: Env): boolean {
   return Boolean(env.CALLS_APP_ID && env.CALLS_APP_SECRET);
+}
+
+function trackAnalytics(
+  env: Env,
+  request: Request,
+  route: string,
+  status: number,
+  durationMs: number
+): void {
+  if (!env.ANALYTICS) return;
+  try {
+    const cf = (request as any).cf || {};
+    env.ANALYTICS.writeDataPoint({
+      blobs: [
+        request.method,
+        route,
+        String(status),
+        cf.countryCode || 'unknown',
+        cf.colo || 'unknown',
+        (request.headers.get('User-Agent') || '').slice(0, 200),
+      ],
+      doubles: [durationMs],
+      indexes: [new Date()],
+    });
+  } catch {
+    // a telemetria nunca pode quebrar o pedido
+  }
 }
 
 async function getCallDoc(env: Env, idToken: string, callId: string): Promise<any | null> {
@@ -222,25 +250,33 @@ export default {
     }
 
     const notFound = () => json({ error: 'not_found' }, 404, cors);
+    const startedAt = Date.now();
     let response: Response;
+    let route = 'other';
 
     try {
       if (url.pathname === '/api/health' && request.method === 'GET') {
+        route = 'health';
         response = json({ ok: true, service: 'connected-api' }, 200, cors);
       } else if (url.pathname.startsWith(CLOUD_PREFIX + '/') && ['GET', 'POST', 'PUT'].includes(request.method)) {
+        route = 'calls';
         const authHeader = request.headers.get('Authorization') || '';
         const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
         const verified = idToken ? await verifyFirebaseToken(idToken, env.FIREBASE_PROJECT_ID) : null;
         if (!verified) response = json({ error: 'unauthorized' }, 401, cors);
         else response = await handleCloudProxy(env, request, idToken, verified);
       } else if (url.pathname === '/api/divino' && request.method === 'POST') {
+        route = 'divino';
         response = await handleDivino(env, request);
       } else {
         response = notFound();
       }
     } catch {
+      route = 'error';
       response = json({ error: 'internal' }, 500, cors);
     }
+
+    trackAnalytics(env, request, route, response.status, Date.now() - startedAt);
 
     const withCors = new Response(response.body, response);
     for (const [k, v] of Object.entries(cors)) withCors.headers.set(k, v);

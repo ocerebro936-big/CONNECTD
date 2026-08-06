@@ -20,6 +20,7 @@ jobs:
       - run: npm run build
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VITE_BASE: /CONNECTD/
       - name: Configure Pages (branch gh-pages)
         run: |
           curl -sS -X PUT \

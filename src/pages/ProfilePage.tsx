@@ -58,7 +58,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
   }, [user]);
 
   const handleShareProfile = () => {
-    const url = `https://ocerebro936-big.github.io/CONNECTD/?tab=profile&user=${user.uid}`;
+    const url = `https://www.connected.org-github.io/?tab=profile&user=${user.uid}`;
     if (navigator.share) {
       navigator.share({ title: `${profileData.displayName || 'Utilizador'} na Connected`, url }).catch(() => {});
     } else {

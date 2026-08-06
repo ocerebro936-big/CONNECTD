@@ -73,6 +73,7 @@ import { UserProfileModal } from './components/UserProfileModal';
 import { ConnectedLogo } from './components/ConnectedLogo';
 import { DayNightAmbience } from './components/DayNightAmbience';
 import { playSound } from './lib/sound-engine';
+import { DOMAINS } from './lib/domain-config';
 
 const FeedPage = lazy(() => import('./pages/FeedPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -116,6 +117,7 @@ export default function App() {
   const [incomingCall, setIncomingCall] = useState<any>(null);
   const [incomingCallAccepted, setIncomingCallAccepted] = useState(false);
   const lastNotifIdRef = useRef<string>('');
+  const APP_BASE = DOMAINS.OFFICIAL_URL.replace(/\/+$/, '');
 
   const handleIncomingCall = useCallback((call: any) => {
     setIncomingCall(call);
@@ -907,7 +909,7 @@ export default function App() {
   };
 
   const handleSharePost = async (post: any) => {
-    const url = `https://ocerebro936-big.github.io/CONNECTD/?post=${post.id}`;
+    const url = `${APP_BASE}/?post=${post.id}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: post.content?.slice(0, 80), text: `Publicação de ${post.authorName} na Connected`, url });
@@ -1887,14 +1889,14 @@ export default function App() {
                 <div className="flex gap-2">
                   <input
                     readOnly
-                    value="https://ocerebro936-big.github.io/CONNECTD/"
+                    value={DOMAINS.OFFICIAL_URL}
                     className="flex-1 bg-white/80 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 font-semibold selection:bg-primary/20"
                   />
                   <Button
                     size="sm"
                     className="rounded-xl text-xs font-bold shrink-0"
                     onClick={() => {
-                      navigator.clipboard.writeText("https://ocerebro936-big.github.io/CONNECTD/");
+                      navigator.clipboard.writeText(DOMAINS.OFFICIAL_URL);
                       setCopiedLinkText('Link copiado com sucesso!');
                       setTimeout(() => setCopiedLinkText(null), 3000);
                     }}
@@ -1912,7 +1914,7 @@ export default function App() {
                 <div className="flex gap-2">
                   <input
                     readOnly
-                    value="https://ocerebro936-big.github.io/CONNECTD/"
+                    value={DOMAINS.OFFICIAL_URL}
                     className="flex-1 bg-white/80 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 font-semibold selection:bg-primary/20"
                   />
                   <Button
@@ -1920,7 +1922,7 @@ export default function App() {
                     size="sm"
                     className="rounded-xl text-xs font-bold shrink-0 border-slate-300 bg-white/90"
                     onClick={() => {
-                      navigator.clipboard.writeText("https://ocerebro936-big.github.io/CONNECTD/");
+                      navigator.clipboard.writeText(DOMAINS.OFFICIAL_URL);
                       setCopiedLinkText('Link curto copiado!');
                       setTimeout(() => setCopiedLinkText(null), 3000);
                     }}
@@ -1943,7 +1945,7 @@ export default function App() {
                     <button
                       key={tab}
                       onClick={() => {
-                        navigator.clipboard.writeText(`https://ocerebro936-big.github.io/CONNECTD/?tab=${tab}`);
+                        navigator.clipboard.writeText(`${APP_BASE}/?tab=${tab}`);
                         setCopiedLinkText(`Link de ${label.replace(/^.{2}/, '')} copiado!`);
                         setTimeout(() => setCopiedLinkText(null), 3000);
                       }}
@@ -2008,7 +2010,7 @@ export default function App() {
                 variant="ghost"
                 className="w-full justify-start rounded-xl text-slate-800 hover:bg-white/60 font-semibold text-sm"
                 onClick={() => {
-                  navigator.clipboard.writeText(`https://ocerebro936-big.github.io/CONNECTD/?post=${moreMenuPost.id}`);
+                  navigator.clipboard.writeText(`${APP_BASE}/?post=${moreMenuPost.id}`);
                   setCopiedLinkText('Link da publicação copiado!');
                   setTimeout(() => setCopiedLinkText(null), 3000);
                   setMoreMenuPost(null);

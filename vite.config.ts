@@ -5,17 +5,18 @@ import {defineConfig} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
+  const base = process.env.VITE_BASE || '/';
   return {
-    base: '/CONNECTD/',
+    base,
     plugins: [
       react(), 
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        scope: '/CONNECTD/',
+        scope: base,
         includeAssets: ['icons/apple-touch-icon.png', 'icons/maskable-512.png', 'logo.svg'],
         manifest: {
-          id: '/CONNECTD/',
+          id: base,
           name: 'Connected — Rede Social & Ecossistema Digital',
           short_name: 'Connected',
           description: 'O teu centro de controlo do mundo digital. Rede social, Connect TV, Games, Marketplace, Faculdade e DIVINO IA.',
@@ -23,44 +24,44 @@ export default defineConfig(() => {
           background_color: '#12100c',
           display: 'standalone',
           orientation: 'portrait',
-          start_url: '/CONNECTD/',
+          start_url: base,
           lang: 'pt',
           categories: ['social', 'entertainment', 'education', 'shopping'],
           shortcuts: [
             {
               name: 'Feed Social',
               short_name: 'Feed',
-              url: '/CONNECTD/?tab=feed',
-              icons: [{ src: '/CONNECTD/icons/icon-192.png', sizes: '192x192' }],
+              url: `${base}?tab=feed`,
+              icons: [{ src: `${base}icons/icon-192.png`, sizes: '192x192' }],
             },
             {
               name: 'Connect TV',
               short_name: 'TV',
-              url: '/CONNECTD/?tab=connect-tv',
-              icons: [{ src: '/CONNECTD/icons/icon-192.png', sizes: '192x192' }],
+              url: `${base}?tab=connect-tv`,
+              icons: [{ src: `${base}icons/icon-192.png`, sizes: '192x192' }],
             },
             {
               name: 'Games Online',
               short_name: 'Games',
-              url: '/CONNECTD/?tab=games',
-              icons: [{ src: '/CONNECTD/icons/icon-192.png', sizes: '192x192' }],
+              url: `${base}?tab=games`,
+              icons: [{ src: `${base}icons/icon-192.png`, sizes: '192x192' }],
             },
           ],
           icons: [
             {
-              src: '/CONNECTD/icons/icon-192.png',
+              src: `${base}icons/icon-192.png`,
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/CONNECTD/icons/icon-512.png',
+              src: `${base}icons/icon-512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/CONNECTD/icons/maskable-512.png',
+              src: `${base}icons/maskable-512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',
@@ -69,8 +70,8 @@ export default defineConfig(() => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest}'],
-          navigateFallback: '/CONNECTD/index.html',
-          navigateFallbackAllowlist: [/^\/CONNECTD\//],
+          navigateFallback: `${base}index.html`,
+          navigateFallbackAllowlist: base === '/' ? [/.*/] : [new RegExp(`^${base}`)],
           runtimeCaching: [
             {
               urlPattern: ({ url }) => url.origin === 'https://images.unsplash.com',

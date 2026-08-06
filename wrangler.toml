@@ -11,7 +11,11 @@ FIREBASE_DATABASE_ID = "ai-studio-12e32cf3-fb55-47b1-a2e3-74c92b9956df"
 # CALLS_APP_ACCOUNT = conta (não é usada pelo proxy; documentação)
 CALLS_APP_ID = "9ae43c925495b7487ad50e9296a00b2b"
 CALLS_APP_ACCOUNT = "7490b05569ecd32f7bbd33cfdae38870"
-ALLOWED_ORIGINS = "https://ocerebro936-big.github.io,http://localhost:3000,http://localhost:4173,http://localhost:5173"
+ALLOWED_ORIGINS = "https://ocerebro936-big.github.io,https://www.connected.org-github.io,http://localhost:3000,http://localhost:4173,http://localhost:5173"
 
 [ai]
 binding = "AI"
+
+# Analytics Engine — painel de monitorização (Connected Analytics)
+# Dataset "connected_analytics" criado em: Cloudflare Dashboard > Analytics Engine
+analytics_engine_datasets = [{ binding = "ANALYTICS", dataset = "connected_analytics" }]
