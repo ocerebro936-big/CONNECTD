@@ -18,7 +18,6 @@ import { storage } from './firebase';
 import { db } from './firebase';
 import { handleFirestoreError, OperationType } from './lib/firebase-errors';
 import { 
-  Activity,
   Bell, 
   Search,
   UserCircle,
@@ -57,7 +56,8 @@ import {
   Gamepad2,
   Globe,
   PhoneOff,
-  Building2
+  Building2,
+  Github
 } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from './components/ui/card';
@@ -69,6 +69,8 @@ import { UpdateNotifier } from './components/UpdateNotifier';
 import { CallModal, IncomingCallListener } from './components/CallModal';
 import { ChatModal } from './components/ChatModal';
 import { UserProfileModal } from './components/UserProfileModal';
+import { ConnectedLogo } from './components/ConnectedLogo';
+import { DayNightAmbience } from './components/DayNightAmbience';
 import { playSound } from './lib/sound-engine';
 
 const FeedPage = lazy(() => import('./pages/FeedPage'));
@@ -86,7 +88,7 @@ const CompaniesPage = lazy(() => import('./pages/CompaniesPage'));
 function PageLoader() {
   return (
     <div className="flex items-center justify-center py-20">
-      <Activity className="h-8 w-8 text-primary animate-pulse" />
+      <ConnectedLogo className="h-8 w-8 animate-pulse" />
     </div>
   );
 }
@@ -1111,8 +1113,8 @@ export default function App() {
 
   if (!isAuthReady) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-900">
-        <Activity className="h-10 w-10 text-primary animate-pulse" />
+      <div className="flex h-screen w-full items-center justify-center bg-[#12100c]">
+        <ConnectedLogo className="h-16 w-16 animate-pulse" />
       </div>
     );
   }
@@ -1121,23 +1123,22 @@ export default function App() {
     return (
       <>
         <BackgroundSlider />
-        <div className="flex h-screen w-full items-center justify-center">
-          <div className="glass-card p-8 rounded-2xl max-w-md w-full mx-4 border border-white/20 shadow-lg space-y-6">
+        <DayNightAmbience />
+        <div className="flex h-screen w-full items-center justify-center p-4">
+          <div className="glass-dark p-8 rounded-2xl max-w-md w-full shadow-2xl space-y-6">
             {/* Branding */}
             <div className="text-center space-y-3">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md mx-auto">
-                <Activity className="h-8 w-8" />
-              </div>
+              <ConnectedLogo className="h-20 w-20 mx-auto" />
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Connected</h1>
-                <p className="text-slate-700 font-medium text-base">O teu centro de controlo do mundo digital.</p>
+                <h1 className="text-3xl font-bold tracking-tight gold-text-gradient">Connected</h1>
+                <p className="text-amber-100/85 font-medium text-base">O teu centro de controlo do mundo digital.</p>
               </div>
             </div>
 
             {/* Domain Info */}
             <div className="text-center space-y-1.5">
-              <p className="text-[10px] text-slate-500 font-mono bg-white/50 border border-white/40 rounded-full px-3 py-1.5 inline-block">
-                🔗 <span className="text-emerald-600 font-bold">https://ocerebro936-big.github.io/CONNECTD/</span>
+              <p className="text-[10px] text-amber-200/90 font-mono bg-white/10 border border-primary/30 rounded-full px-3 py-1.5 inline-block">
+                🔗 <span className="text-emerald-400 font-bold">https://ocerebro936-big.github.io/CONNECTD/</span>
               </p>
               <p className="text-[10px] text-slate-400">Acesso rápido e seguro em qualquer lugar</p>
             </div>
@@ -1145,7 +1146,7 @@ export default function App() {
             {/* Auth Buttons */}
             <div className="w-full space-y-3 pt-2">
               {authError && (
-                <div className="bg-rose-500/10 border border-rose-500/50 text-rose-600 text-sm p-3 rounded-xl flex items-start gap-2 text-left">
+                <div className="bg-rose-500/10 border border-rose-500/50 text-rose-400 text-sm p-3 rounded-xl flex items-start gap-2 text-left">
                   <AlertCircle className="h-5 w-5 shrink-0" />
                   <p className="font-medium">{authError}</p>
                 </div>
@@ -1154,7 +1155,7 @@ export default function App() {
                 variant="outline"
                 size="lg"
                 disabled={isLoggingIn}
-                className="w-full text-sm h-12 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform bg-white/80 border-white/40 text-slate-900 font-semibold disabled:opacity-60 disabled:hover:scale-100"
+                className="w-full text-sm h-12 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform bg-white/10 border-primary/25 text-white font-semibold hover:bg-white/15 disabled:opacity-60 disabled:hover:scale-100"
                 onClick={() => handleLogin('google')}
               >
                 <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
@@ -1170,7 +1171,7 @@ export default function App() {
                 variant="outline"
                 size="lg"
                 disabled={isLoggingIn}
-                className="w-full text-sm h-12 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform bg-white/80 border-white/40 text-slate-900 font-semibold disabled:opacity-60 disabled:hover:scale-100"
+                className="w-full text-sm h-12 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform bg-white/10 border-primary/25 text-white font-semibold hover:bg-white/15 disabled:opacity-60 disabled:hover:scale-100"
                 onClick={() => handleLogin('microsoft')}
               >
                 <svg className="mr-2 h-5 w-5" viewBox="0 0 21 21">
@@ -1182,7 +1183,7 @@ export default function App() {
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full text-sm h-12 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform bg-white/80 border-white/40 text-slate-900 font-semibold disabled:opacity-60 disabled:hover:scale-100"
+                className="w-full text-sm h-12 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform bg-white/10 border-primary/25 text-white font-semibold hover:bg-white/15 disabled:opacity-60 disabled:hover:scale-100"
                 onClick={() => handleLogin('yahoo')}
                 disabled={isLoggingIn}
               >
@@ -1194,17 +1195,17 @@ export default function App() {
 
               <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-slate-300/50" />
+                  <span className="w-full border-t border-white/20" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-transparent px-2 text-slate-600 font-bold">Ou</span>
+                  <span className="bg-transparent px-2 text-slate-300 font-bold">Ou</span>
                 </div>
               </div>
 
               {showEmailLogin ? (
                 <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
                   {authError && (
-                    <div className="bg-rose-500/10 border border-rose-500/50 text-rose-600 text-sm p-3 rounded-xl flex items-start gap-2 text-left">
+                    <div className="bg-rose-500/10 border border-rose-500/50 text-rose-400 text-sm p-3 rounded-xl flex items-start gap-2 text-left">
                       <AlertCircle className="h-5 w-5 shrink-0" />
                       <p className="font-medium">{authError}</p>
                     </div>
@@ -1212,48 +1213,48 @@ export default function App() {
                   <input
                     type="email"
                     placeholder="Seu email"
-                    className="w-full glass-input rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 text-slate-900 font-medium placeholder:text-slate-500 shadow-sm"
+                    className="w-full glass-input-dark rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/60 text-white font-medium placeholder:text-slate-400 shadow-sm"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                   <input
                     type="password"
                     placeholder="Sua senha"
-                    className="w-full glass-input rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 text-slate-900 font-medium placeholder:text-slate-500 shadow-sm"
+                    className="w-full glass-input-dark rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/60 text-white font-medium placeholder:text-slate-400 shadow-sm"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   <div className="flex gap-2">
-                    <Button className="flex-1 rounded-xl shadow-md font-bold" onClick={() => handleEmailAuth(false)}>Entrar</Button>
+                    <Button className="flex-1 rounded-xl shadow-md font-bold text-primary-foreground" onClick={() => handleEmailAuth(false)}>Entrar</Button>
                     <Button variant="secondary" className="flex-1 rounded-xl shadow-md font-bold" onClick={() => handleEmailAuth(true)}>Criar Conta</Button>
                   </div>
-                  <Button variant="ghost" size="sm" className="w-full text-slate-700" onClick={() => setShowEmailLogin(false)}>Voltar</Button>
+                  <Button variant="ghost" size="sm" className="w-full text-slate-300" onClick={() => setShowEmailLogin(false)}>Voltar</Button>
                 </div>
               ) : (
                 <Button
                   variant="outline"
                   size="lg"
-                  className="w-full text-sm h-11 rounded-xl shadow-sm hover:scale-[1.02] transition-transform bg-white/80 border-white/40 text-slate-900 font-semibold"
+                  className="w-full text-sm h-11 rounded-xl shadow-sm hover:scale-[1.02] transition-transform bg-white/10 border-primary/25 text-white font-semibold hover:bg-white/15"
                   onClick={() => setShowEmailLogin(true)}
                 >
-                  <Mail className="mr-2 h-5 w-5 text-slate-700" />
+                  <Mail className="mr-2 h-5 w-5 text-slate-300" />
                   Continuar com Email
                 </Button>
               )}
 
               <div className="relative py-1">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-slate-200/50" />
+                  <span className="w-full border-t border-white/15" />
                 </div>
                 <div className="relative flex justify-center text-[10px]">
-                  <span className="bg-transparent px-2 text-slate-400 font-medium">OU EXPLORA SEM CONTA</span>
+                  <span className="bg-transparent px-2 text-slate-300 font-medium">OU EXPLORA SEM CONTA</span>
                 </div>
               </div>
 
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full text-xs h-9 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-white/40 font-medium border border-dashed border-slate-200/50"
+                className="w-full text-xs h-9 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 font-medium border border-dashed border-primary/30"
                 onClick={handleGuestLogin}
               >
                 🧑‍💻 Modo Convidado (explorar sem login)
@@ -1261,15 +1262,15 @@ export default function App() {
             </div>
 
             {/* Custom Domain Option */}
-            <div className="pt-3 border-t border-slate-200/40 text-center">
-              <p className="text-[10px] font-bold text-amber-600">🛠️ Usar Domínio Próprio</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">
+            <div className="pt-3 border-t border-white/15 text-center">
+              <p className="text-[10px] font-bold text-amber-400">🛠️ Usar Domínio Próprio</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
                 Podes apontar o teu CNAME para a Connected e usar o teu próprio domínio.
               </p>
             </div>
 
             {/* Legal */}
-            <p className="text-xs text-slate-700 font-medium text-center">
+            <p className="text-xs text-slate-300 font-medium text-center">
               Ao continuar, concordas com os nossos Termos de Serviço.
             </p>
           </div>
@@ -1281,6 +1282,7 @@ export default function App() {
   return (
     <>
       <BackgroundSlider />
+      <DayNightAmbience />
       <UpdateNotifier />
       <InstallPrompt />
       {isAuthenticated && (
@@ -1297,15 +1299,13 @@ export default function App() {
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 flex-col glass border-r-0 transform transition-transform duration-300 ease-in-out sm:relative sm:translate-x-0 sm:flex shadow-xl border-white/20 ${isMobileMenuOpen ? 'translate-x-0 flex' : '-translate-x-full hidden'}`}>
-        <div className="flex h-16 items-center justify-between px-6 border-b border-white/20">
-          <div className="flex items-center gap-3 font-bold text-slate-900">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg">
-              <Activity className="h-5 w-5" />
-            </div>
-            <span className="text-2xl tracking-tight">Connected</span>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 flex-col glass-dark border-r-0 transform transition-transform duration-300 ease-in-out sm:relative sm:translate-x-0 sm:flex shadow-xl ${isMobileMenuOpen ? 'translate-x-0 flex' : '-translate-x-full hidden'}`}>
+        <div className="flex h-16 items-center justify-between px-6 border-b border-primary/15">
+          <div className="flex items-center gap-3 font-bold text-white">
+            <ConnectedLogo className="h-9 w-9" />
+            <span className="text-2xl tracking-tight gold-text-gradient font-bold">Connected</span>
           </div>
-          <button className="sm:hidden text-slate-700" onClick={() => setIsMobileMenuOpen(false)}>
+          <button className="sm:hidden text-slate-300" onClick={() => setIsMobileMenuOpen(false)}>
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -1313,77 +1313,77 @@ export default function App() {
           <nav className="grid items-start px-4 text-sm font-medium gap-2">
             <button 
               onClick={() => handleTabSelect('feed')}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'feed' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'feed' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <Home className="h-5 w-5" />
               Feed Principal
             </button>
             <button 
               onClick={() => handleTabSelect('profile')}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'profile' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'profile' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <UserCircle className="h-5 w-5" />
               Meu Perfil
             </button>
             <button 
               onClick={() => handleTabSelect('overview')}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'overview' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'overview' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <LayoutDashboard className="h-5 w-5" />
               Dashboard
             </button>
             <button 
               onClick={() => handleTabSelect('connections')}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'connections' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'connections' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <LinkIcon className="h-5 w-5" />
               Integrações
             </button>
             <button 
               onClick={() => handleTabSelect('ai')}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'ai' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'ai' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <Sparkles className="h-5 w-5" />
               IA Insights
             </button>
             <button 
               onClick={() => handleTabSelect('network')}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'network' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'network' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <Users className="h-5 w-5" />
               Networking
             </button>
             <button 
               onClick={() => handleTabSelect('gallery')}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'gallery' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'gallery' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <Store className="h-5 w-5" />
               Galeria (Loja)
             </button>
             <button 
               onClick={() => handleTabSelect('connect-tv')}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'connect-tv' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'connect-tv' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <Tv className="h-5 w-5" />
               Connect TV
             </button>
             <button 
               onClick={() => handleTabSelect('games')}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'games' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'games' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <Gamepad2 className="h-5 w-5" />
               Games Online
             </button>
             <button 
               onClick={() => handleTabSelect('empresas')}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'empresas' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'empresas' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <Building2 className="h-5 w-5" />
               Empresas
             </button>
             <button 
               onClick={() => handleTabSelect('settings')}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'settings' ? 'bg-white/60 text-primary shadow-sm' : 'text-slate-700 hover:bg-white/40 hover:text-slate-900'}`}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'settings' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <Settings className="h-5 w-5" />
               Definições
@@ -1391,16 +1391,16 @@ export default function App() {
           </nav>
         </div>
         <div className="mt-auto p-4">
-          <Card className="glass-card border-white/40 shadow-lg">
+          <Card className="glass-dark border-primary/20">
             <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm text-slate-900">
+              <CardTitle className="text-sm text-white">
                 {(() => {
                   const pts = profileData.points || 0;
                   const level = pts >= 5000 ? 'Platina' : pts >= 1000 ? 'Ouro' : 'Prata';
                   return `Nível Criador: ${level}`;
                 })()}
               </CardTitle>
-              <CardDescription className="text-slate-700 font-medium">
+              <CardDescription className="text-amber-100/80 font-medium">
                 {(() => {
                   const pts = profileData.points || 0;
                   if (pts >= 5000) return 'Nível máximo atingido';
@@ -1409,10 +1409,10 @@ export default function App() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <Progress value={Math.min(((profileData.points || 0) / 5000) * 100, 100)} className="h-2 bg-white/50" />
+              <Progress value={Math.min(((profileData.points || 0) / 5000) * 100, 100)} className="h-2 bg-white/10" />
             </CardContent>
           </Card>
-          <button onClick={handleLogout} className="flex items-center gap-3 rounded-xl px-4 py-3 mt-2 w-full text-slate-700 hover:bg-white/40 hover:text-rose-600 transition-all font-semibold text-sm">
+          <button onClick={handleLogout} className="flex items-center gap-3 rounded-xl px-4 py-3 mt-2 w-full text-slate-300 hover:bg-white/10 hover:text-rose-400 transition-all font-semibold text-sm">
             <LogOut className="h-5 w-5" />
             Sair
           </button>
@@ -1420,7 +1420,7 @@ export default function App() {
       </aside>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 inset-x-0 z-50 sm:hidden glass border-t border-white/30 pb-[env(safe-area-inset-bottom)]">
+      <nav className="fixed bottom-0 inset-x-0 z-50 sm:hidden glass-dark border-t border-primary/15 pb-[env(safe-area-inset-bottom)]">
         <div className="grid grid-cols-5">
           {[
             { id: 'feed', label: 'Feed', icon: Home },
@@ -1434,8 +1434,8 @@ export default function App() {
               onClick={() => handleTabSelect(id)}
               className={`flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-bold transition-all ${
                 activeTab === id
-                  ? 'text-primary'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'text-primary drop-shadow-[0_0_8px_rgba(233,184,84,0.6)]'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <Icon className={`h-5 w-5 ${activeTab === id ? 'scale-110' : ''} transition-transform`} />
@@ -1450,10 +1450,10 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex flex-1 flex-col overflow-hidden relative z-0 w-full pb-14 sm:pb-0">
-        <header className="flex h-16 items-center gap-4 border-b border-white/20 glass px-4 sm:px-6 justify-between shadow-sm">
+        <header className="flex h-16 items-center gap-4 border-b border-primary/15 glass-dark px-4 sm:px-6 justify-between shadow-sm">
           <div className="flex items-center gap-2 sm:gap-4 w-full flex-1">
             <button 
-              className="sm:hidden p-2 -ml-2 text-slate-700 hover:bg-white/40 rounded-lg"
+              className="sm:hidden p-2 -ml-2 text-slate-300 hover:bg-white/10 rounded-lg"
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <Menu className="h-6 w-6" />
@@ -1463,7 +1463,7 @@ export default function App() {
               runSearch(searchQuery);
             }}>
               <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <input
                   type="search"
                   placeholder="Pesquisar pessoas, empresas, publicações..."
@@ -1473,7 +1473,7 @@ export default function App() {
                     if (!e.target.value.trim()) setSearchResults(null);
                   }}
                   onKeyDown={(e) => { if (e.key === 'Enter') runSearch(searchQuery); }}
-                  className="w-full appearance-none glass-input shadow-none h-10 rounded-xl px-4 pl-10 py-2 text-sm transition-colors placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 text-slate-900 font-medium"
+                  className="w-full appearance-none glass-input-dark shadow-none h-10 rounded-xl px-4 pl-10 py-2 text-sm transition-colors placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 text-white font-medium"
                 />
               </div>
             </form>
@@ -1552,11 +1552,11 @@ export default function App() {
               <span className="sm:hidden">Partilhar</span>
             </Button>
             <div className="relative">
-              <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl glass-input border-white/40 text-slate-700 hover:text-slate-900 shadow-sm relative" onClick={() => setShowMessagesPanel(!showMessagesPanel)}>
+              <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl glass-input-dark border-primary/20 text-slate-200 hover:text-white shadow-sm relative" onClick={() => setShowMessagesPanel(!showMessagesPanel)}>
                 <MessageCircle className="h-5 w-5" />
                 <span className="sr-only">Mensagens</span>
                 {unreadMessages > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white text-[10px] font-bold border-2 border-white shadow">
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold border-2 border-[#1a140c] shadow">
                     {unreadMessages > 9 ? '9+' : unreadMessages}
                   </span>
                 )}
@@ -1590,7 +1590,7 @@ export default function App() {
                             </div>
                             <div className="flex items-center justify-between gap-2">
                               <p className="text-[11px] text-slate-600 truncate">{c.last.content || (c.last.type === 'image' ? '📷 Foto' : c.last.type === 'video' ? '🎬 Vídeo' : '📎 Ficheiro')}</p>
-                              {c.unread > 0 && <span className="h-4 min-w-4 px-1 rounded-full bg-primary text-white text-[9px] font-bold flex items-center justify-center shrink-0">{c.unread}</span>}
+                              {c.unread > 0 && <span className="h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center shrink-0">{c.unread}</span>}
                             </div>
                           </div>
                         </button>
@@ -1602,7 +1602,7 @@ export default function App() {
               )}
             </div>
             <div className="relative">
-              <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl glass-input border-white/40 text-slate-700 hover:text-slate-900 shadow-sm relative" onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markNotificationsRead(); }}>
+              <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl glass-input-dark border-primary/20 text-slate-200 hover:text-white shadow-sm relative" onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markNotificationsRead(); }}>
                 <Bell className="h-5 w-5" />
                 <span className="sr-only">Notificações</span>
                 {notifications.some(n => !n.read) && (
@@ -1652,7 +1652,7 @@ export default function App() {
                 </div>
               )}
             </div>
-            <Avatar className="h-10 w-10 border border-white/40 shadow-sm cursor-pointer hover:scale-105 transition-transform" onClick={() => handleTabSelect('profile')}>
+            <Avatar className="h-10 w-10 border border-primary/30 shadow-sm cursor-pointer hover:scale-105 transition-transform" onClick={() => handleTabSelect('profile')}>
               <AvatarImage src={profileData.photoURL || "https://github.com/shadcn.png"} alt="@shadcn" />
               <AvatarFallback>CN</AvatarFallback>
             </Avatar>
@@ -1883,6 +1883,28 @@ export default function App() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200/60 space-y-1.5">
+                <span className="text-xs font-bold text-slate-700 block">Identidade Corporativa:</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-white/60 hover:bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 px-3 py-2 flex items-center gap-2 overflow-hidden">
+                    <Github className="h-4 w-4 text-slate-700 shrink-0" />
+                    <span className="truncate">{`github.com/enterprises/connectednetworking`}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText("https://github.com/enterprises/connectednetworking");
+                      setCopiedLinkText('Link do GitHub Enterprise copiado!');
+                      setTimeout(() => setCopiedLinkText(null), 3000);
+                    }}
+                    className="p-2 bg-white/70 hover:bg-white rounded-xl border border-slate-200 text-slate-700 hover:text-slate-900 transition-colors"
+                    title="Copiar link do GitHub Enterprise"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500">Empresa Connected — código e ecossistema em github.com/enterprises/connectednetworking</p>
               </div>
             </CardContent>
 

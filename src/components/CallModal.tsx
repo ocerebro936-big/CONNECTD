@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import 'webrtc-adapter';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -6,6 +7,9 @@ import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, X, Award, Loader2 } from
 import { collection, addDoc, query, where, onSnapshot, doc, updateDoc, getDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserLevelBadge } from './UserLevelBadge';
+import { PartyTracks, getMic, getCamera, createAudioSink } from 'partytracks/client';
+import { BehaviorSubject, Subscription } from 'rxjs';
+import { createPartyTracks } from '../lib/calls-api';
 
 export const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -25,22 +29,37 @@ interface CallModalProps {
   initialType?: 'voice' | 'video';
 }
 
+type TrackMeta = { trackName: string; sessionId: string; location: 'remote' };
+
 export function CallModal({ user, targetUser, onClose, role = 'caller', incomingCallId, initialType }: CallModalProps) {
   const [callStatus, setCallStatus] = useState<CallStatus>(role === 'callee' ? 'ringing' : 'idle');
   const [isMuted, setIsMuted] = useState(false);
   const [callType, setCallType] = useState<'voice' | 'video'>(initialType || 'video');
-  const [isVideoOn, setIsVideoOn] = useState(role === 'caller' ? (initialType || 'video') === 'video' : true);
+  const [isVideoOn, setIsVideoOn] = useState((initialType || 'video') === 'video');
   const [error, setError] = useState('');
   const [callDuration, setCallDuration] = useState(0);
   const [userPoints, setUserPoints] = useState(0);
+
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const callIdRef = useRef<string | null>(role === 'callee' ? incomingCallId || null : null);
   const addedCandidatesRef = useRef<Set<string>>(new Set());
   const endedRef = useRef(false);
+  const meetingModeRef = useRef<'cloud' | 'p2p' | null>(null);
+
+  // Cloud (PartyTracks / SFU Cloudflare)
+  const ptRef = useRef<PartyTracks | null>(null);
+  const micRef = useRef<any>(null);
+  const camRef = useRef<any>(null);
+  const subsRef = useRef<Subscription[]>([]);
+  const audioSinkRef = useRef<ReturnType<typeof createAudioSink> | null>(null);
+  const remoteAudioMetaRef = useRef(new BehaviorSubject<TrackMeta | null>(null));
+  const remoteVideoMetaRef = useRef(new BehaviorSubject<TrackMeta | null>(null));
+  const cloudStartedRef = useRef(false);
 
   useEffect(() => {
     if (user?.uid) {
@@ -56,14 +75,137 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
   };
 
+  const teardownCloud = () => {
+    cloudStartedRef.current = false;
+    subsRef.current.forEach((s) => s.unsubscribe());
+    subsRef.current = [];
+    audioSinkRef.current = null;
+    try {
+      micRef.current?.disableSource?.();
+      camRef.current?.disableSource?.();
+    } catch {
+      /* noop */
+    }
+    micRef.current = null;
+    camRef.current = null;
+    ptRef.current = null;
+    remoteAudioMetaRef.current.next(null);
+    remoteVideoMetaRef.current.next(null);
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+  };
+
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       pcRef.current?.close();
       pcRef.current = null;
       stopAllTracks();
+      teardownCloud();
     };
   }, []);
+
+  const startTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setCallDuration(0);
+    timerRef.current = setInterval(() => {
+      setCallDuration((sec) => {
+        const next = sec + 1;
+        if (next % 60 === 0 && role === 'caller') {
+          updateDoc(doc(db, 'users', user.uid), { points: increment(-10) }).catch(() => {});
+          setUserPoints((p) => Math.max(0, p - 10));
+        }
+        return next;
+      });
+    }, 1000);
+  }, [role, user]);
+
+  const handleAnswered = useCallback(async (callId: string, answer: any) => {
+    if (!pcRef.current) return;
+    setCallStatus('connected');
+    try {
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+    } catch (e) {
+      console.error('Answer error:', e);
+    }
+    startTimer();
+  }, [startTimer]);
+
+  // Cloud: cria PartyTracks, publica mic/camera e puxa as tracks do outro lado
+  const connectCloudCall = useCallback(async (withVideo: boolean, callId: string) => {
+    if (cloudStartedRef.current) return;
+    const pt = await createPartyTracks({ callId, uid: user.uid });
+    if (!pt) throw new Error('Serviço de chamadas Cloud indisponível.');
+    ptRef.current = pt;
+    meetingModeRef.current = 'cloud';
+
+    const mic = getMic({ broadcasting: true, activateSource: true });
+    micRef.current = mic;
+    const cam = getCamera({ broadcasting: withVideo, activateSource: withVideo });
+    camRef.current = cam;
+
+    const publishMeta = (kind: 'audio' | 'video', meta: any) => {
+      if (!callIdRef.current || !meta?.trackName || !meta?.sessionId) return;
+      updateDoc(doc(db, 'calls', callIdRef.current), {
+        [`cloudMeta.${user.uid}.${kind}`]: { trackName: meta.trackName, sessionId: meta.sessionId },
+      }).catch(() => {});
+    };
+
+    subsRef.current.push(
+      pt.push(mic.broadcastTrack$).subscribe((meta: any) => publishMeta('audio', meta)),
+    );
+    if (withVideo) {
+      cam.broadcastTrack$.subscribe((track: MediaStreamTrack) => {
+        if (localVideoRef.current) localVideoRef.current.srcObject = new MediaStream([track]);
+      });
+      subsRef.current.push(
+        pt.push(cam.broadcastTrack$).subscribe((meta: any) => publishMeta('video', meta)),
+      );
+    }
+
+    // Remoto: áudio/vídeo vindos do peer
+    const remoteAudio$ = pt.pull(remoteAudioMetaRef.current as any);
+    const remoteVideo$ = pt.pull(remoteVideoMetaRef.current as any);
+
+    subsRef.current.push(
+      remoteVideo$.subscribe((track: MediaStreamTrack) => {
+        if (!remoteVideoMetaRef.current.getValue()) return;
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = new MediaStream([track]);
+      }),
+    );
+
+    const sink = createAudioSink({ audioElement: audioElRef.current as HTMLAudioElement });
+    audioSinkRef.current = sink;
+    subsRef.current.push(sink.attach(remoteAudio$) as any);
+
+    cloudStartedRef.current = true;
+  }, [user]);
+
+  // Publica o cloudMeta assim que o outro lado publica tracks (áudio/vídeo remotos)
+  useEffect(() => {
+    if (!callIdRef.current) return;
+    const unsub = onSnapshot(doc(db, 'calls', callIdRef.current), (snap) => {
+      const data = snap.data();
+      if (!data) return;
+      const otherUid = user.uid === data.callerId ? data.receiverId : data.callerId;
+      const peer = data?.cloudMeta?.[otherUid];
+      if (!peer) return;
+      if (peer.audio?.trackName && peer.audio?.sessionId) {
+        remoteAudioMetaRef.current.next({
+          trackName: peer.audio.trackName,
+          sessionId: peer.audio.sessionId,
+          location: 'remote',
+        });
+      }
+      if (peer.video?.trackName && peer.video?.sessionId) {
+        remoteVideoMetaRef.current.next({
+          trackName: peer.video.trackName,
+          sessionId: peer.video.sessionId,
+          location: 'remote',
+        });
+      }
+    }, () => {});
+    return () => unsub();
+  }, [user.uid, callIdRef.current]);
 
   const applyMediaState = () => {
     if (!streamRef.current) return;
@@ -121,36 +263,19 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
     return pc;
   };
 
-  const handleAnswered = useCallback(async (callId: string, answer: any) => {
-    if (!pcRef.current) return;
-    setCallStatus('connected');
-    setCallDuration(0);
-    try {
-      await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
-    } catch (e) {
-      console.error('Answer error:', e);
-    }
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      setCallDuration((sec) => {
-        const next = sec + 1;
-        if (next % 60 === 0 && role === 'caller') {
-          updateDoc(doc(db, 'users', user.uid), { points: increment(-10) }).catch(() => {});
-          setUserPoints((p) => Math.max(0, p - 10));
-        }
-        return next;
-      });
-    }, 1000);
-  }, [role, user]);
-
-  // Caller: create call + listen
+  // Caller: listen for answer/end
   useEffect(() => {
     if (role !== 'caller' || callStatus !== 'ringing' || !callIdRef.current) return;
     const unsub = onSnapshot(doc(db, 'calls', callIdRef.current), (snap) => {
       const data = snap.data();
       if (!data) return;
-      if (data.status === 'answered' && data.answer && callStatus === 'ringing') {
-        handleAnswered(callIdRef.current as string, data.answer);
+      if (data.status === 'answered' && callStatus === 'ringing') {
+        if (meetingModeRef.current === 'cloud' && cloudStartedRef.current) {
+          setCallStatus('connected');
+          startTimer();
+        } else if (data.answer) {
+          handleAnswered(callIdRef.current as string, data.answer);
+        }
       }
       if ((data.status === 'ended' || data.status === 'declined') && callStatus !== 'ended') {
         endCall(data.status === 'declined' ? 'Chamada recusada.' : '');
@@ -172,6 +297,12 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
     return () => unsub();
   }, [role, callStatus]);
 
+  const startCloudCall = useCallback(async (withVideo: boolean, callId: string) => {
+    if (cloudStartedRef.current) return;
+    await connectCloudCall(withVideo, callId);
+    cloudStartedRef.current = true;
+  }, [connectCloudCall]);
+
   const acceptCall = async () => {
     if (!callIdRef.current || callStatus !== 'ringing' || !user) return;
     try {
@@ -181,6 +312,19 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
       if (callData.status !== 'ringing') {
         endCall('Chamada terminou.');
         return;
+      }
+      try {
+        await startCloudCall(isVideoOn, callIdRef.current);
+        await updateDoc(doc(db, 'calls', callIdRef.current), { status: 'answered' });
+        setCallStatus('connected');
+        startTimer();
+        return;
+      } catch {
+        if (callData.mode === 'cloud') {
+          setError('Falha na ligação Cloud. Tenta novamente.');
+          updateDoc(doc(db, 'calls', callIdRef.current), { status: 'declined' }).catch(() => {});
+          return;
+        }
       }
       const stream = await startLocalStream(isVideoOn);
       const pc = createPeerConnection(stream, callIdRef.current);
@@ -192,10 +336,7 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
         answer: { type: answer.type, sdp: answer.sdp },
       });
       setCallStatus('connected');
-      if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = setInterval(() => {
-        setCallDuration((sec) => sec + 1);
-      }, 1000);
+      startTimer();
     } catch (e: any) {
       setError(e.message || 'Erro ao atender.');
       updateDoc(doc(db, 'calls', callIdRef.current), { status: 'declined' }).catch(() => {});
@@ -211,7 +352,6 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
     setCallStatus('calling');
     try {
       const withVideo = callType === 'video';
-      const stream = await startLocalStream(withVideo);
       const callRef = await addDoc(collection(db, 'calls'), {
         callerId: user.uid,
         callerName: user.displayName || user.email?.split('@')[0] || 'Unknown',
@@ -223,13 +363,28 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
         durationSeconds: 0,
       });
       callIdRef.current = callRef.id;
-      const pc = createPeerConnection(stream, callRef.id);
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      await updateDoc(doc(db, 'calls', callRef.id), {
-        offer: { type: offer.type, sdp: offer.sdp },
-      });
-      setCallStatus('ringing');
+      let cloudOk = false;
+      try {
+        await startCloudCall(withVideo, callRef.id);
+        cloudOk = true;
+      } catch {
+        cloudOk = false;
+      }
+      if (cloudOk) {
+        await updateDoc(doc(db, 'calls', callRef.id), { mode: 'cloud' });
+        setCallStatus('ringing');
+      } else {
+        meetingModeRef.current = 'p2p';
+        const stream = await startLocalStream(withVideo);
+        const pc = createPeerConnection(stream, callRef.id);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await updateDoc(doc(db, 'calls', callRef.id), {
+          offer: { type: offer.type, sdp: offer.sdp },
+          mode: 'p2p',
+        });
+        setCallStatus('ringing');
+      }
       await updateDoc(doc(db, 'users', user.uid), { points: increment(-10) });
       setUserPoints((p) => Math.max(0, p - 10));
     } catch (e: any) {
@@ -251,6 +406,7 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
     if (timerRef.current) clearInterval(timerRef.current);
     pcRef.current?.close();
     stopAllTracks();
+    teardownCloud();
     setCallStatus('ended');
     if (msg) setError(msg);
     if (callIdRef.current) {
@@ -267,6 +423,7 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <Card className="w-full max-w-lg bg-slate-900 border-white/20 shadow-2xl overflow-hidden">
+        <audio ref={audioElRef} autoPlay playsInline className="hidden" />
         <CardHeader className="bg-slate-800/80 flex flex-row items-center justify-between p-4">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10 border-2 border-white/30">
@@ -359,14 +516,9 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
             )}
 
             {(callStatus === 'ringing' || callStatus === 'calling') && (
-              <>
-                {role === 'callee' && (
-                  <Button onClick={() => { if (callIdRef.current && callStatus === 'ringing') handleAnswered(callIdRef.current, null); }} className="hidden" />
-                )}
-                <Button onClick={endCall} className="rounded-full h-14 w-14 bg-rose-600 hover:bg-rose-700 shadow-lg flex items-center justify-center">
-                  <PhoneOff className="h-6 w-6" />
-                </Button>
-              </>
+              <Button onClick={endCall} className="rounded-full h-14 w-14 bg-rose-600 hover:bg-rose-700 shadow-lg flex items-center justify-center">
+                <PhoneOff className="h-6 w-6" />
+              </Button>
             )}
 
             {callStatus === 'ringing' && role === 'callee' && (
@@ -383,7 +535,17 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
             {callStatus === 'connected' && (
               <>
                 <Button
-                  onClick={() => setIsMuted(!isMuted)}
+                  onClick={() => {
+                    if (meetingModeRef.current === 'cloud') {
+                      try {
+                        if (isMuted) micRef.current?.startBroadcasting?.();
+                        else micRef.current?.stopBroadcasting?.();
+                      } catch {
+                        /* noop */
+                      }
+                    }
+                    setIsMuted(!isMuted);
+                  }}
                   variant="outline"
                   className={`rounded-full h-12 w-12 ${isMuted ? 'bg-rose-500/30 border-rose-500 text-rose-400' : 'bg-white/10 border-white/20 text-white'}`}
                 >
@@ -391,7 +553,17 @@ export function CallModal({ user, targetUser, onClose, role = 'caller', incoming
                 </Button>
                 {callType === 'video' && (
                   <Button
-                    onClick={() => setIsVideoOn(!isVideoOn)}
+                    onClick={() => {
+                      if (meetingModeRef.current === 'cloud') {
+                        try {
+                          if (isVideoOn) camRef.current?.stopBroadcasting?.();
+                          else camRef.current?.startBroadcasting?.();
+                        } catch {
+                          /* noop */
+                        }
+                      }
+                      setIsVideoOn(!isVideoOn);
+                    }}
                     variant="outline"
                     className={`rounded-full h-12 w-12 ${!isVideoOn ? 'bg-rose-500/30 border-rose-500 text-rose-400' : 'bg-white/10 border-white/20 text-white'}`}
                   >

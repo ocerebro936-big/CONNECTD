@@ -13,14 +13,14 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         scope: '/CONNECTD/',
-        includeAssets: ['icons/apple-touch-icon.png', 'icons/maskable-512.png'],
+        includeAssets: ['icons/apple-touch-icon.png', 'icons/maskable-512.png', 'logo.svg'],
         manifest: {
           id: '/CONNECTD/',
           name: 'Connected — Rede Social & Ecossistema Digital',
           short_name: 'Connected',
           description: 'O teu centro de controlo do mundo digital. Rede social, Connect TV, Games, Marketplace, Faculdade e DIVINO IA.',
-          theme_color: '#0f172a',
-          background_color: '#0f172a',
+          theme_color: '#12100c',
+          background_color: '#12100c',
           display: 'standalone',
           orientation: 'portrait',
           start_url: '/CONNECTD/',

@@ -15,6 +15,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
   const [settingsTab, setSettingsTab] = useState<'appearance' | 'sound' | 'connections' | 'payments' | 'relationships' | 'contracts'>('appearance');
   const [bgPrefs, setBgPrefs] = useState(getBackgroundPrefs());
   const [soundPrefs, setSoundPrefsState] = useState(getSoundPrefs());
+  const [merchantCopied, setMerchantCopied] = useState(false);
 
   const updateBgPrefs = (partial: Partial<ReturnType<typeof getBackgroundPrefs>>) => {
     const next = { ...bgPrefs, ...partial };
@@ -282,6 +283,43 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
                       </div>
                     ))}
                   </div>
+                  <Card className="border-primary/40 bg-gradient-to-br from-amber-50/60 to-white/40 shadow-md overflow-hidden">
+                    <CardContent className="p-5 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-primary shadow-sm text-lg">🏪</span>
+                          Merchant Identity
+                        </h4>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold border border-amber-300 bg-amber-100 text-amber-700">Público</span>
+                      </div>
+                      <p className="text-xs text-slate-600 font-medium">
+                        Este é o teu identificador público da Connected. As chaves (API keys) devem ser solicitadas e os domínios autenticados para produção.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-white/70 border border-primary/25 rounded-xl px-4 py-3">
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">Merchant ID</p>
+                          <p className="text-sm font-mono font-bold text-slate-800 break-all selection:bg-primary/20">69a169be-bc52-43fe-8314-93cad7b1e773</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-xl text-xs font-bold shrink-0 border-primary/40 text-slate-800 bg-white/80"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText('69a169be-bc52-43fe-8314-93cad7b1e773');
+                              setMerchantCopied(true);
+                              setTimeout(() => setMerchantCopied(false), 2000);
+                            } catch {}
+                          }}
+                        >
+                          {merchantCopied ? '✓ Copiado' : 'Copiar'}
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-mono">
+                        API Keys: <b>necessárias</b> · Domínios: <b>autenticação obrigatória em produção</b>
+                      </p>
+                    </CardContent>
+                  </Card>
                   <Card className="border-cyan-200/40 bg-cyan-50/40">
                     <CardContent className="p-5 flex items-start gap-3">
                       <span className="text-lg">🌐</span>

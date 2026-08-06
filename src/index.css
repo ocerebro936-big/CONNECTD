@@ -7,8 +7,8 @@
   --color-card-foreground: hsl(222.2 84% 4.9%);
   --color-popover: hsl(0 0% 100%);
   --color-popover-foreground: hsl(222.2 84% 4.9%);
-  --color-primary: hsl(221.2 83.2% 53.3%);
-  --color-primary-foreground: hsl(210 40% 98%);
+  --color-primary: hsl(42 85% 55%);
+  --color-primary-foreground: hsl(38 60% 10%);
   --color-secondary: hsl(210 40% 96.1%);
   --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
   --color-muted: hsl(210 40% 96.1%);
@@ -19,8 +19,8 @@
   --color-destructive-foreground: hsl(210 40% 98%);
   --color-border: hsl(214.3 31.8% 91.4%);
   --color-input: hsl(214.3 31.8% 91.4%);
-  --color-ring: hsl(221.2 83.2% 53.3%);
-  --radius: 0.5rem;
+  --color-ring: hsl(42 85% 55%);
+  --radius: 0.75rem;
 }
 
 @layer base {
@@ -28,7 +28,7 @@
     border-color: var(--color-border);
   }
   body {
-    background-color: var(--color-background);
+    background-color: #12100c;
     color: var(--color-foreground);
   }
 }
@@ -43,23 +43,220 @@
   animation: cloud-pan 120s ease-in-out infinite alternate;
 }
 
+/* ====== Gold Premium Glass ====== */
+
 .glass {
   background: rgba(255, 255, 255, 0.35);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(212, 175, 55, 0.25);
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.55);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.62), rgba(250, 246, 235, 0.5));
   backdrop-filter: blur(32px);
   -webkit-backdrop-filter: blur(32px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 0 24px rgba(212, 175, 55, 0.06);
 }
 
 .glass-input {
   background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(212, 175, 55, 0.35);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-dark {
+  background: linear-gradient(165deg, rgba(28, 22, 14, 0.82), rgba(13, 11, 8, 0.78));
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 0 30px rgba(212, 175, 55, 0.05);
+}
+
+.glass-input-dark {
+  background: rgba(24, 19, 13, 0.55);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.gold-text-gradient {
+  background: linear-gradient(120deg, #f7e7ad, #ecc35a 45%, #c9922f 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-gold {
+  color: #e5bc54;
+}
+
+.border-gold {
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+/* Botões primários com brilho dourado suave */
+button.bg-primary:not(:disabled):hover,
+a.bg-primary:not(:disabled):hover {
+  box-shadow: 0 0 22px rgba(233, 184, 84, 0.55), 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+/* ====== Dia / Noite automático ====== */
+
+.daynight {
+  isolation: isolate;
+}
+
+.daynight-layer {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 5s ease-in-out;
+}
+
+.daynight-layer.active {
+  opacity: 1;
+}
+
+.daynight-layer::before,
+.daynight-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 5s ease-in-out;
+}
+
+.phase-day {
+  background:
+    radial-gradient(130% 90% at 50% -12%, rgba(255, 214, 120, 0.22), transparent 55%),
+    radial-gradient(120% 80% at 50% 120%, rgba(255, 180, 90, 0.1), transparent 60%),
+    linear-gradient(180deg, rgba(30, 35, 50, 0.3), rgba(18, 16, 12, 0.45));
+}
+
+.phase-day::after {
+  background: radial-gradient(circle at 70% 16%, rgba(255, 220, 140, 0.14), transparent 14%);
+}
+
+.phase-day.active::after {
+  opacity: 1;
+}
+
+.phase-dawn {
+  background:
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 180, 120, 0.35), transparent 60%),
+    radial-gradient(120% 90% at 50% 110%, rgba(140, 90, 140, 0.18), transparent 55%),
+    linear-gradient(180deg, rgba(60, 40, 25, 0.45), rgba(15, 13, 12, 0.55));
+}
+
+.phase-dawn::before {
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 22%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 28% 12%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(2px 2px at 41% 28%, #f7e3a6 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 57% 9%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(2px 2px at 68% 24%, #e8d9a8 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 79% 12%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(2px 2px at 91% 30%, #f7e3a6 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 6% 42%, #d9e2ff 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 18% 55%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(2px 2px at 33% 45%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 48% 55%, #d9e2ff 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 62% 42%, #f7e3a6 60%, transparent 62%),
+    radial-gradient(2px 2px at 76% 52%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 88% 44%, #d9e2ff 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 95% 60%, #f9ecc7 60%, transparent 62%);
+  animation: cn-twinkle 9s ease-in-out infinite;
+}
+
+.phase-dawn::after {
+  background: radial-gradient(circle at 62% 22%, rgba(255, 190, 130, 0.2), transparent 15%);
+}
+
+.phase-dawn.active::before {
+  opacity: 0.35;
+}
+
+.phase-dawn.active::after {
+  opacity: 1;
+}
+
+.phase-dusk {
+  background:
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 160, 90, 0.38), transparent 60%),
+    radial-gradient(120% 100% at 50% 110%, rgba(90, 40, 90, 0.3), transparent 55%),
+    linear-gradient(180deg, rgba(50, 28, 35, 0.5), rgba(12, 10, 14, 0.6));
+}
+
+.phase-dusk::after {
+  background: radial-gradient(circle at 62% 20%, rgba(255, 150, 80, 0.22), transparent 16%);
+}
+
+.phase-dusk.active::after {
+  opacity: 1;
+}
+
+.phase-night {
+  background:
+    radial-gradient(130% 100% at 50% 0%, rgba(240, 200, 90, 0.13), transparent 55%),
+    linear-gradient(180deg, rgba(10, 9, 20, 0.5), rgba(8, 7, 12, 0.6));
+}
+
+.phase-night::before {
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 22%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 28% 12%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(2px 2px at 41% 28%, #f7e3a6 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 57% 9%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(2px 2px at 68% 24%, #e8d9a8 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 79% 12%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(2px 2px at 91% 30%, #f7e3a6 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 6% 42%, #d9e2ff 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 18% 55%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(2px 2px at 33% 45%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 48% 55%, #d9e2ff 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 62% 42%, #f7e3a6 60%, transparent 62%),
+    radial-gradient(2px 2px at 76% 52%, #f9ecc7 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 88% 44%, #d9e2ff 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 95% 60%, #f9ecc7 60%, transparent 62%);
+  animation: cn-twinkle 9s ease-in-out infinite;
+}
+
+.phase-night::after {
+  background:
+    radial-gradient(circle at 76% 15%, rgba(255, 238, 180, 0.17), transparent 9%),
+    radial-gradient(circle at 30% 18%, rgba(200, 220, 255, 0.1), transparent 8%);
+}
+
+.phase-night.active::before {
+  opacity: 0.9;
+}
+
+.phase-night.active::after {
+  opacity: 1;
+}
+
+.daynight-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 100% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.35) 100%);
+}
+
+@keyframes cn-twinkle {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(0.55); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .daynight-layer,
+  .daynight-layer::before,
+  .daynight-layer::after {
+    transition: none;
+  }
+  .phase-night::before,
+  .phase-dawn::before {
+    animation: none;
+  }
 }

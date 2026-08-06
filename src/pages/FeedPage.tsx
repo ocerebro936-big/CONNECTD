@@ -179,14 +179,14 @@ const FeedPage: React.FC<FeedPageProps> = ({
       <div className={feedMode === 'immersive' ? 'absolute top-16 right-2 z-40 flex gap-1 p-1 bg-black/40 backdrop-blur-xl rounded-xl border border-white/20' : 'flex justify-end pb-1'}>
         <button
           onClick={() => setFeedMode('immersive')}
-          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${feedMode === 'immersive' ? 'bg-white/90 text-slate-900 shadow' : 'text-white hover:bg-white/20'}`}
+          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${feedMode === 'immersive' ? 'bg-primary text-primary-foreground shadow' : 'text-white hover:bg-white/20'}`}
           title="Modo Imersivo (vertical)"
         >
           <Play className="h-3 w-3 inline mr-1 -rotate-90" /> Imersivo
         </button>
         <button
           onClick={() => setFeedMode('list')}
-          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${feedMode === 'list' ? 'bg-white/90 text-slate-900 shadow' : 'text-white hover:bg-white/20'}`}
+          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${feedMode === 'list' ? 'bg-primary text-primary-foreground shadow' : 'text-white hover:bg-white/20'}`}
           title="Modo Lista"
         >
           <LayoutGrid className="h-3 w-3 inline mr-1" /> Lista
@@ -556,10 +556,10 @@ function ImmersiveFeed({
               <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
             </div>
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center p-6 bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950">
+            <div className="absolute inset-0 flex items-center justify-center p-6 bg-gradient-to-br from-[#1c150d] via-[#12100c] to-[#2a1e0a]">
               <div className="w-full max-w-xl">
                 <div className="mb-4 flex items-center gap-3">
-                  <div className="rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 to-primary">
+                  <div className="rounded-full p-0.5 bg-gradient-to-tr from-amber-300 via-primary to-amber-500">
                     <Avatar className="h-11 w-11 border-2 border-white/90 shadow-lg">
                       <AvatarImage src={post.authorAvatar} />
                       <AvatarFallback className="bg-primary/10 text-primary text-sm">{post.authorName?.[0] || 'U'}</AvatarFallback>
@@ -587,7 +587,7 @@ function ImmersiveFeed({
           {hasMedia && (
             <div className="absolute bottom-0 inset-x-0 z-20 p-4 sm:p-6 pb-20 sm:pb-6 pointer-events-none">
               <div className="flex items-center gap-3">
-                <div className="rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 to-primary">
+                <div className="rounded-full p-0.5 bg-gradient-to-tr from-amber-300 via-primary to-amber-500">
                   <Avatar className="h-10 w-10 border-2 border-white/90 shadow-lg">
                     <AvatarImage src={post.authorAvatar} />
                     <AvatarFallback className="bg-primary/10 text-primary text-xs">{post.authorName?.[0] || 'U'}</AvatarFallback>
@@ -619,7 +619,7 @@ function ImmersiveFeed({
             <div className="flex flex-col items-center gap-1 pointer-events-auto">
               <button
                 onClick={() => onToggleComments(post.id)}
-                className={`p-2.5 rounded-full bg-black/30 backdrop-blur-md transition-all hover:scale-110 ${commentsOpen ? 'text-cyan-400' : 'text-white'}`}
+                className={`p-2.5 rounded-full bg-black/30 backdrop-blur-md transition-all hover:scale-110 ${commentsOpen ? 'text-primary' : 'text-white'}`}
                 aria-label="Comentários"
               >
                 <MessageSquare className="h-6 w-6" />
