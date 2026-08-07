@@ -18,6 +18,57 @@ const TV_GIFTS = [
   { emoji: '🌟', name: 'Estrela', points: 100 },
 ];
 
+interface TvLibraryItem {
+  title: string;
+  creator: string;
+  duration: string;
+  category: string;
+  url: string;
+  thumbnail: string;
+  views: number;
+  rating: number;
+  year: string;
+}
+
+const GTV = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample';
+
+const TV_LIBRARY: Record<string, TvLibraryItem[]> = {
+  '🎬 Filmes': [
+    { title: 'Big Buck Bunny', creator: 'Blender Foundation', duration: '9:56', category: '🎬 Filmes', url: `${GTV}/BigBuckBunny.mp4`, thumbnail: `${GTV}/images/BigBuckBunny.jpg`, views: 1284000, rating: 4.8, year: '2008' },
+    { title: 'Sintel', creator: 'Blender Foundation', duration: '14:48', category: '🎬 Filmes', url: `${GTV}/Sintel.mp4`, thumbnail: `${GTV}/images/Sintel.jpg`, views: 842000, rating: 4.7, year: '2010' },
+    { title: 'Tears of Steel', creator: 'Blender Foundation', duration: '12:14', category: '🎬 Filmes', url: `${GTV}/TearsOfSteel.mp4`, thumbnail: `${GTV}/images/TearsOfSteel.jpg`, views: 675000, rating: 4.6, year: '2012' },
+    { title: 'Elephants Dream', creator: 'Blender Foundation', duration: '10:53', category: '🎬 Filmes', url: `${GTV}/ElephantsDream.mp4`, thumbnail: `${GTV}/images/ElephantsDream.jpg`, views: 531000, rating: 4.5, year: '2006' },
+  ],
+  '🎵 Música': [
+    { title: 'For Bigger Fun', creator: 'Google', duration: '1:00', category: '🎵 Música', url: `${GTV}/ForBiggerFun.mp4`, thumbnail: `${GTV}/images/ForBiggerFun.jpg`, views: 921000, rating: 4.4, year: '2015' },
+    { title: 'For Bigger Joyrides', creator: 'Google', duration: '0:15', category: '🎵 Música', url: `${GTV}/ForBiggerJoyrides.mp4`, thumbnail: `${GTV}/images/ForBiggerJoyrides.jpg`, views: 388000, rating: 4.3, year: '2015' },
+    { title: 'For Bigger Blazes', creator: 'Google', duration: '0:15', category: '🎵 Música', url: `${GTV}/ForBiggerBlazes.mp4`, thumbnail: `${GTV}/images/ForBiggerBlazes.jpg`, views: 264000, rating: 4.2, year: '2015' },
+  ],
+  '📚 Educação': [
+    { title: 'For Bigger Escapes', creator: 'Google', duration: '0:15', category: '📚 Educação', url: `${GTV}/ForBiggerEscapes.mp4`, thumbnail: `${GTV}/images/ForBiggerEscapes.jpg`, views: 178000, rating: 4.1, year: '2015' },
+    { title: 'For Bigger Meltdowns', creator: 'Google', duration: '0:15', category: '📚 Educação', url: `${GTV}/ForBiggerMeltdowns.mp4`, thumbnail: `${GTV}/images/ForBiggerMeltdowns.jpg`, views: 152000, rating: 4.0, year: '2015' },
+  ],
+  '📰 Notícias': [
+    { title: 'Volkswagen GTI Review', creator: 'Motor Trend', duration: '10:20', category: '📰 Notícias', url: `${GTV}/VolkswagenGTIReview.mp4`, thumbnail: `${GTV}/images/VolkswagenGTIReview.jpg`, views: 445000, rating: 4.3, year: '2016' },
+    { title: 'What Car Can You Get For A Grand?', creator: 'Motoring', duration: '9:30', category: '📰 Notícias', url: `${GTV}/WhatCarCanYouGetForAGrand.mp4`, thumbnail: `${GTV}/images/WhatCarCanYouGetForAGrand.jpg`, views: 233000, rating: 4.2, year: '2016' },
+  ],
+  '⚽ Desporto': [
+    { title: 'We Are Going On Bullrun', creator: 'Bullrun', duration: '47:20', category: '⚽ Desporto', url: `${GTV}/WeAreGoingOnBullrun.mp4`, thumbnail: `${GTV}/images/WeAreGoingOnBullrun.jpg`, views: 198000, rating: 4.4, year: '2016' },
+  ],
+  '🎙 Podcasts': [
+    { title: 'Subaru Outback: Street & Dirt', creator: 'Car Media', duration: '9:54', category: '🎙 Podcasts', url: `${GTV}/SubaruOutbackOnStreetAndDirt.mp4`, thumbnail: `${GTV}/images/SubaruOutbackOnStreetAndDirt.jpg`, views: 167000, rating: 4.1, year: '2016' },
+  ],
+  '📽 Documentários': [
+    { title: 'The Making of Sintel', creator: 'Blender Foundation', duration: '14:48', category: '📽 Documentários', url: `${GTV}/Sintel.mp4`, thumbnail: `${GTV}/images/Sintel.jpg`, views: 412000, rating: 4.6, year: '2011' },
+    { title: 'Elephants Dream — BTS', creator: 'Blender Foundation', duration: '10:53', category: '📽 Documentários', url: `${GTV}/ElephantsDream.mp4`, thumbnail: `${GTV}/images/ElephantsDream.jpg`, views: 289000, rating: 4.5, year: '2006' },
+  ],
+  '🔴 Lives': [
+    { title: 'Connect TV Live 24/7', creator: 'Connected', duration: '24/7', category: '🔴 Lives', url: 'https://www.youtube.com/embed/videoseries?list=PLybg94GvOJ9Go26S6p9aItUq-aLItKx48&autoplay=1&mute=0&controls=1', thumbnail: 'https://picsum.photos/seed/tvlive/600/400', views: 12500, rating: 4.9, year: 'Ao vivo' },
+  ],
+};
+
+const formatViews = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : `${n}`);
+
 interface ConnectTvPageProps {
   user: any;
   profileData: any;
@@ -51,10 +102,12 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
   handleSendTvChatMessage,
   isSendingTvChat,
 }) => {
-  const [tvSubTab, setTvSubTab] = useState<'jukebox' | 'programacao' | 'classicos'>('jukebox');
+  const [tvSubTab, setTvSubTab] = useState<'jukebox' | 'biblioteca' | 'programacao' | 'classicos'>('jukebox');
   const [userPoints, setUserPoints] = useState(0);
   const [isSendingGift, setIsSendingGift] = useState(false);
   const [giftAnim, setGiftAnim] = useState<string | null>(null);
+  const [activeLibraryCat, setActiveLibraryCat] = useState<string>('🎬 Filmes');
+  const [selectedVideo, setSelectedVideo] = useState<TvLibraryItem | null>(null);
   const isModerator = profileData?.role === 'admin' || (user && user.email === 'ocerebro936@gmail.com');
 
   useEffect(() => {
@@ -126,6 +179,7 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
       <div className="flex gap-1 p-1 bg-white/50 rounded-xl border border-white/30 shadow-sm">
         {[
           { id: 'jukebox' as const, label: '🎵 Jukebox' },
+          { id: 'biblioteca' as const, label: '📚 Biblioteca' },
           { id: 'programacao' as const, label: '📋 Programação' },
           { id: 'classicos' as const, label: '🏆 Clássicos' },
         ].map((tab) => (
@@ -399,6 +453,95 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
         </div>
       </div>
     </>
+    )}
+    {tvSubTab === 'biblioteca' && (
+      <div className="space-y-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <Tv className="h-5 w-5 text-primary" /> Biblioteca Connect TV
+            </h2>
+            <p className="text-slate-600 font-medium text-sm">Escolhe uma categoria e clica para reproduzir imediatamente.</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {Object.keys(TV_LIBRARY).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveLibraryCat(cat)}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm ${
+                activeLibraryCat === cat
+                  ? 'bg-primary text-primary-foreground shadow'
+                  : 'bg-white/50 text-slate-700 border border-white/50 hover:bg-white/80'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {TV_LIBRARY[activeLibraryCat].map((v) => (
+            <Card key={v.title} className="glass-card border-white/30 shadow-lg overflow-hidden group cursor-pointer hover:shadow-2xl transition-all" onClick={() => setSelectedVideo(v)}>
+              <div className="relative h-40 w-full overflow-hidden bg-slate-900">
+                <img
+                  src={v.thumbnail}
+                  alt={v.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = `https://picsum.photos/seed/${encodeURIComponent(v.title)}/600/400`; }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-lg text-xs font-semibold">
+                  ⏱ {v.duration}
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="bg-primary/90 text-white rounded-full p-3.5 shadow-xl">
+                    <Play className="h-6 w-6" />
+                  </span>
+                </div>
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-bold text-slate-900 text-base line-clamp-1">{v.title}</h3>
+                <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{v.creator} · {v.year}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-white/60 rounded-full px-2 py-0.5">
+                    <Eye className="h-3 w-3" /> {formatViews(v.views)} visualizações
+                  </span>
+                  <span className="text-[11px] font-black text-amber-600">⭐ {v.rating.toFixed(1)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )}
+    {selectedVideo && (
+      <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in" onClick={() => setSelectedVideo(null)}>
+        <div className="w-full max-w-3xl glass-card border-white/30 overflow-hidden rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full aspect-video bg-black">
+            {selectedVideo.url.includes('youtube') ? (
+              <iframe src={selectedVideo.url} className="absolute inset-0 w-full h-full border-none" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
+            ) : (
+              <video src={selectedVideo.url} controls autoPlay className="absolute inset-0 w-full h-full" />
+            )}
+          </div>
+          <div className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="font-bold text-slate-900 text-lg line-clamp-1">{selectedVideo.title}</h3>
+              <p className="text-xs text-slate-500 font-medium">
+                {selectedVideo.creator} · {selectedVideo.category} · ⭐ {selectedVideo.rating.toFixed(1)} · {formatViews(selectedVideo.views)} visualizações
+              </p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Button variant="outline" onClick={() => handleAddToTvQueue(selectedVideo.url)} className="rounded-xl text-xs h-9">
+                <Play className="h-3.5 w-3.5 mr-1" /> Enviar para Fila
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedVideo(null)} className="rounded-xl" title="Fechar">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
     )}
     {tvSubTab === 'programacao' && (
       <div className="flex items-center justify-center py-20">
