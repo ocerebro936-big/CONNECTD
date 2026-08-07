@@ -10,9 +10,12 @@ export interface BackgroundTheme {
 export const BACKGROUND_CATEGORIES = [
   '🌌 Universo',
   '☁️ Céu',
+  '🌅 Nascer do Sol',
+  '🌇 Pôr do Sol',
+  '🌙 Noite',
   '🌿 Natureza',
-  '🌊 Água',
-  '🌃 Cidades',
+  '🌊 Oceanos',
+  '🏙 Cidades',
   '💻 Tecnologia',
   '🌍 Terra',
   '🎨 Arte Digital',
@@ -30,21 +33,36 @@ export const BACKGROUNDS: BackgroundTheme[] = [
   { id: 'sky2', category: '☁️ Céu', label: 'Pôr do Sol', url: 'https://images.unsplash.com/photo-1473496169904-658ba7c44d8a?q=80&w=1920' },
   { id: 'sky3', category: '☁️ Céu', label: 'Nascer do Sol', url: 'https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?q=80&w=1920' },
   { id: 'sky4', category: '☁️ Céu', label: 'Aurora', url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?q=80&w=1920' },
+  // 🌅 Nascer do Sol
+  { id: 'dawn1', category: '🌅 Nascer do Sol', label: 'Campos Dourados', url: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1920' },
+  { id: 'dawn2', category: '🌅 Nascer do Sol', label: 'Montanhas ao Amanhecer', url: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?q=80&w=1920' },
+  { id: 'dawn3', category: '🌅 Nascer do Sol', label: 'Mar ao Nascer', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1920' },
+  { id: 'dawn4', category: '🌅 Nascer do Sol', label: 'Névoa Dourada', url: 'https://images.unsplash.com/photo-1508504516480-44177a043aaa?q=80&w=1920' },
+  // 🌇 Pôr do Sol
+  { id: 'sunset1', category: '🌇 Pôr do Sol', label: 'Horizonte Laranja', url: 'https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=1920' },
+  { id: 'sunset2', category: '🌇 Pôr do Sol', label: 'Silhuetas', url: 'https://images.unsplash.com/photo-1519098635131-4c8c5e74e7e6?q=80&w=1920' },
+  { id: 'sunset3', category: '🌇 Pôr do Sol', label: 'Céu Roxo', url: 'https://images.unsplash.com/photo-1522165078649-823cf4dbaf46?q=80&w=1920' },
+  { id: 'sunset4', category: '🌇 Pôr do Sol', label: 'Pôr do Sol na Praia', url: 'https://images.unsplash.com/photo-1506815444479-bfdb1e96c566?q=80&w=1920' },
+  // 🌙 Noite
+  { id: 'night1', category: '🌙 Noite', label: 'Lua Cheia', url: 'https://images.unsplash.com/photo-1532693322450-2cb5c511067d?q=80&w=1920' },
+  { id: 'night2', category: '🌙 Noite', label: 'Céu Estrelado', url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1920' },
+  { id: 'night3', category: '🌙 Noite', label: 'Galáxia à Noite', url: 'https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?q=80&w=1920' },
+  { id: 'night4', category: '🌙 Noite', label: 'Noite Lunar', url: 'https://images.unsplash.com/photo-1507400492013-162706c8c05e?q=80&w=1920' },
   // 🌿 Natureza
   { id: 'nature1', category: '🌿 Natureza', label: 'Floresta', url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=1920' },
   { id: 'nature2', category: '🌿 Natureza', label: 'Oceano', url: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?q=80&w=1920' },
   { id: 'nature3', category: '🌿 Natureza', label: 'Montanhas', url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1920' },
   { id: 'nature4', category: '🌿 Natureza', label: 'Deserto', url: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?q=80&w=1920' },
-  // 🌊 Água
-  { id: 'water1', category: '🌊 Água', label: 'Cachoeira', url: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?q=80&w=1920' },
-  { id: 'water2', category: '🌊 Água', label: 'Lago', url: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1920' },
-  { id: 'water3', category: '🌊 Água', label: 'Praia', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1920' },
-  { id: 'water4', category: '🌊 Água', label: 'Mar Profundo', url: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?q=80&w=1920' },
-  // 🌃 Cidades
-  { id: 'city1', category: '🌃 Cidades', label: 'Cidade à Noite', url: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=1920' },
-  { id: 'city2', category: '🌃 Cidades', label: 'Tóquio', url: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=1920' },
-  { id: 'city3', category: '🌃 Cidades', label: 'Nova Iorque', url: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=1920' },
-  { id: 'city4', category: '🌃 Cidades', label: 'Dubai', url: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=1920' },
+  // 🌊 Oceanos
+  { id: 'ocean1', category: '🌊 Oceanos', label: 'Praia Tropical', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1920' },
+  { id: 'ocean2', category: '🌊 Oceanos', label: 'Onda', url: 'https://images.unsplash.com/photo-1439405326854-014607f694d7?q=80&w=1920' },
+  { id: 'ocean3', category: '🌊 Oceanos', label: 'Costa Aérea', url: 'https://images.unsplash.com/photo-1546182990-dffeafbe841d?q=80&w=1920' },
+  { id: 'ocean4', category: '🌊 Oceanos', label: 'Mar Profundo', url: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?q=80&w=1920' },
+  // 🏙 Cidades
+  { id: 'city1', category: '🏙 Cidades', label: 'Cidade à Noite', url: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=1920' },
+  { id: 'city2', category: '🏙 Cidades', label: 'Tóquio', url: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=1920' },
+  { id: 'city3', category: '🏙 Cidades', label: 'Nova Iorque', url: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=1920' },
+  { id: 'city4', category: '🏙 Cidades', label: 'Dubai', url: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=1920' },
   // 💻 Tecnologia
   { id: 'tech1', category: '💻 Tecnologia', label: 'Circuito', url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1920' },
   { id: 'tech2', category: '💻 Tecnologia', label: 'Data Center', url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=1920' },
