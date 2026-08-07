@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { ImageIcon, Video, Send, Home, Camera, X, Heart, MessageSquare, Share2, MoreHorizontal, Star, ChevronDown, ChevronUp, LayoutGrid, Play } from 'lucide-react';
 import PostCard from '../components/PostCard';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { compressImage } from '../lib/image-utils';
 import { storage } from '../firebase';
 import { addDoc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -100,19 +101,20 @@ const FeedPage: React.FC<FeedPageProps> = ({
     return () => clearTimeout(t);
   }, [viewingStory, stories]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'photo' | 'video' | 'story') => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, type: 'photo' | 'video' | 'story') => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
+    try {
+      const dataUrl = await compressImage(file);
       if (type === 'story') {
         setStoryPreview(dataUrl);
       } else {
-        handleMediaUpload(dataUrl, type);
+        await handleMediaUpload(dataUrl, type);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error processing file:', err);
+      alert('Erro ao processar o ficheiro.');
+    }
   };
 
   const handleMediaUpload = async (dataUrl: string, type: 'photo' | 'video') => {

@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Send, X, Image as ImageIcon, Video, FileText, Mic, MapPin, Smile, Reply, Pencil, Trash2, Check, CheckCheck, Loader2, MessageCircle } from 'lucide-react';
 import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { compressImage } from '../lib/image-utils';
 import { db, storage } from '../firebase';
 import { playSound } from '../lib/sound-engine';
 
@@ -167,20 +168,21 @@ export function ChatModal({ user, profileData, chatUser, onClose }: ChatModalPro
     if (!user) return;
     setIsUploading(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const dataUrl = ev.target?.result as string;
-        const fileName = `chat_${Date.now()}_${user.uid}`;
-        const storageRef = ref(storage, `chat/${kind}s/${fileName}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`);
-        await uploadString(storageRef, dataUrl, 'data_url');
-        const url = await getDownloadURL(storageRef);
-        await sendMessage(kind === 'document' ? file.name : '', {
-          type: kind,
-          content: url,
-          fileName: kind === 'document' ? file.name : undefined,
-        });
-      };
-      reader.readAsDataURL(file);
+      const dataUrl = kind === 'image' ? await compressImage(file) : await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      const fileName = `chat_${Date.now()}_${user.uid}`;
+      const storageRef = ref(storage, `chat/${kind}s/${fileName}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`);
+      await uploadString(storageRef, dataUrl, 'data_url');
+      const url = await getDownloadURL(storageRef);
+      await sendMessage(kind === 'document' ? file.name : '', {
+        type: kind,
+        content: url,
+        fileName: kind === 'document' ? file.name : undefined,
+      });
     } catch (e) {
       console.error('Error uploading:', e);
     } finally {

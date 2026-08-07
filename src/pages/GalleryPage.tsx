@@ -7,6 +7,7 @@ import { calculateTemperature } from '../lib/thermal-utils';
 import { formatCurrency } from '../lib/currency-utils';
 import { CheckoutModal } from '../components/CheckoutModal';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { compressImage } from '../lib/image-utils';
 import { storage } from '../firebase';
 import { addDoc, collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -68,34 +69,25 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
     const file = e.target.files?.[0];
     if (!file || !user) return;
     try {
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        try {
-          const dataUrl = ev.target?.result as string;
-          const fileName = `gallery_${Date.now()}_${user.uid}`;
-          const storageRef = ref(storage, `gallery/${fileName}`);
-          await uploadString(storageRef, dataUrl, 'data_url');
-          const url = await getDownloadURL(storageRef);
-          const type = file.type.startsWith('video') ? 'video' : 'photo';
-          await addDoc(collection(db, 'gallery_items'), {
-            userId: user.uid,
-            url,
-            imageUrl: url,
-            type,
-            title: file.name.replace(/\.[^.]+$/, ''),
-            createdAt: Date.now(),
-            likes: 0,
-          });
-          alert('Mídia publicada com sucesso!');
-        } catch (err) {
-          console.error('Error uploading media:', err);
-          alert('Erro ao publicar mídia.');
-        }
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error('Error reading file:', error);
-      alert('Erro ao ler o ficheiro.');
+      const dataUrl = await compressImage(file);
+      const fileName = `gallery_${Date.now()}_${user.uid}`;
+      const storageRef = ref(storage, `gallery/${fileName}`);
+      await uploadString(storageRef, dataUrl, 'data_url');
+      const url = await getDownloadURL(storageRef);
+      const type = file.type.startsWith('video') ? 'video' : 'photo';
+      await addDoc(collection(db, 'gallery_items'), {
+        userId: user.uid,
+        url,
+        imageUrl: url,
+        type,
+        title: file.name.replace(/\.[^.]+$/, ''),
+        createdAt: Date.now(),
+        likes: 0,
+      });
+      alert('Mídia publicada com sucesso!');
+    } catch (err) {
+      console.error('Error uploading media:', err);
+      alert('Erro ao publicar mídia.');
     }
     e.target.value = '';
   };
