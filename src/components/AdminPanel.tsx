@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { ShieldCheck, ShoppingCart, Flag, Gamepad2, CheckCircle2, XCircle, Loader2, ExternalLink } from 'lucide-react';
+import { ShieldCheck, ShoppingCart, Flag, Gamepad2, CheckCircle2, XCircle, Loader2, ExternalLink, BarChart3 } from 'lucide-react';
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, addDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase';
 import { formatCurrency } from '../lib/currency-utils';
 import { isValidStripeLink, getStripeLinks, setStripeLinks } from '../lib/payment-utils';
 import { playSound } from '../lib/sound-engine';
+import { TrafficPanel } from './TrafficPanel';
 
 interface Purchase {
   id: string;
@@ -47,7 +48,7 @@ interface GameItem {
   createdAt: number;
 }
 
-type Tab = 'purchases' | 'reports' | 'games';
+type Tab = 'purchases' | 'reports' | 'games' | 'traffic';
 
 const PROVIDER_LABELS: Record<string, string> = {
   stripe: '💳 Stripe',
@@ -277,6 +278,7 @@ export function AdminPanel({ user }: { user: any }) {
     { id: 'purchases', label: 'Compras', icon: <ShoppingCart className="h-4 w-4" />, count: purchases.length, color: 'bg-emerald-600 text-white' },
     { id: 'reports', label: 'Denúncias', icon: <Flag className="h-4 w-4" />, count: reports.length, color: 'bg-rose-600 text-white' },
     { id: 'games', label: 'Jogos', icon: <Gamepad2 className="h-4 w-4" />, count: games.length, color: 'bg-indigo-600 text-white' },
+    { id: 'traffic', label: 'Tráfego', icon: <BarChart3 className="h-4 w-4" />, count: 0, color: 'bg-violet-600 text-white' },
   ];
 
   return (
@@ -326,7 +328,7 @@ export function AdminPanel({ user }: { user: any }) {
           </div>
         )}
 
-        {tab === 'games' && (
+{tab === 'games' && (
           <div className="space-y-2">
             {games.length === 0 ? (
               <p className="text-sm text-slate-500 text-center py-6 font-medium">Sem jogos pendentes de aprovação. 🎉</p>
@@ -334,6 +336,10 @@ export function AdminPanel({ user }: { user: any }) {
               games.map(renderGameRow)
             )}
           </div>
+        )}
+
+        {tab === 'traffic' && (
+          <TrafficPanel />
         )}
       </CardContent>
     </Card>

@@ -328,6 +328,20 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!user) return;
+    const userRef = doc(db, 'users', user.uid);
+    const beat = () => updateDoc(userRef, { lastActive: serverTimestamp() }).catch(() => {});
+    beat();
+    const id = setInterval(beat, 60000);
+    const onVisible = () => { if (!document.hidden) beat(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [user]);
+
+  useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const postsData = snapshot.docs.map(doc => {
