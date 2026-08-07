@@ -8,16 +8,16 @@ import { playSound } from '../lib/sound-engine';
 
 const GAME_CATEGORIES = [
   '🎲 Todos',
-  '🧩 Puzzle',
-  '🚗 Corrida',
+  '🎯 Ação',
+  '🏎 Corridas',
   '⚽ Desporto',
-  '🏹 Ação',
-  '🧠 Estratégia',
+  '🧩 Puzzle',
   '👨‍👩‍👧 Família',
-  '🎲 Casual',
+  '🧠 Estratégia',
+  '🎲 Cartas e Tabuleiro',
   '🌍 Multiplayer',
-  '🕹️ Clássicos',
-  '🎮 Novidades',
+  '👶 Infantil',
+  '🕹 Clássicos',
 ];
 
 const SAFE_EMBED_DOMAINS = [
@@ -78,7 +78,7 @@ const GamesPage: React.FC<{ user: any; profileData: any }> = ({ user, profileDat
   const [portalForm, setPortalForm] = useState({
     title: '',
     url: '',
-    category: '🎮 Novidades',
+    category: '🎯 Ação',
     description: '',
     coverUrl: '',
     ageRating: 'Todos',

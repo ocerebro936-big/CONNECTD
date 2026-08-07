@@ -1170,7 +1170,7 @@ export default function App() {
   if (!isAuthReady) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#12100c]">
-        <ConnectedLogo className="h-16 w-16 animate-pulse" />
+        <ConnectedLogo className="h-16 w-16" breathing />
       </div>
     );
   }
@@ -1184,7 +1184,7 @@ export default function App() {
           <div className="glass-dark p-8 rounded-2xl max-w-md w-full shadow-2xl space-y-6">
             {/* Branding */}
             <div className="text-center space-y-3">
-              <ConnectedLogo className="h-20 w-20 mx-auto" />
+              <ConnectedLogo className="h-20 w-20 mx-auto" breathing />
               <div>
                 <h1 className="text-3xl font-bold tracking-tight gold-text-gradient">Connected</h1>
                 <p className="flex items-center justify-center gap-2 text-amber-200/90 font-semibold tracking-wider text-base">
