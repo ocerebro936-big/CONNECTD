@@ -30,7 +30,22 @@
 - [x] Biblioteca organizada: Música, Filmes, Educação, Notícias, Desporto, Podcasts, Documentários, Lives
 - [x] Cada vídeo: miniatura, título, criador, duração, pontuação, visualizações
 - [x] Clique → reprodução imediata
-- Estado: 🟡 jukebox/programação/clássicos existem; falta biblioteca por categorias
+- Estado: 🟢 biblioteca por categorias implementada
+
+## 🎮 Games Online
+- [x] Portal de jogos com categorias: 🎯 Ação, 🏎 Corridas, ⚽ Desporto, 🧩 Puzzle, 👨‍👩‍👧 Família, 🧠 Estratégia, 🎲 Cartas e Tabuleiro, 🌍 Multiplayer, 👶 Infantil, 🕹 Clássicos
+- [x] Cada jogo: capa, nome, categoria, classificação etária, nº jogadores, botão "Jogar Agora"
+- [x] Portal de Desenvolvedores → submissão → aprovação da moderação (painel admin)
+- Estado: 🟢 portal completo
+
+## ✨ Logótipo Animado
+- [x] Brilho dourado pulsante
+- [x] Partículas luminosas
+- [x] Circuito interno iluminado (scan animado)
+- [x] Efeito de respiração no ecrã inicial
+- [ ] Rotação lenta em 3D
+- [ ] Animação à abertura da app
+- Estado: 🟡 animações core feitas; falta rotação 3D + entrada
 
 ## 👥 Amigos e Seguidores (reais)
 - [ ] Seguir: clique → DB → contador → notificação → feed (existe: 🟢)
