@@ -6,21 +6,23 @@
 ---
 
 ## 🎨 Glassmorphism Premium
-- [ ] Transparência 75–90% em todos os painéis
-- [ ] Blur suave para legibilidade
-- [ ] Bordas com brilho dourado (identidade Connected)
-- [ ] Reflexos de vidro (gradientes subtis + highlights)
-- [ ] Sombras leves — interface "flutuante" sobre o fundo
+- [x] Transparência 75–90% em todos os painéis
+- [x] Blur suave para legibilidade
+- [x] Bordas com brilho dourado (identidade Connected)
+- [x] Reflexos de vidro (gradientes subtis + highlights)
+- [x] Sombras leves — interface "flutuante" sobre o fundo
 - Estado: 🟡 CSS base já existe (`.glass*`); falta refinar transparências/reflexos
 
 ## 🖼 Background Vivo
-- [x] Categorias: 🌌 Universo, ☁️ Céu, 🌿 Natureza, 🌊 Água, 🌃 Cidades, 💻 Tecnologia, 🌍 Terra, 🎨 Arte Digital, 🎄 Sazonal
-- [ ] Adicionar categorias: 🌅 Nascer do Sol, 🌇 Pôr do Sol, 🌙 Noite, 🌊 Oceanos
+- [x] Categorias: 🌌 Universo, ☁️ Céu, 🌅 Nascer do Sol, 🌇 Pôr do Sol, 🌙 Noite, 🌿 Natureza, 🌊 Oceanos, 🏙 Cidades, 💻 Tecnologia, 🌍 Terra, 🎨 Arte Digital, 🎄 Sazonal
+- [x] Adicionar categorias: 🌅 Nascer do Sol, 🌇 Pôr do Sol, 🌙 Noite, 🌊 Oceanos
 - [ ] Alta resolução + adaptação automática ao dispositivo
 - Estado: 🟡 `BackgroundSlider` já tem rotação/auto-rotate/preferências; faltam categorias novas
 
 ## 📤 Publicações Reais (eliminar demo)
-- [ ] Fluxo: Selecionar → Pré-visualização → Compressão → Upload Connected Cloud → Criação → Feed Global → Notificação aos seguidores
+- [x] Fluxo: Selecionar → Pré-visualização → Compressão → Upload Connected Cloud → Criação → Feed Global → Notificação aos seguidores
+- [x] Compressão inteligente de fotos (canvas: max 1920px, JPEG 82%) em fotos, stories, galeria e chat
+- [ ] Pré-visualização de fotos/vídeos antes do upload no feed
 - [ ] Tipos: fotografias, vídeos, reels, texto, PDFs, slides, áudio
 - Estado: ⚪ parcial (fotos/vídeos via Storage existem; falta pré-visualização, compressão inteligente, PDF/slides/áudio)
 
