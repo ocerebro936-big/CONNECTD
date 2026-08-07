@@ -172,3 +172,23 @@
 3. **Ligar Analytics Engine** no worker `connected-api` (já em produção)
 4. **Desenhar schema D1** para posts/mensagens (primeiro passo da Fase 2)
 5. **Definir painel de monitorização** na app (Fase 3, pode começar com dados do Analytics Engine já na Fase 1)
+
+---
+
+## 11. Recursos Oficiais & Infraestrutura Existente
+
+### Links de referência
+- **YouTube Data API v3 — Getting Started:** https://developers.google.com/youtube/v3/getting-started
+- **Firebase Console (projeto `gen-lang-client-0029245143`):** https://console.firebase.google.com/project/gen-lang-client-0029245143
+  - **Data Connect:** `us-east4` → serviço `gen-lang-client-0029245143-service`
+  - Direto (dados): `https://console.firebase.google.com/project/gen-lang-client-0029245143/dataconnect/locations/us-east4/services/gen-lang-client-0029245143-service/data`
+  - Firestore database: `ai-studio-12e32cf3-fb55-47b1-a2e3-74c92b9956df`
+
+### Cloud SQL (backend SQL do Data Connect)
+| Campo | Valor |
+|---|---|
+| Região | `us-east4` |
+| Instância | `gen-lang-client-0029245143-instance` |
+| Banco de dados | `gen-lang-client-0029245143-database` |
+
+> Nota: o Firebase Data Connect do projeto usa esta instância Cloud SQL como base. Para a Fase 2 (D1), manter Firestore como fonte de verdade enquanto o Data Connect/Cloud SQL é adotado para dados quentes (posts, mensagens, analytics) — ou usar Hyperdrive para ligar a esta instância a partir dos Workers, evitando migração inicial.

@@ -106,7 +106,7 @@ export const KNOWLEDGE_BASE: KnowledgeItem[] = [
     category: '💡 Técnica',
     title: 'Acesso e domínios',
     keywords: ['domínio', 'domínio', 'link', 'url', 'acesso', 'login'],
-    answer: 'Acede pela URL oficial https://www.connected.org-github.io/. O login aceita Google, Microsoft, Yahoo, Email e Modo Convidado. Domínios autorizados estão configurados no Firebase.',
+    answer: 'Acede pela URL oficial https://ocerebro936-big.github.io/CONNECTD/. O login aceita Google, Microsoft, Yahoo, Email e Modo Convidado. Domínios autorizados estão configurados no Firebase.',
   },
   {
     category: '💡 Técnica',

@@ -328,11 +328,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
                         <div className="mt-2 space-y-1.5">
                           <div className="flex items-center gap-2 text-xs font-mono text-slate-700 bg-white/60 rounded-lg px-3 py-2 border border-white/80">
                             <span className="text-emerald-500 font-bold">✓</span>
-                            <span>https://www.connected.org-github.io/ <span className="text-emerald-600 font-bold">— Oficial</span></span>
+                            <span>https://ocerebro936-big.github.io/CONNECTD/ <span className="text-emerald-600 font-bold">— Oficial</span></span>
                           </div>
                           <div className="flex items-center gap-2 text-xs font-mono text-slate-700 bg-white/60 rounded-lg px-3 py-2 border border-white/80">
                             <span className="text-emerald-500 font-bold">✓</span>
-                            <span>https://ocerebro936-big.github.io/CONNECTD/ <span className="text-slate-500">— Fallback</span></span>
+                            <span>https://www.connected.org-github.io/ <span className="text-slate-500">— Futuro custom domain</span></span>
                           </div>
                         </div>
                         <p className="text-xs text-slate-500 mt-2">
