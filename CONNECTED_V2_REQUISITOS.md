@@ -27,9 +27,9 @@
 - Estado: ⚪ parcial (fotos/vídeos via Storage existem; falta pré-visualização, compressão inteligente, PDF/slides/áudio)
 
 ## 📺 Connect TV
-- [ ] Biblioteca organizada: Música, Filmes, Educação, Notícias, Desporto, Podcasts, Documentários, Lives
-- [ ] Cada vídeo: miniatura, título, criador, duração, pontuação, visualizações
-- [ ] Clique → reprodução imediata
+- [x] Biblioteca organizada: Música, Filmes, Educação, Notícias, Desporto, Podcasts, Documentários, Lives
+- [x] Cada vídeo: miniatura, título, criador, duração, pontuação, visualizações
+- [x] Clique → reprodução imediata
 - Estado: 🟡 jukebox/programação/clássicos existem; falta biblioteca por categorias
 
 ## 👥 Amigos e Seguidores (reais)
