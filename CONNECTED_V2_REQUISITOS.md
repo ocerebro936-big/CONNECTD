@@ -51,10 +51,10 @@
 - Estado: 🟢 base feita, refinamento contínuo
 
 ## 📊 Validação de Tráfego (módulo de análise)
-- [ ] Utilização: utilizadores online, sessões ativas, tempo médio, crescimento diário
-- [ ] Conteúdo: publicações, vídeos, reels, fotos, comentários
-- [ ] Rede: CPU, memória, armazenamento, latência, largura de banda
-- [ ] Segurança: acessos indevidos, ataques bloqueados, auditoria
+- [x] Utilização: utilizadores online, sessões ativas, tempo médio, crescimento diário
+- [x] Conteúdo: publicações, vídeos, reels, fotos, comentários
+- [x] Rede: CPU, memória, armazenamento, latência, largura de banda
+- [x] Segurança: acessos indevidos, ataques bloqueados, auditoria
 - Estado: ⚪ (base Analytics Engine no worker; falta painel + coleta de sessões)
 
 ## ☁️ Connected Cloud
