@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { ImageIcon, Video, Send, Home, Camera, X, Heart, MessageSquare, Share2, MoreHorizontal, Star, ChevronDown, ChevronUp, LayoutGrid, Play, Radio } from 'lucide-react';
+import { ImageIcon, Video, Send, Home, Camera, X, Heart, MessageSquare, Share2, MoreHorizontal, Star, ChevronDown, ChevronUp, LayoutGrid, Play, Radio, FileText } from 'lucide-react';
 import PostCard from '../components/PostCard';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '../lib/image-utils';
@@ -146,6 +146,51 @@ const FeedPage: React.FC<FeedPageProps> = ({
     } catch (error) {
       console.error('Error uploading media:', error);
       alert('Erro ao enviar ficheiro.');
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !user) return;
+    const isAudio = file.type.startsWith('audio/');
+    const isPdf = file.type === 'application/pdf';
+    const isSlides = /pptx|powerpoint/.test(file.type) || /\.pptx?$/.test(file.name) || /\.key$/.test(file.name);
+    if (!isAudio && !isPdf && !isSlides) {
+      alert('Suportados: documentos PDF, apresentações (PPT/PPTX/KEY) e áudio (MP3, WAV, M4A, OGG).');
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      alert('Ficheiro demasiado grande (máx. 50 MB).');
+      return;
+    }
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const dataUrl = ev.target?.result as string;
+        const fileName = `doc_${Date.now()}_${user.uid}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        const storageRef = ref(storage, `documents/${fileName}`);
+        await uploadString(storageRef, dataUrl, 'data_url');
+        const url = await getDownloadURL(storageRef);
+        const mediaType = isAudio ? 'audio' : isSlides ? 'slides' : 'pdf';
+        await addDoc(collection(db, 'posts'), {
+          userId: user.uid,
+          authorName: profileData.displayName || user.email?.split('@')[0] || 'Unknown',
+          authorHandle: `@${(profileData.displayName || user.email?.split('@')[0] || 'user').toLowerCase().replace(/\s+/g, '')}`,
+          authorAvatar: profileData.photoURL || 'https://github.com/shadcn.png',
+          content: newPostContent.trim() || `📎 Partilhou ${isAudio ? 'áudio' : isSlides ? 'uma apresentação' : 'um documento'}: ${file.name}`,
+          media: { type: mediaType, url, fileName: file.name },
+          ratings: { totalScore: 0, count: 0, userRatings: {} },
+          likes: 0,
+          comments: 0,
+          createdAt: Date.now(),
+        });
+        setNewPostContent('');
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Erro ao enviar o ficheiro.');
     }
   };
 
@@ -413,6 +458,16 @@ const FeedPage: React.FC<FeedPageProps> = ({
                     accept="video/*"
                     className="hidden"
                     onChange={(e) => handleFileSelect(e, 'video')}
+                  />
+                  <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900 hover:bg-white/60 rounded-xl px-2.5 h-9" onClick={() => fileInputRef.current?.click()}>
+                    <FileText className="h-4 w-4 mr-2 text-amber-500" /> Ficheiro
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf,.ppt,.pptx,.key,audio/*"
+                    className="hidden"
+                    onChange={handleFileUpload}
                   />
                 </div>
                 <Button size="sm" className="rounded-xl px-6 font-bold shadow-md" onClick={handlePublish} disabled={isPosting || !newPostContent.trim()}>

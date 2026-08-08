@@ -90,7 +90,7 @@ const CompaniesPage = lazy(() => import('./pages/CompaniesPage'));
 function PageLoader() {
   return (
     <div className="flex items-center justify-center py-20">
-      <ConnectedLogo className="h-8 w-8 animate-pulse" />
+      <ConnectedLogo className="h-8 w-8" breathing />
     </div>
   );
 }
@@ -1170,7 +1170,7 @@ export default function App() {
   if (!isAuthReady) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#12100c]">
-        <ConnectedLogo className="h-16 w-16" breathing />
+        <ConnectedLogo className="h-16 w-16" breathing enter />
       </div>
     );
   }

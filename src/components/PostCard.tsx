@@ -2,12 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardFooter } from './ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { MessageSquare, Share2, MoreHorizontal, Send, Play, ImageIcon, Heart } from 'lucide-react';
+import { MessageSquare, Share2, MoreHorizontal, Send, Play, ImageIcon, Heart, FileText, Music } from 'lucide-react';
 import { ThermalBadge } from './ThermalBadge';
 import { StarRating } from './StarRating';
 import { calculateTemperature } from '../lib/thermal-utils';
 
-export type PostMediaType = 'photo' | 'video' | 'reel' | 'album' | 'panorama' | 'text';
+export type PostMediaType = 'photo' | 'video' | 'reel' | 'album' | 'panorama' | 'text' | 'pdf' | 'slides' | 'audio';
 
 interface PostMedia {
   type: PostMediaType;
@@ -17,6 +17,7 @@ interface PostMedia {
   height?: number;
   duration?: number;
   album?: string[];
+  fileName?: string;
 }
 
 interface PostComment {
@@ -125,6 +126,48 @@ const PostCard: React.FC<PostCardProps> = ({
   };
 
   const renderMedia = () => {
+    if (post.media?.type === 'pdf' || post.media?.type === 'slides') {
+      return (
+        <div className="mx-4 sm:mx-5 mb-2">
+          <a
+            href={post.media.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-3 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/15 to-primary/5 hover:from-primary/25 hover:to-primary/10 transition-all group"
+          >
+            <span className="h-11 w-11 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center shadow-md shrink-0">
+              <FileText className="h-5 w-5" />
+            </span>
+            <span className="flex-1 min-w-0 text-left">
+              <span className="block font-bold text-slate-900 text-sm truncate">
+                {post.media.fileName || (post.media.type === 'pdf' ? 'Documento PDF' : 'Apresentação (Slides)')}
+              </span>
+              <span className="block text-[11px] text-slate-500 font-medium">
+                {post.media.type === 'pdf' ? '📄 Documento PDF' : '🖼 Apresentação de slides'} · Abrir em nova aba
+              </span>
+            </span>
+            <span className="text-indigo-600 font-bold text-sm shrink-0 group-hover:translate-x-0.5 transition-transform">Ver ↗</span>
+          </a>
+        </div>
+      );
+    }
+
+    if (post.media?.type === 'audio') {
+      return (
+        <div className="px-4 sm:px-5 mb-2">
+          <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-300/40 bg-emerald-500/10">
+            <span className="h-11 w-11 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shrink-0">
+              <Music className="h-5 w-5" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <span className="block font-bold text-slate-900 text-sm truncate">{post.media.fileName || 'Áudio'}</span>
+              <audio src={post.media.url} controls className="w-full h-9 mt-1" preload="metadata" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (post.media?.type === 'video') {
       return (
         <div className={`relative w-full ${getMediaLayoutClass()} bg-slate-900 flex items-center justify-center group cursor-pointer`}>

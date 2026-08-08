@@ -5,6 +5,7 @@ interface ConnectedLogoProps {
   glow?: boolean;
   breathing?: boolean;
   spin3d?: boolean;
+  enter?: boolean;
 }
 
 const LOGO_CSS = `
@@ -60,9 +61,17 @@ export function ConnectedLogo({
   className = 'h-10 w-10',
   glow = true,
   breathing = false,
+  spin3d = false,
+  enter = false,
 }: ConnectedLogoProps) {
+  const rootClass = [
+    'cl-root',
+    breathing ? 'cl-breathe' : '',
+    spin3d ? 'cl-spin3d' : '',
+    enter ? 'cl-enter' : '',
+  ].filter(Boolean).join(' ');
   return (
-    <span className={`cl-root ${breathing ? 'cl-breathe' : ''}`}>
+    <span className={rootClass}>
       <style dangerouslySetInnerHTML={{ __html: LOGO_CSS }} />
       <svg
         viewBox="0 0 512 512"
