@@ -471,7 +471,54 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    match /tv_queue/{itemId} {
+    function isValidLive(data) {
+      return hasRequiredFields(['userId', 'authorName', 'title', 'status', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() < 128 &&
+             data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 100 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.status in ['live', 'ended'] &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             isValidOptionalString('description', 0, 1000) &&
+             isValidOptionalString('coverUrl', 0, 1000000) &&
+             isValidOptionalString('authorAvatar', 0, 1000000) &&
+             isValidOptionalString('mode', 0, 50) &&
+             isValidOptionalString('streamUrl', 0, 1000) &&
+             isValidOptionalString('rtmpServer', 0, 500) &&
+             isValidOptionalString('streamKey', 0, 200) &&
+             (!('viewers' in data) || data.viewers is number) &&
+             (!('endedAt' in data) || data.endedAt is number) &&
+             (!('savedToTv' in data) || data.savedToTv is bool) &&
+             (!('isRecording' in data) || data.isRecording is bool);
+    }
+
+    function isValidLiveChatMessage(data) {
+      return hasRequiredFields(['liveId', 'userId', 'authorName', 'content', 'createdAt']) &&
+             data.liveId is string && data.liveId.size() > 0 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() < 128 &&
+             data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 100 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             isValidOptionalString('authorAvatar', 0, 1000000) &&
+             isValidOptionalString('type', 0, 50) &&
+             isValidOptionalString('emoji', 0, 20);
+    }
+
+    match /lives/{liveId} {
+      allow read: if true; // Live feed público
+      allow create: if isAuthenticated() && isValidLive(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && isValidLive(request.resource.data) && (
+        resource.data.userId == request.auth.uid || isAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewers'])
+      );
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+
+      match /chat/{messageId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && isValidLiveChatMessage(request.resource.data) && request.resource.data.userId == request.auth.uid;
+        allow update: if false;
+        allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      }
+    }
       allow read: if true;
       allow create: if isAuthenticated() && isValidTvQueueItem(request.resource.data) && request.resource.data.userId == request.auth.uid;
       allow update: if isAuthenticated() && isValidTvQueueItem(request.resource.data) && (resource.data.userId == request.auth.uid || isAdmin() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));

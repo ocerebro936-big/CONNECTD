@@ -2,13 +2,15 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { ImageIcon, Video, Send, Home, Camera, X, Heart, MessageSquare, Share2, MoreHorizontal, Star, ChevronDown, ChevronUp, LayoutGrid, Play } from 'lucide-react';
+import { ImageIcon, Video, Send, Home, Camera, X, Heart, MessageSquare, Share2, MoreHorizontal, Star, ChevronDown, ChevronUp, LayoutGrid, Play, Radio } from 'lucide-react';
 import PostCard from '../components/PostCard';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '../lib/image-utils';
 import { storage } from '../firebase';
-import { addDoc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot, query, orderBy, where, updateDoc, doc, increment, limit } from 'firebase/firestore';
 import { db } from '../firebase';
+import { LiveRoom } from '../components/LiveRoom';
+import { GoLiveModal } from '../components/GoLiveModal';
 
 interface FeedPageProps {
   user: any;
@@ -68,6 +70,10 @@ const FeedPage: React.FC<FeedPageProps> = ({
       return 'immersive';
     }
   });
+  const [liveStreams, setLiveStreams] = useState<any[]>([]);
+  const [viewingLive, setViewingLive] = useState<any | null>(null);
+  const [showGoLive, setShowGoLive] = useState(false);
+  const [myActiveLive, setMyActiveLive] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -169,6 +175,32 @@ const FeedPage: React.FC<FeedPageProps> = ({
     }
   };
 
+  useEffect(() => {
+    const unsub = onSnapshot(
+      query(collection(db, 'lives'), where('status', '==', 'live'), orderBy('createdAt', 'desc'), limit(20)),
+      (snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setLiveStreams(list);
+        if (user && list.some((l: any) => l.userId === user.uid)) {
+          const mine = list.find((l: any) => l.userId === user.uid);
+          setMyActiveLive(mine?.id || null);
+        }
+      },
+      (e) => console.error(e)
+    );
+    return () => unsub();
+  }, [user]);
+
+  const endLive = async (liveId: string) => {
+    try {
+      await updateDoc(doc(db, 'lives', liveId), { status: 'ended', endedAt: Date.now() });
+      setMyActiveLive(null);
+      setViewingLive(null);
+    } catch (e) {
+      console.error('Error ending live:', e);
+    }
+  };
+
   const filteredPosts = feedSubTab === 'trending'
     ? [...posts].sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     : feedSubTab === 'following'
@@ -218,9 +250,40 @@ const FeedPage: React.FC<FeedPageProps> = ({
             ))}
           </div>
 
+          {/* Live Now */}
+          {(liveStreams.length > 0 || (user && myActiveLive)) ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-black text-rose-600 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span> Ao Vivo Agora · {liveStreams.length}
+                </p>
+                {user && (
+                  <Button size="sm" variant={myActiveLive ? 'outline' : 'default'} className={`h-7 text-[11px] rounded-lg font-bold gap-1 ${myActiveLive ? 'border-rose-300 text-rose-600' : 'bg-rose-600 hover:bg-rose-500 text-white'}`} onClick={() => setShowGoLive(true)}>
+                    <Radio className="h-3.5 w-3.5" /> {myActiveLive ? 'Na tua live' : 'Ir ao Vivo'}
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                {liveStreams.map((live) => (
+                  <div key={live.id} className="relative h-28 w-40 shrink-0 rounded-2xl overflow-hidden cursor-pointer group shadow-md border-2 border-rose-500/50" onClick={() => setViewingLive(live)}>
+                    <img src={live.coverUrl || `https://picsum.photos/seed/live${live.userId}/400/240`} alt={live.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                    <span className="absolute top-2 left-2 inline-flex items-center rounded-full bg-rose-600 text-white px-2 py-0.5 text-[9px] font-black">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white mr-1 animate-pulse"></span> AO VIVO
+                    </span>
+                    <span className="absolute top-2 right-2 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{live.viewers || 0} 👁</span>
+                    <div className="absolute bottom-2 left-2 right-2 text-left">
+                      <p className="text-white font-bold text-[11px] leading-tight line-clamp-1">{live.title}</p>
+                      <p className="text-white/70 text-[9px] font-medium">@{live.authorName?.split(' ')[0]}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {/* Stories */}
-          <div className="flex gap-4 overflow-x-auto pb-3 pt-2 px-1 scrollbar-hide">
-            <div className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group" onClick={() => setShowStoryCam(true)}>
+          <div className="flex gap-4 overflow-x-auto pb-3 pt-2 px-1 scrollbar-hide">            <div className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group" onClick={() => setShowStoryCam(true)}>
               <div className="relative">
                 <Avatar className="h-[64px] w-[64px] border-2 border-white/80 shadow-md">
                   <AvatarImage src={profileData.photoURL} />
@@ -387,6 +450,26 @@ const FeedPage: React.FC<FeedPageProps> = ({
               </div>
             )}
           </div>
+
+          {/* Live modals */}
+          {viewingLive && (
+            <LiveRoom
+              live={viewingLive}
+              user={user}
+              profileData={profileData}
+              onClose={() => setViewingLive(null)}
+              onEndLive={endLive}
+            />
+          )}
+          {showGoLive && user && (
+            <GoLiveModal
+              user={user}
+              profileData={profileData}
+              liveId={myActiveLive}
+              setLiveId={setMyActiveLive}
+              onClose={() => setShowGoLive(false)}
+            />
+          )}
         </>
       ) : (
         <ImmersiveFeed
