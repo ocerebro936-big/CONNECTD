@@ -194,8 +194,7 @@ export function ConnectedRun({ user, onOpenProfile }: { user: any; onOpenProfile
         }
       });
 
-      const ph = p.sliding ? 16 : 34;
-      const hit = st.obstacles.find((o) => o.x < 60 + 22 && o.x + o.w > 60 && GROUND - p.y < o.h + (34 - ph));
+      const hit = st.obstacles.find((o) => o.x < 60 + 22 && o.x + o.w > 60 && GROUND - p.y < o.h);
       if (hit && !hit.hit) {
         hit.hit = true;
         st.lives -= 1;
