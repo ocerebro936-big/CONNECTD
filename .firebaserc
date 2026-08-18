@@ -1,5 +1,13 @@
 {
   "projects": {
     "default": "connected-ecossistema"
+  },
+  "targets": {
+    "connected-ecossistema": {
+      "hosting": {
+        "connected-ecossistema": ["connected-ecossistema"],
+        "connectedking": ["connectedking"]
+      }
+    }
   }
 }

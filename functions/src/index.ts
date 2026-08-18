@@ -233,11 +233,14 @@ export const ccsPresign = onRequest({ cors: true }, async (req, res) => {
 
     let command: any;
     if (method === 'PUT') {
+      const isPublic = String(body.visibility || 'private') === 'public';
       command = new PutObjectCommand({
         Bucket: ccsBucket,
         Key: key,
         ContentType: body.mime || 'application/octet-stream',
         Metadata: { visibility: String(body.visibility || 'private'), ownerId: String(body.ownerId || '') },
+        // Objetos públicos da Connected Cloud ficam acessíveis via CDN sem auth.
+        ...(isPublic ? { ACL: 'public-read' } : {}),
       });
     } else if (method === 'HEAD' || method === 'GET') {
       command = method === 'HEAD'
