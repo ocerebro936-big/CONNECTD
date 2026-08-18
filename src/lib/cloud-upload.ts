@@ -25,6 +25,7 @@ import {
   type AssetVisibility,
   type ProcessingState,
 } from './connected-cloud';
+import { ccsUserKey } from './ccs';
 
 // ============================================================================
 // Connected Upload Engine
@@ -371,8 +372,16 @@ export async function publishToCloud(
   // Identificador de asset controlado (usado no caminho do Storage)
   const assetRef = doc(collection(db, 'cloudAssets'));
   const assetId = assetRef.id;
-  const storagePath = `cloud/${user.uid}/${kind}/${assetId}.${classified.ext}`;
-  const thumbnailPath = `cloud/${user.uid}/${kind}/${assetId}_thumb.jpg`;
+  // Caminho canónico CCS: users/{uid}/{photos|videos|audio|documents}/{assetId}.ext
+  const ccsFolder = (kind === 'audio'
+    ? 'audio'
+    : kind === 'video' || kind === 'reel'
+    ? 'videos'
+    : kind === 'photo'
+    ? 'photos'
+    : 'documents') as 'audio' | 'videos' | 'photos' | 'documents';
+  const storagePath = ccsUserKey(user.uid, ccsFolder, `${assetId}.${classified.ext}`);
+  const thumbnailPath = ccsUserKey(user.uid, ccsFolder, `${assetId}_thumb.jpg`);
 
   const assetInput: CreateAssetInput = {
     ownerUid: user.uid,

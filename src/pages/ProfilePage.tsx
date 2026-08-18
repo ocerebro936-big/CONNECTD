@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Camera, UserCircle, Palette, Youtube, Instagram, Facebook, MessageCircle, CheckCircle2, Award, Users, Share2, Link as LinkIcon } from 'lucide-react';
+import { Camera, UserCircle, Palette, Youtube, Instagram, Facebook, MessageCircle, CheckCircle2, Award, Users, Share2, Link as LinkIcon, Video } from 'lucide-react';
 import { CreditDisplay } from '../components/CreditDisplay';
 import { UserLevelBadge } from '../components/UserLevelBadge';
 import { CrownBadge } from '../components/CrownBadge';
+import { CcsUploader } from '../components/CcsUploader';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -35,6 +36,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
   const [photoCount, setPhotoCount] = useState(0);
   const [videoCount, setVideoCount] = useState(0);
   const [copiedProfile, setCopiedProfile] = useState(false);
+  const [gallery, setGallery] = useState<{ url: string; kind: string }[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -97,8 +99,20 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                 <AvatarImage src={profileData.photoURL || "https://github.com/shadcn.png"} alt="@shadcn" />
                 <AvatarFallback>CN</AvatarFallback>
               </Avatar>
-              <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer" onClick={() => photoInputRef.current?.click()}>
-                <Camera className="h-8 w-8 text-white" />
+              <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <CcsUploader
+                  userId={user.uid}
+                  userName={profileData.displayName || 'Utilizador'}
+                  folder="avatar"
+                  kind="avatar"
+                  accept="image/*"
+                  label=""
+                  icon={<Camera className="h-6 w-6 text-white" />}
+                  user={user}
+                  profileData={profileData}
+                  className="bg-transparent border-0 shadow-none"
+                  onUploaded={(urls) => urls[0] && setProfileData((prev: any) => ({ ...prev, photoURL: urls[0] }))}
+                />
               </div>
             </div>
             <div className="flex-1 pb-2 sm:pb-4">
@@ -281,6 +295,55 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
           <div className="mt-8 max-w-sm">
             <CreditDisplay points={profileData.points || 0} />
           </div>
+
+          <Card className="mt-6 glass-card border-white/30">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold text-slate-900">Galeria Connected Cloud</CardTitle>
+              <CardDescription className="text-slate-600">Fotos e vídeos armazenados na tua Connected Cloud (users/{user.uid}/photos e /videos).</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2 mb-4">
+                <CcsUploader
+                  userId={user.uid}
+                  userName={profileData.displayName || 'Utilizador'}
+                  folder="photos"
+                  kind="photo"
+                  accept="image/*"
+                  multiple
+                  label="Foto"
+                  icon={<Camera className="h-4 w-4" />}
+                  user={user}
+                  profileData={profileData}
+                  onUploaded={(urls) => setGallery((prev) => [...prev, ...urls.map((u) => ({ url: u, kind: 'photo' }))])}
+                />
+                <CcsUploader
+                  userId={user.uid}
+                  userName={profileData.displayName || 'Utilizador'}
+                  folder="videos"
+                  kind="video"
+                  accept="video/*"
+                  label="Vídeo"
+                  icon={<Video className="h-4 w-4" />}
+                  user={user}
+                  profileData={profileData}
+                  onUploaded={(urls) => setGallery((prev) => [...prev, ...urls.map((u) => ({ url: u, kind: 'video' }))])}
+                />
+              </div>
+              {gallery.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {gallery.map((g, i) => (
+                    <div key={i} className="rounded-lg overflow-hidden border border-white/60 bg-black/5">
+                      {g.kind === 'video' ? (
+                        <video src={g.url} className="h-24 w-full object-cover" muted playsInline />
+                      ) : (
+                        <img src={g.url} className="h-24 w-full object-cover" alt="Galeria" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

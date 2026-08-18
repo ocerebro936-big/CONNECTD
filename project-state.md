@@ -59,3 +59,10 @@ Plataforma social (React + Firebase) com backend real: Social + Connected Music 
 - quota-engine.ts: tiers alinhados ao CCS (free/plus/pro/creator/business).
 - topology.ts: CCS_TOPOLOGY (estrutura + motores + camadas + roadmap).
 - functions/src/index.ts: ccsPresign (onRequest) gera presigned URLs S3-compatible (PUT/GET/HEAD/DELETE); deps @aws-sdk/client-s3 + s3-request-presigner. Credenciais AWS via env CCS_BUCKET/AWS_REGION (ADC/Secret Manager).
+
+## Componentes de upload CCS (avatar/fotos/videos)
+- src/lib/ccs/upload.ts: uploadToCcs() — usa ccsUserKey/ccsPostKey, verifica quota (CCS-Billing), checksum (CCS-Security), regista cloudAsset. ccsFolderForKind mapeia kind->pasta.
+- src/components/CcsUploader.tsx: botao de upload reutilizavel (avatar/fotos/videos/audio/docs) com barra de progresso e verificacao de quota.
+- cloud-upload.ts publishMediaPost: storagePath/thumbnailPath agora usam ccsUserKey (users/{uid}/{photos|videos|audio|documents}).
+- App.handleImageUpload (avatar/capa): passa a usar uploadToCcs (CCS) em vez de uploadString direto.
+- ProfilePage: overlay do avatar usa CcsUploader (avatar); secao 'Galeria Connected Cloud' com CcsUploader para fotos e videos.

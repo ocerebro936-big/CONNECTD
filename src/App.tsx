@@ -23,6 +23,7 @@ import { db } from './firebase';
 import { handleFirestoreError, OperationType } from './lib/firebase-errors';
 import { registerSession, getSessionVersion, setSessionVersion, getDeviceInfo } from './lib/security-utils';
 import { publishMediaPost } from './lib/upload-engine';
+import { uploadToCcs } from './lib/ccs/upload';
 import { 
   Bell, 
   Search,
@@ -821,13 +822,22 @@ export default function App() {
       const maxWidth = type === 'photoURL' ? 800 : 1920;
       const maxHeight = type === 'photoURL' ? 800 : 1080;
       const base64Image = await resizeImage(file, maxWidth, maxHeight);
-      
-      const storagePath = `users/${user.uid}/${type}_${Date.now()}.jpg`;
-      const storageRef = ref(storage, storagePath);
-      await uploadString(storageRef, base64Image, 'data_url');
-      const downloadUrl = await getDownloadURL(storageRef);
-      
-      setProfileData(prev => ({ ...prev, [type]: downloadUrl }));
+      const blob = await (await fetch(base64Image)).blob();
+      const fileName = `${type}_${Date.now()}.jpg`;
+      const ccsFile = new File([blob], fileName, { type: 'image/jpeg' });
+      const folder = type === 'photoURL' ? 'avatar' : 'photos';
+      const kind = type === 'photoURL' ? 'avatar' : 'cover';
+      const { url } = await uploadToCcs({
+        ownerUid: user.uid,
+        ownerName: profileData.displayName || user.email?.split('@')[0] || 'Unknown',
+        file: ccsFile,
+        folder,
+        kind,
+        visibility: 'public',
+        user,
+        profileData,
+      });
+      setProfileData(prev => ({ ...prev, [type]: url }));
     } catch (error) {
       console.error("Error uploading image:", error);
       alert("Erro ao fazer upload da imagem.");
