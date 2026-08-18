@@ -86,6 +86,15 @@ export interface CreateAssetInput {
 
 const ASSETS = 'cloudAssets';
 
+// O Firestore não aceita `undefined` como valor de campo. Removemos sempre
+// antes de escrever, para que nenhum `undefined` (ex.: sourceRef, thumbnailUrl,
+// width, height) quebre o setDoc/updateDoc.
+export function removeUndefined<T extends Record<string, any>>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
+}
+
 export async function createCloudAsset(input: CreateAssetInput): Promise<string> {
   const ref = doc(collection(db, ASSETS));
   const now = Date.now();
@@ -99,12 +108,12 @@ export async function createCloudAsset(input: CreateAssetInput): Promise<string>
     createdAt: now,
     updatedAt: now,
   };
-  await setDoc(ref, asset);
+  await setDoc(ref, removeUndefined(asset as unknown as Record<string, any>));
   return ref.id;
 }
 
 export async function updateCloudAsset(id: string, patch: Partial<CloudAsset>): Promise<void> {
-  await updateDoc(doc(db, ASSETS, id), { ...patch, updatedAt: Date.now() });
+  await updateDoc(doc(db, ASSETS, id), removeUndefined({ ...patch, updatedAt: Date.now() } as unknown as Record<string, any>));
 }
 
 export async function patchCloudAsset(
