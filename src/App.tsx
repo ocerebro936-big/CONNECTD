@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense, useRef, useCallback, useMemo } from 'react';
+import ErrorBoundary from './components/ErrorBoundary';
 import { auth } from './firebase';
 import { initConnectedStorage } from './lib/cloud-storage/init';
 import { 
@@ -1930,6 +1931,7 @@ export default function App() {
         )}
 
         <div className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+          <ErrorBoundary>
           <Suspense fallback={<PageLoader />}>
             {activeTab === 'feed' && (
               <FeedPage
@@ -2062,6 +2064,7 @@ export default function App() {
               />
             )}
           </Suspense>
+          </ErrorBoundary>
         </div>
       </main>
     </div>
