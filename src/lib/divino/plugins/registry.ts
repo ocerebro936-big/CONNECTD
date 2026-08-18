@@ -1,0 +1,44 @@
+// ============================================================================
+// DIVINO IA — Plugin Registry (Tool Bus)
+// ----------------------------------------------------------------------------
+// Cada capacidade mapeia para uma ferramenta real. O Divino escolhe o
+// especialista apenas quando necessário e executa através deste barramento.
+// ============================================================================
+import type { DivinoToolResult } from '../types';
+import { inspectOwnStorage, ccsDiagnostics } from '../tools/cloud';
+import { searchUsers, searchPosts } from '../tools/social';
+import { listChannels } from '../tools/tv';
+import { retrieveRanking, inspectScore } from '../tools/games';
+import { serviceHealth } from '../tools/admin';
+
+export interface ToolContext {
+  uid: string;
+  role: string;
+  term?: string;
+}
+
+type ToolFn = (ctx: ToolContext) => Promise<{ ok: boolean; summary: string; data?: any }>;
+
+export const PLUGIN_BUS: Record<string, { plugin: string; fn: ToolFn }> = {
+  inspect_upload: { plugin: 'cloud_diagnostics', fn: (c) => inspectOwnStorage(c.uid) },
+  inspect_storage: { plugin: 'cloud_diagnostics', fn: (c) => inspectOwnStorage(c.uid) },
+  inspect_quota: { plugin: 'cloud_diagnostics', fn: (c) => inspectOwnStorage(c.uid) },
+  ccs_diagnostics: { plugin: 'cloud_diagnostics', fn: () => ccsDiagnostics() },
+  search_users: { plugin: 'connected_support', fn: (c) => searchUsers(c.term || '') },
+  search_posts: { plugin: 'connected_support', fn: (c) => searchPosts(c.term || '') },
+  list_channels: { plugin: 'connected_tv', fn: () => listChannels() },
+  retrieve_ranking: { plugin: 'game_assistant', fn: () => retrieveRanking() },
+  inspect_score: { plugin: 'game_assistant', fn: (c) => inspectScore(c.uid) },
+  service_health: { plugin: 'connected_admin', fn: () => serviceHealth() },
+};
+
+export async function runCapability(capability: string, ctx: ToolContext): Promise<DivinoToolResult | null> {
+  const entry = PLUGIN_BUS[capability];
+  if (!entry) return null;
+  try {
+    const r = await entry.fn(ctx);
+    return { plugin: entry.plugin, capability, ok: r.ok, summary: r.summary, data: r.data };
+  } catch (e: any) {
+    return { plugin: entry.plugin, capability, ok: false, summary: 'Erro ao executar ferramenta.', data: String(e?.message || e) };
+  }
+}

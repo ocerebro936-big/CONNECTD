@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Send, Sparkles, Activity, Key, CheckCircle, XCircle, Brain, Cpu } from 'lucide-react';
-import { divinoChat, DIVINO_MODELS, recall, remember } from '../lib/divino-core';
+import { DIVINO_MODELS, recall, remember } from '../lib/divino-core';
+import { divinoCognitiveChat, divinoConfirm, type DivinoPendingAction } from '../lib/divino';
 
 const STORAGE_KEY = 'connected_gemini_key';
 
@@ -23,7 +24,7 @@ export default function DivinoIa({ user, profileData }: DivinoIaProps) {
   const [keyInput, setKeyInput] = useState('');
   const [keyError, setKeyError] = useState('');
   const [modelId, setModelId] = useState<string>(apiKey ? 'gemini-2.0-flash' : 'divino-core');
-  const [messages, setMessages] = useState<{ sender: 'user' | 'divino'; text: string }[]>([
+  const [messages, setMessages] = useState<{ sender: 'user' | 'divino'; text: string; meta?: { specialist?: string; tools?: number } }[]>([
     {
       sender: 'divino',
       text: `Sou o DIVINO IA, o núcleo inteligente da Connected King, criado pela Bluewhite Corporation. Uso o motor ${apiKey ? 'Gemini 2.0 Flash (externo)' : 'DIVINO Core (local)'}. Como posso orientar a tua jornada no Mundo Connected King?`,
@@ -31,7 +32,9 @@ export default function DivinoIa({ user, profileData }: DivinoIaProps) {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [pending, setPending] = useState<DivinoPendingAction | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const uid = user?.uid || 'guest';
 
   const userName = profileData?.displayName || (user && !user.isGuest ? user.displayName : undefined) || recall('user', 'displayName') || undefined;
 
@@ -76,18 +79,43 @@ export default function DivinoIa({ user, profileData }: DivinoIaProps) {
 
     try {
       const history = [...messages, userMsg].map(m => ({
-        role: m.sender === 'user' ? 'user' as const : 'model' as const,
+        role: m.sender === 'user' ? 'user' : 'model',
         text: m.text,
       }));
-      const reply = await divinoChat(history, { modelId, apiKey, userName });
-      const badge = reply.source === 'knowledge' ? ' 📚' : reply.source === 'memory' ? ' 🧠' : reply.source === 'model' ? ' ☁️' : '';
-      setMessages(prev => [...prev, { sender: 'divino', text: reply.text + badge }]);
+      const reply = await divinoCognitiveChat(history, { uid, modelId, apiKey, userName });
+      const badge = reply.source === 'knowledge' ? ' 📚' : reply.source === 'model' ? ' ☁️' : reply.source === 'tool' ? ' 🔌' : '';
+      setMessages(prev => [...prev, {
+        sender: 'divino',
+        text: reply.text + badge,
+        meta: { specialist: reply.specialist, tools: reply.toolsUsed?.length || 0 },
+      }]);
+      if (reply.pending) setPending(reply.pending);
     } catch (err) {
       console.error('DivinoIA error:', err);
       setMessages(prev => [...prev, {
         sender: 'divino',
         text: `As energias do DIVINO IA estão a ser restauradas. Detalhes: ${String(err)}`,
       }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!pending) return;
+    setPending(null);
+    setIsTyping(true);
+    try {
+      const r = await divinoConfirm(uid);
+      if (r) {
+        setMessages(prev => [...prev, {
+          sender: 'divino',
+          text: r.text,
+          meta: { specialist: r.specialist, tools: r.toolsUsed?.length || 0 },
+        }]);
+      }
+    } catch (err) {
+      setMessages(prev => [...prev, { sender: 'divino', text: `Não consegui concluir: ${String(err)}` }]);
     } finally {
       setIsTyping(false);
     }
@@ -189,7 +217,11 @@ export default function DivinoIa({ user, profileData }: DivinoIaProps) {
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${msg.sender === 'user' ? 'bg-indigo-600 text-white rounded-br-none shadow-md' : 'bg-white/80 text-slate-800 border border-indigo-200/50 rounded-bl-none shadow-sm backdrop-blur-md'}`}>
-                  {msg.sender === 'divino' && <span className="text-indigo-500 font-black text-xs block mb-1">👑 DIVINO IA</span>}
+                  {msg.sender === 'divino' && (
+                    <span className="text-indigo-500 font-black text-xs block mb-1">
+                      👑 DIVINO IA{msg.meta?.specialist ? ` · ${msg.meta.specialist.replace('connected-', '').toUpperCase()}` : ''}{msg.meta?.tools ? ` · 🔌${msg.meta.tools}` : ''}
+                    </span>
+                  )}
                   {msg.text}
                 </div>
               </div>
@@ -207,6 +239,18 @@ export default function DivinoIa({ user, profileData }: DivinoIaProps) {
             )}
             <div ref={chatEndRef} />
           </div>
+
+          {pending && (
+            <div className="p-3 border-t border-amber-300/40 bg-amber-50/60 flex items-center gap-3">
+              <span className="text-xs font-semibold text-amber-700 flex-1">⚠ {pending.detail}</span>
+              <Button type="button" onClick={handleConfirm} className="rounded-xl px-4 py-1.5 text-sm font-bold bg-amber-500 hover:bg-amber-400 text-black">
+                Confirmar
+              </Button>
+              <Button type="button" onClick={() => setPending(null)} className="rounded-xl px-3 py-1.5 text-sm font-bold bg-white/70 text-slate-600">
+                Cancelar
+              </Button>
+            </div>
+          )}
 
           <form onSubmit={handleSend} className="p-4 border-t border-indigo-500/10 bg-white/30 flex gap-3">
             <input
