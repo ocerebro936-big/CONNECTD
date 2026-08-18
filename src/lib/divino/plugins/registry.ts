@@ -10,6 +10,7 @@ import { searchUsers, searchPosts } from '../tools/social';
 import { listChannels } from '../tools/tv';
 import { retrieveRanking, inspectScore } from '../tools/games';
 import { serviceHealth } from '../tools/admin';
+import { connectedDiagnose, connectedOrchestrate } from '../tools/connected';
 
 export interface ToolContext {
   uid: string;
@@ -30,6 +31,8 @@ export const PLUGIN_BUS: Record<string, { plugin: string; fn: ToolFn }> = {
   retrieve_ranking: { plugin: 'game_assistant', fn: () => retrieveRanking() },
   inspect_score: { plugin: 'game_assistant', fn: (c) => inspectScore(c.uid) },
   service_health: { plugin: 'connected_admin', fn: () => serviceHealth() },
+  connected_health: { plugin: 'connected_orchestrator', fn: (c) => connectedDiagnose(c.uid) },
+  connected_orchestrate: { plugin: 'connected_orchestrator', fn: (c) => connectedOrchestrate(c.uid, c.role) },
 };
 
 export async function runCapability(capability: string, ctx: ToolContext): Promise<DivinoToolResult | null> {
