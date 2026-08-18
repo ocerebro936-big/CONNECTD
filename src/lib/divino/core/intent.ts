@@ -35,6 +35,7 @@ function detectIntent(t: string): string {
   if (/(carregar|upload|n[ãa]o est[áa] a subir|v[íi]deo n[ãa]o|ficheiro|n[ãa]o envia|tr[êe]s vezes|tentativas)/.test(t))
     return 'storage_issue';
   if (/(diagn[óo]stico|funcionando|verifica|estado|lento|degradado|sa[úu]de)/.test(t)) return 'diagnostics';
+  if (/(prepara|orquestra|evento (com|de)|muitos utiliza|escala|deploy global|preparar a connected)/.test(t)) return 'orchestrate';
   if (/(pessoa|encontrar|quem [ée]|perfil de|utilizador|procurar algu[ée]m)/.test(t)) return 'search_people';
   if (/(publica[çc][ãa]o|post sobre|pesquisar posts|conte[úu]do sobre)/.test(t)) return 'search_posts';
   if (/(tv|canal|v[íi]deo ao vivo|transmiss[ãa]o|live)/.test(t)) return 'tv';

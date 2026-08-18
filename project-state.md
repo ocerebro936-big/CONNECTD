@@ -86,3 +86,26 @@ Plataforma social (React + Firebase) com backend real: Social + Connected Music 
 - StorageProvider estendido com metadata() e signedUrl() (ConnectedStorage delega; opcionais nos providers S3/MEGA).
 - Media Intelligence: media/dimensions.ts (computeImageTargets preservando proporcao + so downscale; VIDEO_PRESETS 1080/720/480), media/quality.ts (pickQuality adaptativa), media/metadata.ts (readMediaMeta via DOM). image.ts agora usa computeImageTargets + pickQuality.
 - CcsFolder inclui 'chat'. ccsUpload exportado diretamente em upload.ts.
+
+## PR #4 — Connected Fast Engine ✅ (commit/impl real)
+- `src/lib/fast-engine/`: `cache.ts` (FastCache mem+IndexedDB; `feedCache`/`profileCache`/`mediaCache`), `dedupe.ts` (DedupeGuard), `prefetch.ts` (prefetchImages), `lazy.ts` (useInView + getConnectionTier/targetWidthForTier), `connection.ts` (useConnectionTier), `queue.ts` (TaskQueue; `mediaQueue`/`prefetchQueue`), `worker.ts` + `media.worker.ts` (OffscreenCanvas/thumb em worker), `index.ts` (barrel). `src/components/LazyMedia.tsx` (img/vídeo/álbum lazy). Ligado em `PostCard.tsx` e `FeedPage.tsx` (cache de feed + prefetch 12 itens). Branch `ccs-fast-engine`, PR #4, deploy OK.
+
+## PR #5 — Connected RUN (share) ✅ (commit/impl real)
+- `src/game/ConnectedRun.tsx` (já existia: 100 níveis, save local+cloud, ranking) ganhou `shareRun` (Web Share/clipboard) + botões Partilhar. Branch `ccs-connected-run`, PR #5, deploy OK.
+
+## PR #6 — Connected Storage Infrastructure ✅ (commit/impl real)
+- `src/lib/cloud-storage/init.ts` (`initConnectedStorage` lê VITE_CCS_PRESIGN_URL/VITE_CCS_CDN_BASE + getIdToken; troca provider), `provider.ts` (`use()`+getter), `functions/src/index.ts` `ccsPresign` PUT ACL public-read, `firebase.json` hosting array + `.firebaserc` targets, `.env.example` + `src/vite-env.d.ts` (VITE_CCS_*). Site `connectedking` criado; deploy para `connectedking.web.app` + `connected-ecossistema.web.app`. Branch `ccs-storage-infra`, PR #6, deploy OK.
+
+## PR #7 — DIVINO IA Connected Intelligence Core ✅ (documentado como concluído)
+- `src/lib/divino/`: `security/{policy,authority,audit}`, `memory/*`, `knowledge/connected`, `core/{intent,context,reasoning,response,cognition}`, `plugins/{registry,router,permissions}`, `tools/{cloud,social,tv,games,admin}`, `chat.ts`, `index.ts`. `DivinoIa.tsx` usa `divinoCognitiveChat` com badges de especialista/ferramenta + confirmação. Branch `ccs-divino-core`, PR #7, deploy `connectedking.web.app`.
+
+## PR #8 — Connected RUN: KINGDOM ✅ (commit/impl real)
+- `src/lib/game-save.ts` RunSave estendido (xp/gems/tickets/badges/energy/region/regiões/items/cosmetics/…) + merge servidor-local. `src/game/kingdom/{regions,character,economy,moments,globalActivity,league,npc}.ts`. `src/game/ConnectedRun.tsx` reescrito (8 regiões, King runner/hero/legend + cosméticos, Connected Mode, economia interna, Global Activity, World League, Divino Coach, NPCs). Branch `ccs-run-kingdom`, PR #8, deploy `connectedking.web.app`.
+
+## PR #9 — Connected King Global Cloud (orquestração global) ✅ (commit/impl real)
+- `src/lib/connected/`: `service-bus/{registry,router,events,health}` (Service Bus + Health Engine), `services/{cloud,social,tv,games,marketplace,wallet,jobs,analytics}` (cada serviço com interface + health + ações), `gateway/gateway.ts` (ConnectedGateway: invoke com política RESTRICTED + auditoria; diagnoseAll; runOrchestration), `audit.ts` (Connected Audit: quem/fez o quê/quando/serviço/recurso/resultado → Firestore `audit`), `usage.ts` (Usage & Billing: dimensões storage/bandwidth/compute/ai/video/ads/premium/games + tiers Free/Plus/Pro/Creator/Business/Enterprise), `index.ts` (globalCloud). DIVINO orquestrador: `divino/tools/connected.ts` (`connectedDiagnose`, `connectedOrchestrate`), capacidades `connected_health`/`connected_orchestrate` no `plugins/registry.ts`, intent `orchestrate` em `core/intent.ts`, router mapeia `diagnostics`→`connected_health`. Divino usa o mesmo barramento (não substitui infra física ainda). Branch `ccs-global-cloud`, PR #9, deploy `connectedking.web.app`.
+- Arquitetura: Gateway→Service Bus→Serviços→(Cloud)→Providers (S3/MEGA/Firebase). Health Engine emite eventos health:down/degraded. Audit grava ações do Divino/admin. Usage mede sem misturar com Feed. Próximo: substituir progressivamente providers externos pelos servidores próprios da Connected (CCS-Core + nós).
+
+## Estado
+- Concluído: PR #1 Cloud Core, PR #2 CCS Universal Pipeline, PR #3 Media Intelligence+remoção firebase/storage, **PR #4 Fast Engine**, **PR #5 Connected RUN share**, **PR #6 Storage Infra**, **PR #7 DIVINO IA Core**, **PR #8 RUN: KINGDOM**, **PR #9 Global Cloud Orchestration** — todos com commits reais e deploy `connectedking.web.app`.
+- Pendente (manual): ativar Firebase Storage no console; configurar env S3 (VITE_CCS_PRESIGN_URL/VITE_CCS_CDN_BASE + funções) para back-end próprio.

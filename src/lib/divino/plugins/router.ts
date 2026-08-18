@@ -7,7 +7,9 @@ export function routeToCapability(analysis: DivinoAnalysis): string | null {
     case 'upload':
       return 'inspect_upload';
     case 'diagnostics':
-      return analysis.specialist === 'connected-games' ? 'service_health' : 'ccs_diagnostics';
+      return analysis.specialist === 'connected-games' ? 'service_health' : 'connected_health';
+    case 'orchestrate':
+      return 'connected_orchestrate';
     case 'search_people':
       return 'search_users';
     case 'search_posts':
