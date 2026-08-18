@@ -23,6 +23,8 @@ import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import * as fs from 'node:fs';
 import { Storage as MegaStorage } from 'megajs';
+import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 initializeApp();
 const db = getFirestore();
@@ -201,6 +203,54 @@ export const megaBridge = onRequest({ cors: true }, async (req, res) => {
     }
 
     res.status(405).send('method not allowed');
+  } catch (err: any) {
+    res.status(500).send(String(err?.message || err));
+  }
+});
+
+// ============================================================================
+// CON-WORKER → ccsPresign: ponte S3-compatible da Connected Cloud Storage.
+// Devolve URLs assinadas (CCS-Security) para PUT/GET/DELETE, sem expor credenciais
+// AWS no browser. Requer env vars: CCS_BUCKET e AWS_REGION (credenciais via
+// Application Default Credentials / Secret Manager da função). Valida a API do
+// @aws-sdk instalado antes de produzir.
+// ============================================================================
+const s3Client = new S3Client({ region: process.env.AWS_REGION || 'auto' });
+const ccsBucket = process.env.CCS_BUCKET || '';
+
+export const ccsPresign = onRequest({ cors: true }, async (req, res) => {
+  try {
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    if (!ccsBucket) { res.status(500).send('CCS_BUCKET não configurado na função.'); return; }
+    const token = (req.header('Authorization') || '').replace(/^Bearer\s+/i, '');
+    if (!token) { res.status(401).send('unauthorized'); return; }
+    await auth.verifyIdToken(token);
+
+    const body = (req as any).body || {};
+    const key: string = String(body.key || '');
+    const method: string = String(body.method || '');
+    if (!key || !method) { res.status(400).send('key + method obrigatórios'); return; }
+
+    let command: any;
+    if (method === 'PUT') {
+      command = new PutObjectCommand({
+        Bucket: ccsBucket,
+        Key: key,
+        ContentType: body.mime || 'application/octet-stream',
+        Metadata: { visibility: String(body.visibility || 'private'), ownerId: String(body.ownerId || '') },
+      });
+    } else if (method === 'HEAD' || method === 'GET') {
+      command = method === 'HEAD'
+        ? new HeadObjectCommand({ Bucket: ccsBucket, Key: key })
+        : new GetObjectCommand({ Bucket: ccsBucket, Key: key });
+    } else if (method === 'DELETE') {
+      command = new DeleteObjectCommand({ Bucket: ccsBucket, Key: key });
+    } else {
+      res.status(405).send('method not allowed'); return;
+    }
+
+    const url = await getSignedUrl(s3Client, command, { expiresIn: 900 });
+    res.json({ url });
   } catch (err: any) {
     res.status(500).send(String(err?.message || err));
   }

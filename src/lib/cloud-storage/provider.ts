@@ -15,6 +15,8 @@ import {
 import { storage } from '../../firebase';
 import { MegaStorageProvider } from './mega-provider';
 import type { MegaProviderConfig } from './mega-provider';
+import { S3StorageProvider } from './s3-provider';
+import type { S3ProviderConfig } from './s3-provider';
 
 export interface StorageObjectMeta {
   ownerId: string;
@@ -112,15 +114,28 @@ export const connectedStorage = new ConnectedStorage(new FirebaseStorageProvider
 
 export { MegaStorageProvider } from './mega-provider';
 export type { MegaProviderConfig } from './mega-provider';
+export { S3StorageProvider } from './s3-provider';
+export type { S3ProviderConfig } from './s3-provider';
 
 /** Cria um StorageProvider conforme o fornecedor pretendido (agnóstico). */
 export function createStorageProvider(
-  kind: 'firebase' | 'mega',
-  megaCfg?: MegaProviderConfig
+  kind: 'firebase' | 'mega' | 's3',
+  cfg?: MegaProviderConfig | S3ProviderConfig
 ): StorageProvider {
   if (kind === 'mega') {
-    if (!megaCfg) throw new Error('MEGA provider requer config (bridgeUrl + getIdToken).');
-    return new MegaStorageProvider(megaCfg);
+    if (!isMega(cfg)) throw new Error('MEGA provider requer MegaProviderConfig (bridgeUrl + getIdToken).');
+    return new MegaStorageProvider(cfg);
+  }
+  if (kind === 's3') {
+    if (!isS3(cfg)) throw new Error('S3 provider requer S3ProviderConfig (presignUrl + cdnBase + getIdToken).');
+    return new S3StorageProvider(cfg);
   }
   return new FirebaseStorageProvider();
+}
+
+function isMega(c: unknown): c is MegaProviderConfig {
+  return !!c && typeof (c as MegaProviderConfig).bridgeUrl === 'string';
+}
+function isS3(c: unknown): c is S3ProviderConfig {
+  return !!c && typeof (c as S3ProviderConfig).presignUrl === 'string';
 }

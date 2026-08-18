@@ -73,3 +73,31 @@ export const DATABASE_SCHEMA = {
 export function getServer(id: string): ServerNode | undefined {
   return SERVER_STACK.find((s) => s.id === id);
 }
+
+// ============================================================================
+// Connected King Cloud — Connected Cloud Storage (CCS)
+// ----------------------------------------------------------------------------
+// Camada de software própria por cima de qualquer object storage. A app fala
+// "Connected Cloud API"; a infraestrutura física (Firebase/S3-compatible/MEGA)
+// é trocável sem reescrever a Connected King.
+// ============================================================================
+export const CCS_TOPOLOGY = {
+  namespace: 'connected-cloud',
+  estrutura: [
+    'users/{userId}/{avatar|photos|videos|audio|documents}',
+    'posts/{postId}',
+    'reels/{reelId}',
+    'messages',
+    'live',
+    'tv',
+    'marketplace',
+    'system',
+  ],
+  motores: ['CCS-Core', 'CCS-Upload', 'CCS-Media', 'CCS-CDN', 'CCS-Backup', 'CCS-Security', 'CCS-AI', 'CCS-Analytics'],
+  camadas: ['Storage (Photos/Videos/Audio/Files/Live/TV/AI)', 'CDN (distribuição global)', 'Compute (motores)', 'Backup (redundância)'],
+  roadmap: [
+    'FASE 1 — Connected Cloud sobre infraestrutura cloud existente (Firebase/S3-compatible).',
+    'FASE 2 — Servidores dedicados / datacenters parceiros.',
+    'FASE 3 — Connected Global Cloud (África, Europa, Ásia, Américas).',
+  ],
+};

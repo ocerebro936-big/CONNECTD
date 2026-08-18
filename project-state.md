@@ -52,3 +52,10 @@ Plataforma social (React + Firebase) com backend real: Social + Connected Music 
 - SEO: robots.txt + sitemap.xml apontam para connectedking.web.app.
 - Pillares (Connected Music/Business/TV/Run) mantidos como sub-marcas; 'Connected Cloud' -> 'Connected King Cloud'.
 - PNG icons em public/icons/ precisam ser regenerados com a nova identidade (avatar/coroa).
+
+## Connected Cloud Storage (CCS) — camada propria
+- src/lib/ccs/index.ts: estrutura de objetos (users/posts/reels/...), CcsVisibility (public/private/friends/followers/group/admin/system), tiers de receita (free 5GB/plus 50GB/pro 250GB/creator 1TB/business 5TB), CCS_ENGINES (CCS-Core/Upload/Media/CDN/Backup/Security/AI/Analytics), API spec /api/v1/storage, roadmap de escala.
+- src/lib/cloud-storage/s3-provider.ts: S3StorageProvider (StorageProvider) via presigned URLs (bridge ccsPresign). createStorageProvider suporta 's3'.
+- quota-engine.ts: tiers alinhados ao CCS (free/plus/pro/creator/business).
+- topology.ts: CCS_TOPOLOGY (estrutura + motores + camadas + roadmap).
+- functions/src/index.ts: ccsPresign (onRequest) gera presigned URLs S3-compatible (PUT/GET/HEAD/DELETE); deps @aws-sdk/client-s3 + s3-request-presigner. Credenciais AWS via env CCS_BUCKET/AWS_REGION (ADC/Secret Manager).

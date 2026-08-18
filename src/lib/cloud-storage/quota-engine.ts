@@ -7,20 +7,23 @@
 import { db } from '../../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
-export type StorageTier = 'free' | 'creator' | 'pro' | 'business';
+export type StorageTier = 'free' | 'plus' | 'pro' | 'creator' | 'business';
 
 export const QUOTA_BYTES: Record<StorageTier, number> = {
-  free: 1 * 1024 * 1024 * 1024, // 1 GB
-  creator: 20 * 1024 * 1024 * 1024, // 20 GB
-  pro: 100 * 1024 * 1024 * 1024, // 100 GB
-  business: 500 * 1024 * 1024 * 1024, // 500 GB+
+  free: 5 * 1024 * 1024 * 1024, // 5 GB
+  plus: 50 * 1024 * 1024 * 1024, // 50 GB
+  pro: 250 * 1024 * 1024 * 1024, // 250 GB
+  creator: 1024 * 1024 * 1024 * 1024, // 1 TB
+  business: 5 * 1024 * 1024 * 1024 * 1024, // 5 TB+
 };
 
 export function getTier(user: any, profileData?: any): StorageTier {
   const role = profileData?.role || user?.role;
-  if (role === 'business' || profileData?.plan === 'business') return 'business';
-  if (role === 'pro' || profileData?.plan === 'pro') return 'pro';
-  if (role === 'creator' || profileData?.plan === 'creator') return 'creator';
+  const plan = (profileData?.plan || user?.plan || '').toLowerCase();
+  if (role === 'business' || plan === 'business') return 'business';
+  if (role === 'creator' || plan === 'creator') return 'creator';
+  if (role === 'pro' || plan === 'pro') return 'pro';
+  if (plan === 'plus') return 'plus';
   return 'free';
 }
 
