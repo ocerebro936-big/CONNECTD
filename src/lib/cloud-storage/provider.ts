@@ -27,7 +27,12 @@ export interface StorageObjectMeta {
 }
 
 export interface StorageProvider {
-  put(key: string, data: Blob | ArrayBuffer, meta: StorageObjectMeta): Promise<string>; // devolve downloadURL
+  put(
+    key: string,
+    data: Blob | ArrayBuffer,
+    meta: StorageObjectMeta,
+    onProgress?: (fraction: number) => void
+  ): Promise<string>; // devolve downloadURL
   get(key: string): Promise<ArrayBuffer>;
   delete(key: string): Promise<void>;
   exists(key: string): Promise<boolean>;
@@ -35,7 +40,12 @@ export interface StorageProvider {
 
 /** Provider concreto: Firebase Cloud Storage (upload em chunks resumíveis). */
 export class FirebaseStorageProvider implements StorageProvider {
-  async put(key: string, data: Blob | ArrayBuffer, meta: StorageObjectMeta): Promise<string> {
+  async put(
+    key: string,
+    data: Blob | ArrayBuffer,
+    meta: StorageObjectMeta,
+    onProgress?: (fraction: number) => void
+  ): Promise<string> {
     const storageRef = ref(storage, key);
     const task = uploadBytesResumable(storageRef, data, {
       contentType: meta.mimeType,
@@ -44,7 +54,9 @@ export class FirebaseStorageProvider implements StorageProvider {
     return new Promise<string>((resolve, reject) => {
       task.on(
         'state_changed',
-        () => {},
+        (snap) => {
+          if (onProgress && snap.totalBytes > 0) onProgress(snap.bytesTransferred / snap.totalBytes);
+        },
         (e) => reject(e),
         async () => resolve(await getDownloadURL(task.snapshot.ref))
       );
@@ -83,17 +95,26 @@ export interface StorageObject {
 export class ConnectedStorage {
   constructor(private provider: StorageProvider) {}
 
-  async upload(object: StorageObject, data: Blob | ArrayBuffer): Promise<{ success: boolean; fileId: string; url: string }> {
+  async upload(
+    object: StorageObject,
+    data: Blob | ArrayBuffer,
+    onProgress?: (fraction: number) => void
+  ): Promise<{ success: boolean; fileId: string; url: string }> {
     if (data instanceof ArrayBuffer && object.size !== data.byteLength) {
       throw new Error('STORAGE_SIZE_MISMATCH');
     }
-    const url = await this.provider.put(object.key, data, {
-      ownerId: object.ownerId,
-      mimeType: object.mimeType,
-      visibility: object.visibility,
-      checksum: object.checksum,
-      size: object.size,
-    });
+    const url = await this.provider.put(
+      object.key,
+      data,
+      {
+        ownerId: object.ownerId,
+        mimeType: object.mimeType,
+        visibility: object.visibility,
+        checksum: object.checksum,
+        size: object.size,
+      },
+      onProgress
+    );
     return { success: true, fileId: object.id, url };
   }
 

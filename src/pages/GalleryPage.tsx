@@ -6,9 +6,8 @@ import { ThermalBadge } from '../components/ThermalBadge';
 import { calculateTemperature } from '../lib/thermal-utils';
 import { formatCurrency } from '../lib/currency-utils';
 import { CheckoutModal } from '../components/CheckoutModal';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { compressImage } from '../lib/image-utils';
-import { storage } from '../firebase';
+import { CcsUploader } from '../components/CcsUploader';
+import type { CcsUploadResult } from '../lib/ccs/upload/types';
 import { addDoc, collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -65,31 +64,27 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
     return () => { unsubItems(); unsubUsers(); };
   }, []);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
+  const handleGalleryPublish = async (results: CcsUploadResult[]) => {
+    if (!user) return;
     try {
-      const dataUrl = await compressImage(file);
-      const fileName = `gallery_${Date.now()}_${user.uid}`;
-      const storageRef = ref(storage, `gallery/${fileName}`);
-      await uploadString(storageRef, dataUrl, 'data_url');
-      const url = await getDownloadURL(storageRef);
-      const type = file.type.startsWith('video') ? 'video' : 'photo';
-      await addDoc(collection(db, 'gallery_items'), {
-        userId: user.uid,
-        url,
-        imageUrl: url,
-        type,
-        title: file.name.replace(/\.[^.]+$/, ''),
-        createdAt: Date.now(),
-        likes: 0,
-      });
+      for (const r of results) {
+        const type = r.file.type.startsWith('video') ? 'video' : 'photo';
+        await addDoc(collection(db, 'gallery_items'), {
+          userId: user.uid,
+          url: r.url,
+          imageUrl: r.url,
+          thumbnailUrl: r.thumbnailUrl || r.url,
+          type,
+          title: r.file.name.replace(/\.[^.]+$/, ''),
+          createdAt: Date.now(),
+          likes: 0,
+        });
+      }
       alert('Mídia publicada com sucesso!');
     } catch (err) {
-      console.error('Error uploading media:', err);
+      console.error('Error publishing media:', err);
       alert('Erro ao publicar mídia.');
     }
-    e.target.value = '';
   };
 
   const handlePointsSuccess = (points: number) => {
@@ -101,8 +96,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
       {showCheckout && (
         <CheckoutModal user={user} onClose={() => setShowCheckout(false)} onSuccess={handlePointsSuccess} />
       )}
-      <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
-
       {licensingModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
@@ -142,9 +135,20 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
           <Button className="rounded-xl shadow-md gap-2 font-semibold bg-emerald-600 hover:bg-emerald-500 text-white" onClick={() => setShowCheckout(true)}>
             <Sparkles className="h-4 w-4" /> Carregar Pontos
           </Button>
-          <Button className="rounded-xl shadow-md gap-2 font-semibold" variant="outline" onClick={() => fileInputRef.current?.click()}>
-            <Camera className="h-4 w-4" /> Publicar Mídia
-          </Button>
+          {user && (
+            <CcsUploader
+              userId={user.uid}
+              userName={user.email || 'Utilizador'}
+              folder="gallery"
+              kind="gallery"
+              accept="image/*,video/*"
+              label="Publicar Mídia"
+              icon={<Camera className="h-4 w-4" />}
+              multiple
+              user={user}
+              onUploaded={handleGalleryPublish}
+            />
+          )}
         </div>
       </div>
 

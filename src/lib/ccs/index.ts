@@ -39,7 +39,7 @@ export function ccsKey(parts: string[]): string {
     .join('/');
 }
 
-export function ccsUserKey(userId: string, folder: CcsUserFolder, filename: string): string {
+export function ccsUserKey(userId: string, folder: string, filename: string): string {
   return ccsKey(['users', userId, folder, filename]);
 }
 
@@ -181,3 +181,14 @@ export const CCS_ROADMAP = [
   'FASE 2 — Servidores dedicados / datacenters parceiros.',
   'FASE 3 — Connected Global Cloud (África, Europa, Ásia, Américas).',
 ];
+
+// ============================================================================
+// Pipeline universal CCS (PR #2) — upload / media / cache / providers
+// ============================================================================
+export * from './upload';
+export * from './media/image';
+export * from './media/video';
+export * from './media/audio';
+export * from './media/thumbnail';
+export * from './cache/media-cache';
+export * from './providers/connected';

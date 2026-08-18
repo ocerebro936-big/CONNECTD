@@ -72,3 +72,11 @@ Plataforma social (React + Firebase) com backend real: Social + Connected Music 
 - uploadToCcs passa a devolver {url, assetId, key, file}; CcsUploader devolve CcsUploadResult[] em onUploaded.
 - publishCcsMediaPost (cloud-upload.ts): cria o post com o URL ja carregado para a CCS, sem duplo upload. O feed (onSnapshot no pai) atualiza automaticamente.
 - ProfilePage atualizado para o novo onUploaded (results[0]?.url).
+
+## PR #2 — CCS Universal Media Pipeline
+- Estrutura src/lib/ccs/ nova: upload/ (types, retry, resume, chunk-upload, uploader), media/ (image derivados, video thumb, audio), cache/ (media-cache), providers/ (connected/s3/mega).
+- ccsUpload(): pipeline unico validate -> quota -> checksum -> upload resiliente (retry/resume via connectedStorage) -> verify -> derivados de imagem (original/large/medium/small/thumbnail) + thumbnail de video -> publish (cloudAsset). Sem dependencia direta de firebase/storage.
+- CcsUploader reconstruido como pasta src/components/ccs/CcsUploader (Progress, Preview, UploadQueue, CcsUploader) com fila e progresso real.
+- GalleryPage passou a usar CcsUploader (folder 'gallery'); removido uso direto de firebase/storage na Galeria e no thumbnail de cloud-upload.ts (agora via connectedStorage).
+- Firebase Storage deixa de ser dependencia direta da logica da app (provider continua a abstrair; troca futura para Connected Storage proprio = so mudar provider).
+- Camera/TV/Marketplace: reutilizarao o mesmo CcsUploader (componente ja universal).

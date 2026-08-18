@@ -5,9 +5,9 @@ import {
   updateDoc,
   setDoc,
 } from 'firebase/firestore';
-import { auth, storage, db } from '../firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { auth, db } from '../firebase';
 import firebaseConfig from '../../firebase-applet-config.json';
+import { connectedStorage } from './cloud-storage/provider';
 import {
   classifyFile,
   probeMedia,
@@ -437,21 +437,20 @@ export async function publishToCloud(
     try {
       const thumb = await generateVideoThumb(file);
       if (thumb && thumb.size > 0) {
-        const tRef = ref(storage, thumbnailPath);
-        const tTask = uploadBytesResumable(tRef, thumb, {
-          contentType: 'image/jpeg',
-        });
-        thumbnailUrl = await new Promise<string>((resolve, reject) => {
-          tTask.on(
-            'state_changed',
-            () => {},
-            reject,
-            () =>
-              getDownloadURL(tRef)
-                .then(resolve)
-                .catch(reject)
-          );
-        });
+        const tRes = await connectedStorage.upload(
+          {
+            id: `${assetId}_thumb`,
+            ownerId: user.uid,
+            key: thumbnailPath,
+            mimeType: 'image/jpeg',
+            size: thumb.size,
+            checksum: '',
+            visibility:
+              (input.visibility ?? 'public') === 'public' ? 'public' : 'private',
+          },
+          thumb
+        );
+        thumbnailUrl = tRes.url;
       }
     } catch {
       thumbnailUrl = null;
