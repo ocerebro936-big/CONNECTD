@@ -126,7 +126,19 @@ export interface StorageObject {
 
 /** API própria da Connected — não depende do fornecedor concreto. */
 export class ConnectedStorage {
-  constructor(private provider: StorageProvider) {}
+  private _provider: StorageProvider;
+  constructor(provider: StorageProvider) {
+    this._provider = provider;
+  }
+
+  /** Permite trocar o fornecedor em runtime (ex.: S3 em produção, Firebase em dev). */
+  use(provider: StorageProvider) {
+    this._provider = provider;
+  }
+
+  get provider(): StorageProvider {
+    return this._provider;
+  }
 
   async upload(
     object: StorageObject,

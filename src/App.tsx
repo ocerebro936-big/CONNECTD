@@ -1,5 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense, useRef, useCallback, useMemo } from 'react';
 import { auth } from './firebase';
+import { initConnectedStorage } from './lib/cloud-storage/init';
 import { 
   signInWithPopup, 
   signInWithRedirect,
@@ -295,6 +296,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    initConnectedStorage();
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setIsAuthenticated(!!currentUser);
