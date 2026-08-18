@@ -1150,7 +1150,7 @@ export default function App() {
     }
   };
 
-  const handleLogin = async (providerName: 'google' | 'microsoft' | 'yahoo') => {
+  const handleLogin = async (providerName: 'google' | 'microsoft') => {
     if (isLoggingIn) return;
     setAuthError('');
     setIsLoggingIn(true);
@@ -1160,8 +1160,6 @@ export default function App() {
         provider = new GoogleAuthProvider();
       } else if (providerName === 'microsoft') {
         provider = new OAuthProvider('microsoft.com');
-      } else if (providerName === 'yahoo') {
-        provider = new OAuthProvider('yahoo.com');
       }
       
       if (provider) {
@@ -1358,19 +1356,6 @@ export default function App() {
                   <path fill="#f35325" d="M1 1h9v9H1z"/><path fill="#81bc06" d="M11 1h9v9h-9z"/><path fill="#05a6f0" d="M1 11h9v9H1z"/><path fill="#ffba08" d="M11 11h9v9h-9z"/>
                 </svg>
                 Entrar com a Microsoft
-              </Button>
-
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full text-sm h-12 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform bg-white/10 border-primary/25 text-white font-semibold hover:bg-white/15 disabled:opacity-60 disabled:hover:scale-100"
-                onClick={() => handleLogin('yahoo')}
-                disabled={isLoggingIn}
-              >
-                <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="#6001D2">
-                  <path d="M22.77 4.5l-8.6 11.83v7.17h-4.34v-7.17L1.23 4.5h4.86l5.91 8.82 5.91-8.82z"/>
-                </svg>
-                Entrar com o Yahoo
               </Button>
 
               <div className="relative py-2">
