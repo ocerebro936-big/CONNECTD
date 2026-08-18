@@ -7,6 +7,7 @@ import { ThermalBadge } from './ThermalBadge';
 import { StarRating } from './StarRating';
 import { AudioVisualizer } from './AudioVisualizer';
 import { calculateTemperature } from '../lib/thermal-utils';
+import { LazyMedia } from './LazyMedia';
 
 export type PostMediaType = 'photo' | 'video' | 'reel' | 'album' | 'panorama' | 'text' | 'pdf' | 'slides' | 'audio';
 
@@ -203,13 +204,11 @@ const PostCard: React.FC<PostCardProps> = ({
     if (post.media?.type === 'video' || post.media?.type === 'reel') {
       return (
         <div className={`relative w-full ${getMediaLayoutClass()} bg-slate-900 flex items-center justify-center group cursor-pointer`}>
-          <video
-            className="w-full h-full object-contain"
-            poster={post.media.thumbnailUrl}
-            controls
-            preload="metadata"
-            playsInline
+          <LazyMedia
+            type="video"
             src={post.media.url}
+            poster={post.media.thumbnailUrl}
+            className="w-full h-full object-contain"
           />
           {!post.media.thumbnailUrl && (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -227,12 +226,12 @@ const PostCard: React.FC<PostCardProps> = ({
         <div className="grid grid-cols-2 gap-0.5 w-full aspect-square">
           {post.media.album.slice(0, 4).map((url, i) => (
             <div key={i} className="overflow-hidden bg-slate-100">
-              <img src={url} alt={`${post.authorName} album ${i + 1}`} className="w-full h-full object-cover" />
+              <LazyMedia src={url} type="image" alt={`${post.authorName} album ${i + 1}`} className="w-full h-full object-cover" />
             </div>
           ))}
           {post.media.album.length > 4 && (
             <div className="relative overflow-hidden bg-slate-100">
-              <img src={post.media.album[4]} alt="More" className="w-full h-full object-cover" />
+              <LazyMedia src={post.media.album[4]} type="image" alt="More" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                 <span className="text-white font-bold text-lg">+{post.media.album.length - 4}</span>
               </div>
@@ -247,13 +246,11 @@ const PostCard: React.FC<PostCardProps> = ({
 
     return (
       <div className={`w-full ${getMediaLayoutClass()} bg-slate-100/30 overflow-hidden`}>
-        <img
-          ref={imgRef}
+        <LazyMedia
           src={imageUrl}
+          type="image"
           alt="Post content"
           className="w-full h-full object-cover"
-          onLoad={detectRatio}
-          onError={() => setMediaType('text')}
         />
       </div>
     );

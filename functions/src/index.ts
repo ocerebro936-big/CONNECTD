@@ -18,7 +18,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { onObjectFinalized } from 'firebase-functions/v2/storage';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onRequest } from 'firebase-functions/v2/https';
-import * as sharp from 'sharp';
+import sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import * as fs from 'node:fs';

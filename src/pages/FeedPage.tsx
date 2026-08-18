@@ -12,6 +12,7 @@ import { addDoc, collection, onSnapshot, query, orderBy, where, updateDoc, doc, 
 import { db } from '../firebase';
 import { LiveRoom } from '../components/LiveRoom';
 import { GoLiveModal } from '../components/GoLiveModal';
+import { feedCache, prefetchImages } from '../lib/fast-engine';
 import { buildFeed } from '../lib/discovery';
 import { CcsUploader } from '../components/CcsUploader';
 import { publishCcsMediaPost } from '../lib/cloud-upload';
@@ -280,6 +281,23 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     : feedSubTab === 'following'
     ? posts.filter((p) => followingIds.includes(p.userId))
     : forYouPosts;
+
+  // Connected Fast Engine: cache de feed para pintura instantânea + prefetch
+  const [cachedPosts, setCachedPosts] = useState<any[]>([]);
+  useEffect(() => {
+    feedCache.get<any[]>('home').then((p) => p && setCachedPosts(p));
+  }, []);
+  useEffect(() => {
+    if (filteredPosts.length) feedCache.set('home', filteredPosts.slice(0, 50)).catch(() => {});
+  }, [filteredPosts]);
+  useEffect(() => {
+    const urls = filteredPosts
+      .slice(0, 12)
+      .map((p) => p.media?.thumbnailUrl || p.media?.url)
+      .filter(Boolean) as string[];
+    if (urls.length) prefetchImages(urls);
+  }, [filteredPosts]);
+  const displayPosts = filteredPosts.length ? filteredPosts : cachedPosts;
 
   return (
     <div className={feedMode === 'immersive' ? 'animate-in fade-in duration-500 -mx-4 md:-mx-6 lg:-mx-8 -mt-4 md:-mt-6 lg:-mt-8 h-[calc(100dvh-4rem)] pb-14 sm:pb-0' : 'space-y-6 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500'}>
@@ -585,7 +603,7 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
 
           {/* Feed Content */}
           <div className="space-y-6 pb-20">
-            {filteredPosts.map((post) => (
+            {displayPosts.map((post) => (
               <PostCard
                 key={post.id}
                 post={post}
