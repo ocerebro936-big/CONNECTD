@@ -234,6 +234,24 @@ export function ConnectedRun({ user, onOpenProfile }: { user: any; onOpenProfile
     setRankings(r);
   }, []);
 
+  const shareRun = useCallback(async (lvl: number, score: number) => {
+    const text = `🏃 Connected Run 👑 — Nível ${lvl} completo com ${score} pontos! 🏆 Joga em Connected King`;
+    try {
+      if ((navigator as any).share) {
+        await (navigator as any).share({ title: 'Connected Run', text });
+        return;
+      }
+    } catch {
+      /* utilizador cancelou */
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('Conquista copiada para a área de transferência!');
+    } catch {
+      /* sem clipboard */
+    }
+  }, []);
+
   useEffect(() => {
     if (phase === 'menu' || phase === 'levelComplete' || phase === 'gameover') {
       loadRankings();
@@ -310,21 +328,27 @@ export function ConnectedRun({ user, onOpenProfile }: { user: any; onOpenProfile
         <div className="text-center space-y-3 glass-card rounded-2xl border border-white/30 p-6">
           <p className="text-2xl font-bold text-emerald-600">Nível {level} completo! 🎉</p>
           <p className="text-slate-700 font-semibold">+{lastAward} Game Coins (economia do jogo, separada do BlueCoin)</p>
-          <div className="flex gap-2 justify-center">
-            <button onClick={() => startLevel(Math.min(TOTAL_LEVELS, level + 1))} className="rounded-xl bg-primary text-black font-bold px-4 py-2 flex items-center gap-1">
-              Próximo <ChevronRight className="h-4 w-4" />
-            </button>
-            <button onClick={() => setPhase('menu')} className="rounded-xl bg-white/70 text-slate-700 font-bold px-4 py-2">Menu</button>
-          </div>
+           <div className="flex gap-2 justify-center">
+             <button onClick={() => startLevel(Math.min(TOTAL_LEVELS, level + 1))} className="rounded-xl bg-primary text-black font-bold px-4 py-2 flex items-center gap-1">
+               Próximo <ChevronRight className="h-4 w-4" />
+             </button>
+             <button onClick={() => setPhase('menu')} className="rounded-xl bg-white/70 text-slate-700 font-bold px-4 py-2">Menu</button>
+              <button onClick={() => shareRun(level, hud.score)} className="rounded-xl bg-amber-400 text-black font-bold px-4 py-2 flex items-center gap-1">
+               <Trophy className="h-4 w-4" /> Partilhar
+             </button>
+           </div>
         </div>
       )}
 
       {phase === 'gameover' && (
         <div className="text-center space-y-3 glass-card rounded-2xl border border-white/30 p-6">
           <p className="text-2xl font-bold text-rose-600">Fim de jogo 💥</p>
-          <button onClick={() => startLevel(level)} className="rounded-xl bg-primary text-black font-bold px-4 py-2 flex items-center gap-1 mx-auto">
-            <RotateCcw className="h-4 w-4" /> Repetir Nível {level}
-          </button>
+           <button onClick={() => startLevel(level)} className="rounded-xl bg-primary text-black font-bold px-4 py-2 flex items-center gap-1 mx-auto">
+             <RotateCcw className="h-4 w-4" /> Repetir Nível {level}
+           </button>
+           <button onClick={() => shareRun(level, hud.score)} className="rounded-xl bg-amber-400 text-black font-bold px-4 py-2 flex items-center gap-1 mx-auto">
+             <Trophy className="h-4 w-4" /> Partilhar
+           </button>
         </div>
       )}
 
