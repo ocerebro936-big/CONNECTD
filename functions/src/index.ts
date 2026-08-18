@@ -14,15 +14,20 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
+import { getAuth } from 'firebase-admin/auth';
 import { onObjectFinalized } from 'firebase-functions/v2/storage';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { onRequest } from 'firebase-functions/v2/https';
 import * as sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
+import * as fs from 'node:fs';
+import { Storage as MegaStorage } from 'megajs';
 
 initializeApp();
 const db = getFirestore();
 const storage = getStorage();
+const auth = getAuth();
 
 if (ffmpegStatic) ffmpeg.setFfmpegPath(ffmpegStatic as string);
 
@@ -73,7 +78,7 @@ async function processVideo(filePath: string): Promise<Partial<any>> {
       .on('end', () => resolve())
       .on('error', reject);
   });
-  const thumbBuf = require('node:fs').readFileSync('/tmp/' + thumbPath.split('/').pop()!);
+  const thumbBuf = fs.readFileSync('/tmp/' + thumbPath.split('/').pop()!);
   const url = await uploadBuffer(thumbPath, thumbBuf, 'image/jpeg');
   const duration = await new Promise<number>((resolve) => {
     ffmpeg(local).ffprobe((_, data) => resolve(Math.round(data?.format?.duration || 0)));
@@ -113,5 +118,90 @@ export const connectedWorkerTick = onSchedule({ schedule: 'every 2 minutes' }, a
   for (const d of failed.docs) {
     const ts = d.data()?.updatedAt?.toMillis?.() || 0;
     if (ts && ts < cutoff) await d.ref.delete();
+  }
+});
+
+// ============================================================================
+// CON-WORKER → megaBridge: ponte server-side para o MEGA (Storage Provider).
+// As credenciais MEGA vivem em variáveis de ambiente da função (NUNCA no
+// cliente). O cliente autentica-se com o seu ID token Firebase. Requer a
+// dependência `megajs` e as env vars MEGA_EMAIL / MEGA_PASSWORD (ou
+// MEGA_SESSION). Validar a API exata do `megajs` instalado antes de produzir.
+// ============================================================================
+async function megaClient(): Promise<any> {
+  const email = process.env.MEGA_EMAIL;
+  const password = process.env.MEGA_PASSWORD;
+  if (!email || !password) throw new Error('MEGA_EMAIL/MEGA_PASSWORD não configurados na função.');
+  const mega = new MegaStorage({ email, password });
+  await mega.ready;
+  return mega;
+}
+
+function findMegaNode(mega: any, key: string): any {
+  const walk = (node: any): any => {
+    if (node.name === key) return node;
+    if (node.children) for (const c of node.children) {
+      const found = walk(c);
+      if (found) return found;
+    }
+    return null;
+  };
+  return walk(mega.root);
+}
+
+export const megaBridge = onRequest({ cors: true }, async (req, res) => {
+  try {
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    const token = (req.header('Authorization') || '').replace(/^Bearer\s+/i, '');
+    if (!token) { res.status(401).send('unauthorized'); return; }
+    await auth.verifyIdToken(token); // autentica o utilizador Connected
+
+    const key = String(req.query.key || '');
+    if (!key) { res.status(400).send('key required'); return; }
+
+    if (req.method === 'POST' && req.path.endsWith('/upload')) {
+      const buffer: Buffer = (req as any).rawBody || (req.body as Buffer);
+      const mime = req.header('x-mime') || 'application/octet-stream';
+      const mega = await megaClient();
+      const file: any = await mega.upload({ name: key, size: buffer.length, mime }, buffer).complete;
+      res.json({ url: file.link });
+      return;
+    }
+
+    if (req.method === 'GET' && req.path.endsWith('/download')) {
+      const mega = await megaClient();
+      const node = findMegaNode(mega, key);
+      if (!node) { res.status(404).send('not found'); return; }
+      const chunks: Buffer[] = [];
+      await new Promise<void>((resolve, reject) => {
+        node.download((e: any, data: Buffer) => {
+          if (e) return reject(e);
+          if (!data) return resolve();
+          chunks.push(data);
+        });
+      });
+      res.set('Content-Type', node.mime || 'application/octet-stream').send(Buffer.concat(chunks));
+      return;
+    }
+
+    if (req.method === 'POST' && req.path.endsWith('/delete')) {
+      const mega = await megaClient();
+      const node = findMegaNode(mega, key);
+      if (!node) { res.status(404).send('not found'); return; }
+      await node.delete();
+      res.json({ ok: true });
+      return;
+    }
+
+    if (req.method === 'GET' && req.path.endsWith('/exists')) {
+      const mega = await megaClient();
+      const node = findMegaNode(mega, key);
+      res.json({ exists: !!node });
+      return;
+    }
+
+    res.status(405).send('method not allowed');
+  } catch (err: any) {
+    res.status(500).send(String(err?.message || err));
   }
 });

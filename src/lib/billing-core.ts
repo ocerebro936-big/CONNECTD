@@ -21,6 +21,7 @@ export interface ProviderRegistryEntry {
 /** Fornecedores externos da Connected (infraestrutura Cloud). */
 export const PROVIDER_REGISTRY: ProviderRegistryEntry[] = [
   { id: 'firebase-storage', label: 'Cloud Storage', plan: 'Pay-as-you-go', monthlyCostUsd: 0, usedPct: 0, status: 'ok', notes: 'Objetos em GCS via Firebase' },
+  { id: 'mega-storage', label: 'MEGA Storage', plan: 'Pro / Business', monthlyCostUsd: 0, usedPct: 0, status: 'ok', notes: 'Backup/arquivo via megaBridge (CON-WORKER). Credenciais no servidor.' },
   { id: 'firebase-auth', label: 'Authentication', plan: 'Free tier', monthlyCostUsd: 0, usedPct: 0, status: 'ok' },
   { id: 'firestore', label: 'Database', plan: 'Pay-as-you-go', monthlyCostUsd: 0, usedPct: 0, status: 'ok' },
   { id: 'cdn', label: 'CDN / Hosting', plan: 'Firebase Hosting', monthlyCostUsd: 0, usedPct: 0, status: 'ok' },

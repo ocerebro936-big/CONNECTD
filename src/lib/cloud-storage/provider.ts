@@ -13,6 +13,8 @@ import {
   deleteObject,
 } from 'firebase/storage';
 import { storage } from '../../firebase';
+import { MegaStorageProvider } from './mega-provider';
+import type { MegaProviderConfig } from './mega-provider';
 
 export interface StorageObjectMeta {
   ownerId: string;
@@ -107,3 +109,18 @@ export class ConnectedStorage {
 }
 
 export const connectedStorage = new ConnectedStorage(new FirebaseStorageProvider());
+
+export { MegaStorageProvider } from './mega-provider';
+export type { MegaProviderConfig } from './mega-provider';
+
+/** Cria um StorageProvider conforme o fornecedor pretendido (agnóstico). */
+export function createStorageProvider(
+  kind: 'firebase' | 'mega',
+  megaCfg?: MegaProviderConfig
+): StorageProvider {
+  if (kind === 'mega') {
+    if (!megaCfg) throw new Error('MEGA provider requer config (bridgeUrl + getIdToken).');
+    return new MegaStorageProvider(megaCfg);
+  }
+  return new FirebaseStorageProvider();
+}

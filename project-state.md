@@ -36,3 +36,10 @@ Plataforma social (React + Firebase) com backend real: Social + Connected Music 
 - Tudo o que aparece tem backend real (Firestore/Storage).
 - Não alterar `src/lib/divino-core.ts` (original). Novo core em `divino-engine.ts`.
 - Game Coins, Connected Points, BlueCoin = sistemas separados.
+
+## Connected Storage — fornecedores (agnostico)
+- ConnectedStorage + StorageProvider (provider.ts). Firebase = default.
+- MEGA adicionado como StorageProvider delegado: cliente em src/lib/cloud-storage/mega-provider.ts (MegaStorageProvider) -> bridge server-side megaBridge (functions/src/index.ts, CON-WORKER) com megajs.
+- Credenciais MEGA: env vars da funcao (MEGA_EMAIL/MEGA_PASSWORD). Nunca no cliente.
+- Selecionar via createStorageProvider('mega', { bridgeUrl, getIdToken }).
+- Registado no Billing Core (PROVIDER_REGISTRY: mega-storage).
