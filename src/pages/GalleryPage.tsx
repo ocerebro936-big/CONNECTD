@@ -7,6 +7,7 @@ import { calculateTemperature } from '../lib/thermal-utils';
 import { formatCurrency } from '../lib/currency-utils';
 import { CheckoutModal } from '../components/CheckoutModal';
 import { CcsUploader } from '../components/CcsUploader';
+import { LazyMedia } from '../components/LazyMedia';
 import type { CcsUploadResult } from '../lib/ccs/upload/types';
 import { addDoc, collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -205,7 +206,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
                       {item.type === 'video' ? (
                         <video src={item.url} controls={false} muted loop playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       ) : (
-                        <img src={item.url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <LazyMedia src={item.url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       )}
                       <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-lg text-xs font-semibold">
                         {item.type === 'video' ? '🎬 Reel 4K' : '📷 Foto RAW'}
@@ -341,7 +342,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({
             {copyrightMedia.map((item) => (
               <Card key={item.id} className="border-emerald-200/40 shadow-md hover:shadow-lg transition-all overflow-hidden group">
                 <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 rounded-t-xl relative flex items-center justify-center text-white/30 text-sm font-medium overflow-hidden">
-                  <img src={`https://picsum.photos/seed/${item.id}/600/340`} alt={item.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity" />
+                  <LazyMedia src={`https://picsum.photos/seed/${item.id}/600/340`} alt={item.title} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity" />
                   <span className="absolute top-2 right-2 bg-emerald-600 text-white font-black text-[10px] px-2 py-0.5 rounded-full uppercase shadow-md">
                     Licença Comercial
                   </span>

@@ -61,6 +61,9 @@ export function MusicPage({ user, profileData, allUsers, onOpenProfile }: MusicP
       await seedDemoMusic(user, profileData?.displayName || user.email || 'Artista');
       setFilter('all');
       await load();
+    } catch (err: any) {
+      console.error('Erro ao carregar música de exemplo:', err);
+      alert('Não foi possível carregar a música de exemplo. Verifica se o Connected Storage (Firebase Storage) está ativo no console ou se o backend S3/MEGA está configurado.');
     } finally {
       setSeeding(false);
     }

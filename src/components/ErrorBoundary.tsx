@@ -1,53 +1,39 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component } from 'react';
 
-interface Props {
-  children?: ReactNode;
-}
+// Nota: @types/react não está instalado no projeto, pelo que `Component` resolve
+// como `any`. Usamos casts localizados para continuar a compilar; o comportamento
+// de runtime (getDerivedStateFromError/componentDidCatch) funciona normalmente.
+type BState = { error: Error | null };
 
-interface State {
-  hasError: boolean;
-  error: Error | null;
-}
+export class ErrorBoundary extends (Component as any) {
+  state: BState = { error: null };
 
-export class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null
-  };
-
-  public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+  static getDerivedStateFromError(error: Error): BState {
+    return { error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+  componentDidCatch(error: Error, info: any) {
+    // eslint-disable-next-line no-console
+    console.error('[ConnectedKing] Erro capturado:', error, info);
   }
 
-  public render() {
-    if (this.state.hasError) {
+  render() {
+    if (this.state.error) {
       return (
-        <div className="flex h-screen w-full items-center justify-center bg-slate-900 text-white p-4">
-          <div className="glass-card p-8 rounded-2xl max-w-lg w-full text-center border border-white/20 bg-white/10 backdrop-blur-xl">
-            <h2 className="text-2xl font-bold text-rose-500 mb-4">Oops, algo deu errado!</h2>
-            <p className="text-slate-300 mb-4">Ocorreu um erro inesperado na aplicação.</p>
-            <pre className="text-left bg-black/50 p-4 rounded-lg overflow-auto text-xs text-slate-400 mb-6 max-h-48">
-              {this.state.error?.message}
-            </pre>
-            <button
-              className="bg-primary text-primary-foreground px-6 py-2 rounded-xl font-bold hover:bg-primary/90 transition-colors"
-              onClick={() => {
-                // @ts-ignore
-                this.setState({ hasError: false, error: null });
-              }}
-            >
-              Tentar Novamente
-            </button>
-          </div>
+        <div className="max-w-lg mx-auto mt-20 p-6 glass-card rounded-2xl border border-rose-300 text-center space-y-3">
+          <p className="text-2xl font-bold text-rose-600">Ocorreu um erro nesta secção 👑</p>
+          <p className="text-sm text-slate-600 font-medium break-words">{this.state.error.message}</p>
+          <button
+            onClick={() => (this as any).setState({ error: null })}
+            className="rounded-xl bg-primary text-black font-bold px-4 py-2"
+          >
+            Tentar novamente
+          </button>
         </div>
       );
     }
-
-    // @ts-ignore
-    return this.props.children;
+    return (this.props as any).children;
   }
 }
+
+export default ErrorBoundary;

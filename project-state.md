@@ -109,3 +109,9 @@ Plataforma social (React + Firebase) com backend real: Social + Connected Music 
 ## Estado
 - Concluído: PR #1 Cloud Core, PR #2 CCS Universal Pipeline, PR #3 Media Intelligence+remoção firebase/storage, **PR #4 Fast Engine**, **PR #5 Connected RUN share**, **PR #6 Storage Infra**, **PR #7 DIVINO IA Core**, **PR #8 RUN: KINGDOM**, **PR #9 Global Cloud Orchestration** — todos com commits reais e deploy `connectedking.web.app`.
 - Pendente (manual): ativar Firebase Storage no console; configurar env S3 (VITE_CCS_PRESIGN_URL/VITE_CCS_CDN_BASE + funções) para back-end próprio.
+
+## PR #10 — UI Polish (Glassmorphism + Login + Performance) ✅ (commit/impl real)
+- `src/index.css`: fundo ambiente dourado visível por trás do vidro (`body::before` fixed radial + gradiente); `.glass-card`/`.glass` com opacidade maior (legibilidade total) + `color:#1a140c` (texto escuro), `backdrop-filter: blur(22px) saturate(140%)`; media queries desktop (mais transparente/blur 28px) vs mobile (mais opaco/blur 16px). Identidade 👑/dourado preservada.
+- `src/App.tsx`: removido botão "Entrar com o Yahoo" (o "Yayoo") do card de login + ramo `yahoo` de `handleLogin`; login agora com Google/Microsoft/Email/Convidado (essencial).
+- `src/pages/GalleryPage.tsx`: imagens da galeria passam a usar `LazyMedia` (Fast Engine: lazy + connection tier + prefetch) em vez de `<img>` direto.
+- Auditoria de abas: rotas já usam `React.lazy` (Feed/Profile/Dashboard/Connections/Gallery/ConnectTv/Music/Games/Settings/Companies/Business/CloudStatus/...) → carregamento sob demanda; Feed/Gallery/TV/Games/Profile com estados vazio tratados. Próximo: correção pontual de abas específicas reportadas.

@@ -8,6 +8,7 @@
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { connectedStorage } from './cloud-storage/provider';
+import { removeUndefined } from './connected-cloud';
 
 export interface ResumableUploadOptions {
   path: string; // ex: music/{uid}/{id}/audio
@@ -27,17 +28,20 @@ export interface ResumableUploadHandle {
 }
 
 export function uploadResumable(opts: ResumableUploadOptions): ResumableUploadHandle {
-  const assetPromise = addDoc(collection(db, 'cloudAssets'), {
-    ownerUid: opts.ownerUid,
-    storageKey: opts.path,
-    mimeType: opts.file.type,
-    size: opts.file.size,
-    checksum: opts.checksum,
-    visibility: opts.visibility || 'public',
-    processingState: 'uploading',
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  const assetPromise = addDoc(
+    collection(db, 'cloudAssets'),
+    removeUndefined({
+      ownerUid: opts.ownerUid,
+      storageKey: opts.path,
+      mimeType: opts.file.type,
+      size: opts.file.size,
+      checksum: opts.checksum,
+      visibility: opts.visibility || 'public',
+      processingState: 'uploading',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+  );
 
   const controller = new AbortController();
   const promise = (async () => {
