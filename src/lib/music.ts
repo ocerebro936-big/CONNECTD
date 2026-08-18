@@ -5,7 +5,7 @@
 // Firestore (coleção `music`) + áudio/cover no Storage. Likes, plays, shares,
 // downloads e comentários são reais.
 // ============================================================================
-import { storage, db } from '../firebase';
+import { db } from '../firebase';
 import { uploadResumable } from './storage-upload';
 import {
   collection,

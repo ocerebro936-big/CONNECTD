@@ -13,6 +13,7 @@ export type {
 } from './upload/types';
 
 export {
+  ccsUpload,
   ccsUpload as uploadToCcs,
   ccsFolderForKind,
 } from './upload/uploader';

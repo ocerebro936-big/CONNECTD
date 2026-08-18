@@ -12,6 +12,7 @@ export type CcsFolder =
   | 'documents'
   | 'gallery'
   | 'stories'
+  | 'chat'
   | 'tv'
   | 'marketplace';
 

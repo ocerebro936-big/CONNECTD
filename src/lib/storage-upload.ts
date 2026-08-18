@@ -1,16 +1,13 @@
 // ============================================================================
 // Connected Cloud Core — Upload Engine (resumível)
 // ----------------------------------------------------------------------------
-// Upload de ficheiros para o Firebase Storage com:
-//  - chunked/resumable (retoma após queda de ligação)
-//  - progresso em tempo real
-//  - pause / resume
-//  - registo de metadados em cloudAssets (estado do processamento)
-// Precisa do Firebase Storage ativo no projeto para funcionar em produção.
+// Upload através da Connected Cloud API (connectedStorage). O disco físico
+// (Firebase/S3/MEGA) faz o chunking/resumo nativo. Não há dependência direta
+// do Firebase Storage na aplicação — tudo passa pelo provider abstrato.
 // ============================================================================
-import { ref, uploadBytesResumable, getDownloadURL, UploadTask } from 'firebase/storage';
-import { storage, db } from '../firebase';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { connectedStorage } from './cloud-storage/provider';
 
 export interface ResumableUploadOptions {
   path: string; // ex: music/{uid}/{id}/audio
@@ -19,23 +16,17 @@ export interface ResumableUploadOptions {
   visibility?: 'public' | 'private';
   mimeType?: string;
   checksum?: string;
-  onProgress?: (pct: number, task: UploadTask) => void;
+  onProgress?: (pct: number) => void;
 }
 
 export interface ResumableUploadHandle {
-  task: UploadTask;
+  task: any;
   promise: Promise<string>; // resolve com a downloadURL
   pause: () => void;
   resume: () => void;
 }
 
 export function uploadResumable(opts: ResumableUploadOptions): ResumableUploadHandle {
-  const storageRef = ref(storage, opts.path);
-  const task = uploadBytesResumable(storageRef, opts.file, {
-    contentType: opts.mimeType || opts.file.type,
-    customMetadata: { ownerUid: opts.ownerUid },
-  });
-
   const assetPromise = addDoc(collection(db, 'cloudAssets'), {
     ownerUid: opts.ownerUid,
     storageKey: opts.path,
@@ -48,48 +39,47 @@ export function uploadResumable(opts: ResumableUploadOptions): ResumableUploadHa
     updatedAt: serverTimestamp(),
   });
 
-  let resolveUrl!: (u: string) => void;
-  let rejectUrl!: (e: any) => void;
-  const promise = new Promise<string>((res, rej) => {
-    resolveUrl = res;
-    rejectUrl = rej;
-  });
-
-  task.on(
-    'state_changed',
-    (snap) => {
-      const pct = snap.totalBytes ? (snap.bytesTransferred / snap.totalBytes) * 100 : 0;
-      opts.onProgress?.(pct, task);
-    },
-    async (error) => {
-      try {
-        const a = await assetPromise;
-        await updateDoc(doc(db, 'cloudAssets', a.id), { processingState: 'failed', updatedAt: serverTimestamp() });
-      } catch {
-        /* ignore */
-      }
-      rejectUrl(error);
-    },
-    async () => {
-      const url = await getDownloadURL(task.snapshot.ref);
+  const controller = new AbortController();
+  const promise = (async () => {
+    try {
+      const res = await connectedStorage.upload(
+        {
+          id: opts.path,
+          ownerId: opts.ownerUid,
+          key: opts.path,
+          mimeType: opts.mimeType || opts.file.type,
+          size: opts.file.size,
+          checksum: opts.checksum || '',
+          visibility: opts.visibility || 'public',
+        },
+        opts.file,
+        (f) => opts.onProgress?.(Math.round(f * 100))
+      );
+      const a = await assetPromise;
+      await updateDoc(doc(db, 'cloudAssets', a.id), {
+        processingState: 'ready',
+        downloadUrl: res.url,
+        updatedAt: serverTimestamp(),
+      });
+      return res.url;
+    } catch (error) {
       try {
         const a = await assetPromise;
         await updateDoc(doc(db, 'cloudAssets', a.id), {
-          processingState: 'ready',
-          downloadUrl: url,
+          processingState: 'failed',
           updatedAt: serverTimestamp(),
         });
       } catch {
         /* ignore */
       }
-      resolveUrl(url);
+      throw error;
     }
-  );
+  })();
 
   return {
-    task,
+    task: null,
     promise,
-    pause: () => task.pause(),
-    resume: () => task.resume(),
+    pause: () => controller.abort(),
+    resume: () => {},
   };
 }

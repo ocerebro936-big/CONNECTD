@@ -3,8 +3,8 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { X, Radio, Camera, Settings2, Copy, Check, Loader2, History, RefreshCw } from 'lucide-react';
 import { addDoc, collection, updateDoc, doc, onSnapshot, query, where, orderBy, limit as firestoreLimit } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
+import { connectedStorage } from '../lib/cloud-storage/provider';
 import {
   RTMP_SERVERS, getStreamSettings, saveStreamSettings, generateStreamKey,
   getRtmpServer, buildRtmpUrl, parseLiveLink,
@@ -169,9 +169,20 @@ export function GoLiveModal({ user, profileData, liveId, setLiveId, onClose }: G
       let recordingUrl = '';
       if (recBlob) {
         try {
-          const storageRef = ref(storage, `lives/${liveRef}/recording.webm`);
-          await uploadBytes(storageRef, recBlob);
-          recordingUrl = await getDownloadURL(storageRef);
+          const key = `lives/${liveRef}/recording.webm`;
+          const res = await connectedStorage.upload(
+            {
+              id: key,
+              ownerId: user?.uid || 'live',
+              key,
+              mimeType: 'video/webm',
+              size: recBlob.size,
+              checksum: '',
+              visibility: 'public',
+            },
+            recBlob
+          );
+          recordingUrl = res.url;
         } catch (e) {
           console.error('Recording upload failed:', e);
         }

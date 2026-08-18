@@ -5,10 +5,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { ImageIcon, Video, Send, Home, Camera, X, Heart, MessageSquare, Share2, MoreHorizontal, Star, ChevronDown, ChevronUp, LayoutGrid, Play, Pause, Radio, FileText, Film, Music } from 'lucide-react';
 import PostCard from '../components/PostCard';
 import { AudioVisualizer } from '../components/AudioVisualizer';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '../lib/image-utils';
 import { classifyFile, UploadKind } from '../lib/upload-engine';
-import { storage } from '../firebase';
+import { ccsUpload } from '../lib/ccs/upload/uploader';
 import { addDoc, collection, onSnapshot, query, orderBy, where, updateDoc, doc, increment, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { LiveRoom } from '../components/LiveRoom';
@@ -203,15 +202,28 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!storyPreview || !user) return;
     setIsUploadingStory(true);
     try {
-      const fileName = `story_${Date.now()}_${user.uid}`;
-      const storageRef = ref(storage, `stories/${fileName}`);
-      await uploadString(storageRef, storyPreview, 'data_url');
-      const url = await getDownloadURL(storageRef);
+      const [meta, b64] = storyPreview.split(',');
+      const mime = /:(.*?);/.exec(meta)?.[1] || 'image/jpeg';
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      const file = new File([arr], `story_${Date.now()}_${user.uid}.jpg`, { type: mime });
+
+      const res = await ccsUpload({
+        ownerUid: user.uid,
+        ownerName: profileData.displayName || user.email?.split('@')[0] || 'Unknown',
+        file,
+        folder: 'stories',
+        kind: 'image',
+        generateDerivatives: false,
+        user,
+        profileData,
+      });
       await addDoc(collection(db, 'stories'), {
         userId: user.uid,
         authorName: profileData.displayName || user.email?.split('@')[0] || 'Unknown',
         authorAvatar: profileData.photoURL || 'https://github.com/shadcn.png',
-        imageUrl: url,
+        imageUrl: res.url,
         createdAt: Date.now(),
         expiresAt: Date.now() + 86400000,
       });

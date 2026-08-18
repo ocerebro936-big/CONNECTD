@@ -1,8 +1,11 @@
 // ============================================================================
 // Connected Cloud Storage — Processamento de imagem
 // Gera derivados inteligentes (large/medium/small/thumbnail) para utilização
-// rápida no Feed, mantendo o original quando o plano de armazenamento permite.
+// rápida no Feed, preservando a proporção e só fazendo downscale. Mantém o
+// original (label 'original'). A qualidade é adaptativa ao tamanho do ficheiro.
 // ============================================================================
+import { computeImageTargets, type DimensionTarget } from './dimensions';
+import { pickQuality } from './quality';
 
 export interface ImageDerivative {
   label: 'original' | 'large' | 'medium' | 'small' | 'thumbnail';
@@ -10,20 +13,11 @@ export interface ImageDerivative {
   blob: Blob;
 }
 
-function widthToLabel(w: number): ImageDerivative['label'] {
-  if (w >= 1600) return 'large';
-  if (w >= 1080) return 'medium';
-  if (w >= 600) return 'small';
-  return 'thumbnail';
-}
-
 function loadImage(file: Blob): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => {
-      resolve(img);
-    };
+    img.onload = () => resolve(img);
     img.onerror = (e) => {
       URL.revokeObjectURL(url);
       reject(e);
@@ -43,36 +37,28 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality = 0.82): 
 }
 
 /**
- * Gera derivados redimensionados de uma imagem. O original (label 'original')
- * é sempre incluído. Larguras padrão: 1600/1080/600/200.
+ * Gera derivados redimensionados de uma imagem com base nas dimensões reais
+ * (computeImageTargets) e qualidade adaptativa. O original é sempre incluído.
  */
-export async function generateImageDerivatives(
-  file: File,
-  widths: number[] = [1600, 1080, 600, 200]
-): Promise<ImageDerivative[]> {
+export async function generateImageDerivatives(file: File): Promise<ImageDerivative[]> {
   const img = await loadImage(file);
-  const out: ImageDerivative[] = [];
-  const seen = new Set<ImageDerivative['label']>();
+  const targets: DimensionTarget[] = computeImageTargets(img.naturalWidth, img.naturalHeight);
+  const quality = pickQuality(file.size, file.type);
+  const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
 
-  for (const w of widths) {
-    if (img.width <= w) continue;
-    const scale = w / img.width;
-    const h = Math.max(1, Math.round(img.height * scale));
+  const out: ImageDerivative[] = [];
+  for (const t of targets) {
     const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
+    canvas.width = t.width;
+    canvas.height = t.height;
     const ctx = canvas.getContext('2d');
     if (!ctx) continue;
-    ctx.drawImage(img, 0, 0, w, h);
-    const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-    const blob = await canvasToBlob(canvas, type);
-    const label = widthToLabel(w);
-    if (seen.has(label)) continue;
-    seen.add(label);
-    out.push({ label, width: w, blob });
+    ctx.drawImage(img, 0, 0, t.width, t.height);
+    const blob = await canvasToBlob(canvas, type, quality);
+    out.push({ label: t.label, width: t.width, blob });
   }
 
   URL.revokeObjectURL(img.src);
-  out.push({ label: 'original', width: img.width, blob: file });
+  out.push({ label: 'original', width: img.naturalWidth, blob: file });
   return out;
 }

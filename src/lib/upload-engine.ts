@@ -1,7 +1,6 @@
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '../firebase';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../firebase';
+import { connectedStorage } from './cloud-storage/provider';
 import { compressImage } from './image-utils';
 import { publishToCloud } from './cloud-upload';
 
@@ -175,35 +174,30 @@ export async function resumableUpload(
   onProgress?: (fraction: number) => void,
   maxRetries = 3
 ): Promise<string> {
-  const attempt = (): Promise<string> => {
-    const storageRef = ref(storage, storagePath);
-    const task = uploadBytesResumable(storageRef, file, {
-      contentType: file.type,
-      customMetadata: { uploadedAt: String(Date.now()) },
-    });
-    return new Promise<string>((resolve, reject) => {
-      task.on(
-        'state_changed',
-        (snap) => onProgress?.(snap.bytesTransferred / snap.totalBytes),
-        (err) => reject(err),
-() => getDownloadURL(task.snapshot.ref).then(resolve).catch(reject)
-      );
-    });
-  };
-
   let lastError: any = null;
   for (let i = 0; i <= maxRetries; i++) {
     try {
-      return await attempt();
+      const res = await connectedStorage.upload(
+        {
+          id: storagePath,
+          ownerId: 'anon',
+          key: storagePath,
+          mimeType: file.type || 'application/octet-stream',
+          size: file.size,
+          checksum: '',
+          visibility: 'public',
+        },
+        file,
+        onProgress
+      );
+      return res.url;
     } catch (err: any) {
       lastError = err;
-      if (i === maxRetries || err?.name === 'FirebaseError' && err?.code === 'storage/unauthorized') {
-        break;
-      }
+      if (i === maxRetries) break;
       await sleep(1200 * (i + 1));
     }
   }
-  throw new Error(`O upload falhou${lastError?.code === 'storage/unauthorized' ? ' (sem autorização)' : ' após várias tentativas'}. Tenta novamente.`);
+  throw new Error(`O upload falhou após várias tentativas. Tenta novamente.`);
 }
 
 export interface PublishMediaInput {

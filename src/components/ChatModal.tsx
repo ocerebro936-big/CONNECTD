@@ -3,9 +3,8 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { Send, X, Image as ImageIcon, Video, FileText, Mic, MapPin, Smile, Reply, Pencil, Trash2, Check, CheckCheck, Loader2, MessageCircle } from 'lucide-react';
 import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { compressImage } from '../lib/image-utils';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
+import { ccsUpload } from '../lib/ccs/upload';
 import { playSound } from '../lib/sound-engine';
 
 interface ChatModalProps {
@@ -168,23 +167,23 @@ export function ChatModal({ user, profileData, chatUser, onClose }: ChatModalPro
     if (!user) return;
     setIsUploading(true);
     try {
-      const dataUrl = kind === 'image' ? await compressImage(file) : await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
+      const res = await ccsUpload({
+        ownerUid: user.uid,
+        ownerName: profileData?.displayName || user.email,
+        file,
+        folder: 'chat',
+        kind: kind === 'video' ? 'video' : kind === 'image' ? 'image' : 'document',
+        user,
+        profileData,
       });
-      const fileName = `chat_${Date.now()}_${user.uid}`;
-      const storageRef = ref(storage, `chat/${kind}s/${fileName}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`);
-      await uploadString(storageRef, dataUrl, 'data_url');
-      const url = await getDownloadURL(storageRef);
       await sendMessage(kind === 'document' ? file.name : '', {
         type: kind,
-        content: url,
+        content: res.url,
         fileName: kind === 'document' ? file.name : undefined,
       });
     } catch (e) {
       console.error('Error uploading:', e);
+      alert('Erro ao enviar ficheiro.');
     } finally {
       setIsUploading(false);
     }
@@ -200,19 +199,25 @@ export function ChatModal({ user, profileData, chatUser, onClose }: ChatModalPro
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunks, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.onload = async () => {
-          setIsUploading(true);
-          try {
-            const storageRef = ref(storage, `chat/audio/audio_${Date.now()}_${user.uid}.webm`);
-            await uploadString(storageRef, reader.result as string, 'data_url');
-            const url = await getDownloadURL(storageRef);
-            await sendMessage('🎤 Mensagem de voz', { type: 'audio', content: url });
-          } finally {
-            setIsUploading(false);
-          }
-        };
-        reader.readAsDataURL(blob);
+        const audioFile = new File([blob], `audio_${Date.now()}_${user.uid}.webm`, { type: 'audio/webm' });
+        setIsUploading(true);
+        try {
+          const res = await ccsUpload({
+            ownerUid: user.uid,
+            ownerName: profileData?.displayName || user.email,
+            file: audioFile,
+            folder: 'chat',
+            kind: 'audio',
+            user,
+            profileData,
+          });
+          await sendMessage('🎤 Mensagem de voz', { type: 'audio', content: res.url });
+        } catch (e) {
+          console.error('Error uploading audio:', e);
+          alert('Erro ao enviar áudio.');
+        } finally {
+          setIsUploading(false);
+        }
       };
       rec.start();
       setIsRecording(true);

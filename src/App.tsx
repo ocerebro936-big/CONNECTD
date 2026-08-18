@@ -17,8 +17,6 @@ import {
   TotpMultiFactorGenerator
 } from 'firebase/auth';
 import { doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, onSnapshot, where, increment, limit, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { storage } from './firebase';
 import { db } from './firebase';
 import { handleFirestoreError, OperationType } from './lib/firebase-errors';
 import { registerSession, getSessionVersion, setSessionVersion, getDeviceInfo } from './lib/security-utils';

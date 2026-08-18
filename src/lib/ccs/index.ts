@@ -190,5 +190,8 @@ export * from './media/image';
 export * from './media/video';
 export * from './media/audio';
 export * from './media/thumbnail';
+export * from './media/dimensions';
+export * from './media/quality';
+export * from './media/metadata';
 export * from './cache/media-cache';
 export * from './providers/connected';

@@ -80,3 +80,9 @@ Plataforma social (React + Firebase) com backend real: Social + Connected Music 
 - GalleryPage passou a usar CcsUploader (folder 'gallery'); removido uso direto de firebase/storage na Galeria e no thumbnail de cloud-upload.ts (agora via connectedStorage).
 - Firebase Storage deixa de ser dependencia direta da logica da app (provider continua a abstrair; troca futura para Connected Storage proprio = so mudar provider).
 - Camera/TV/Marketplace: reutilizarao o mesmo CcsUploader (componente ja universal).
+
+## PR #3 — CCS Media Intelligence + remocao total do Firebase Storage direto
+- Removido TODO o uso direto de firebase/storage do codigo da app: ChatModal, FeedPage Stories, upload-engine.ts (resumableUpload via connectedStorage), App.tsx (imports orfaos), storage-upload.ts/music.ts (via connectedStorage), GoLiveModal (connectedStorage). Restam apenas cloud-storage/provider.ts + engines (camada de abstracao) e firebase.ts (init SDK).
+- StorageProvider estendido com metadata() e signedUrl() (ConnectedStorage delega; opcionais nos providers S3/MEGA).
+- Media Intelligence: media/dimensions.ts (computeImageTargets preservando proporcao + so downscale; VIDEO_PRESETS 1080/720/480), media/quality.ts (pickQuality adaptativa), media/metadata.ts (readMediaMeta via DOM). image.ts agora usa computeImageTargets + pickQuality.
+- CcsFolder inclui 'chat'. ccsUpload exportado diretamente em upload.ts.
