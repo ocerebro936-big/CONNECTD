@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardFooter } from './ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { MessageSquare, Share2, MoreHorizontal, Send, Play, ImageIcon, Heart, FileText, Music } from 'lucide-react';
+import { MessageSquare, Share2, MoreHorizontal, Send, Play, Pause, ImageIcon, Heart, FileText, Music } from 'lucide-react';
 import { ThermalBadge } from './ThermalBadge';
 import { StarRating } from './StarRating';
+import { AudioVisualizer } from './AudioVisualizer';
 import { calculateTemperature } from '../lib/thermal-utils';
 
 export type PostMediaType = 'photo' | 'video' | 'reel' | 'album' | 'panorama' | 'text' | 'pdf' | 'slides' | 'audio';
@@ -61,6 +62,7 @@ interface PostCardProps {
   onLike: (post: any) => void;
   onShare: (post: any) => void;
   onMoreOptions: (post: any) => void;
+  onOpenProfile?: (userId: string) => void;
 }
 
 const PostCard: React.FC<PostCardProps> = ({
@@ -77,8 +79,11 @@ const PostCard: React.FC<PostCardProps> = ({
   onLike,
   onShare,
   onMoreOptions,
+  onOpenProfile,
 }) => {
   const imgRef = useRef<HTMLImageElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [aspectRatio, setAspectRatio] = useState<number | null>(null);
   const [mediaType, setMediaType] = useState<PostMediaType>(post.media?.type || 'text');
 
@@ -126,7 +131,7 @@ const PostCard: React.FC<PostCardProps> = ({
   };
 
   const renderMedia = () => {
-    if (post.media?.type === 'pdf' || post.media?.type === 'slides') {
+    if (post.media?.type === 'pdf' || post.media?.type === 'slides' || post.media?.type === 'document') {
       return (
         <div className="mx-4 sm:mx-5 mb-2">
           <a
@@ -140,10 +145,10 @@ const PostCard: React.FC<PostCardProps> = ({
             </span>
             <span className="flex-1 min-w-0 text-left">
               <span className="block font-bold text-slate-900 text-sm truncate">
-                {post.media.fileName || (post.media.type === 'pdf' ? 'Documento PDF' : 'Apresentação (Slides)')}
+                {post.media.fileName || (post.media.type === 'pdf' ? 'Documento PDF' : post.media.type === 'slides' ? 'Apresentação (Slides)' : 'Ficheiro')}
               </span>
               <span className="block text-[11px] text-slate-500 font-medium">
-                {post.media.type === 'pdf' ? '📄 Documento PDF' : '🖼 Apresentação de slides'} · Abrir em nova aba
+                {post.media.type === 'pdf' ? '📄 Documento PDF' : post.media.type === 'slides' ? '🖼 Apresentação de slides' : '📦 Ficheiro'} · Abrir em nova aba
               </span>
             </span>
             <span className="text-indigo-600 font-bold text-sm shrink-0 group-hover:translate-x-0.5 transition-transform">Ver ↗</span>
@@ -155,20 +160,47 @@ const PostCard: React.FC<PostCardProps> = ({
     if (post.media?.type === 'audio') {
       return (
         <div className="px-4 sm:px-5 mb-2">
-          <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-300/40 bg-emerald-500/10">
-            <span className="h-11 w-11 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shrink-0">
+          <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-300/40 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent overflow-hidden relative">
+            <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none" />
+            <span className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shrink-0 relative">
               <Music className="h-5 w-5" />
             </span>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 relative">
               <span className="block font-bold text-slate-900 text-sm truncate">{post.media.fileName || 'Áudio'}</span>
-              <audio src={post.media.url} controls className="w-full h-9 mt-1" preload="metadata" />
+              <AudioVisualizer playing={isAudioPlaying} bars={28} className="mt-1.5" />
+              <audio
+                ref={audioRef}
+                src={post.media.url}
+                preload="metadata"
+                className="hidden"
+                onPlay={() => setIsAudioPlaying(true)}
+                onPause={() => setIsAudioPlaying(false)}
+                onEnded={() => setIsAudioPlaying(false)}
+              />
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-full bg-white/70 hover:bg-white text-emerald-700 shadow-sm shrink-0 relative"
+              onClick={() => {
+                const a = audioRef.current;
+                if (!a) return;
+                if (isAudioPlaying) {
+                  a.pause();
+                } else {
+                  a.play().catch(() => {});
+                }
+              }}
+              aria-label={isAudioPlaying ? 'Pausar áudio' : 'Reproduzir áudio'}
+            >
+              {isAudioPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
+            </Button>
           </div>
         </div>
       );
     }
 
-    if (post.media?.type === 'video') {
+    if (post.media?.type === 'video' || post.media?.type === 'reel') {
       return (
         <div className={`relative w-full ${getMediaLayoutClass()} bg-slate-900 flex items-center justify-center group cursor-pointer`}>
           <video
@@ -176,9 +208,9 @@ const PostCard: React.FC<PostCardProps> = ({
             poster={post.media.thumbnailUrl}
             controls
             preload="metadata"
-          >
-            <source src={post.media.url} type="video/mp4" />
-          </video>
+            playsInline
+            src={post.media.url}
+          />
           {!post.media.thumbnailUrl && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -241,15 +273,21 @@ const PostCard: React.FC<PostCardProps> = ({
   return (
     <Card className="glass-card border-white/30 shadow-md overflow-hidden hover:shadow-lg transition-shadow">
       <CardHeader className="p-4 sm:p-5 flex flex-row items-center gap-3 space-y-0">
-        <div className="rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 to-primary">
+        <button
+          onClick={() => onOpenProfile?.(post.userId)}
+          className="rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 to-primary hover:scale-105 transition-transform shrink-0"
+          aria-label={`Ver perfil de ${post.authorName}`}
+        >
           <Avatar className="h-11 w-11 border-2 border-white shadow-sm">
             <AvatarImage src={post.authorAvatar} />
             <AvatarFallback className="bg-primary/10 text-primary text-sm">{post.authorName?.[0] || 'U'}</AvatarFallback>
           </Avatar>
-        </div>
+        </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-bold text-slate-900 text-[15px] truncate">{post.authorName}</span>
+            <button onClick={() => onOpenProfile?.(post.userId)} className="font-bold text-slate-900 text-[15px] truncate hover:underline">
+              {post.authorName}
+            </button>
             <ThermalBadge temperature={temp} />
           </div>
           <div className="flex items-center gap-1.5">

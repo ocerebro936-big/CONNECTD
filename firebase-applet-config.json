@@ -1,10 +1,10 @@
 {
-  "projectId": "gen-lang-client-0029245143",
-  "appId": "1:41171720042:web:f521498715660be1337713",
-  "apiKey": "AIzaSyAAycO_oPPGJ_PJ-jknkvXHW26uplATXbU",
-  "authDomain": "gen-lang-client-0029245143.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-12e32cf3-fb55-47b1-a2e3-74c92b9956df",
-  "storageBucket": "gen-lang-client-0029245143.firebasestorage.app",
-  "messagingSenderId": "41171720042",
+  "projectId": "connected-ecossistema",
+  "appId": "1:1076717451627:web:544766e73c80d9640cf42e",
+  "apiKey": "AIzaSyCzT6k9oACdzdAPd2Tp-Y02KP-XO97RZCY",
+  "authDomain": "connected-ecossistema.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "connected-ecossistema.firebasestorage.app",
+  "messagingSenderId": "1076717451627",
   "measurementId": ""
 }

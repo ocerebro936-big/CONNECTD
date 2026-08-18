@@ -1,58 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 import { RefreshCw } from 'lucide-react';
+import { APP_VERSION } from '../lib/app-version';
+
+// ============================================================================
+// Connected App — Atualização automática controlada
+// ----------------------------------------------------------------------------
+// O Service Worker descarrega a nova versão em segundo plano (Workbox). Quando
+// estiver validada e pronta, mostramos o aviso e o utilizador decide ativar.
+// Fluxo: Connected v1.0 → download em background → validação → ativação → v1.1
+// ============================================================================
 
 export function UpdateNotifier() {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const {
+    needRefresh: [needRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onOfflineReady() {
+      console.log('Connected pronta para funcionar offline.');
+    },
+  });
 
-  useEffect(() => {
-    const onUpdate = () => setUpdateAvailable(true);
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then((reg) => {
-        if (reg.waiting) {
-          onUpdate();
-          return;
-        }
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          if (!newWorker) return;
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              onUpdate();
-            }
-          });
-        });
-      });
-    }
-
-    let lastSw = '';
-    const interval = setInterval(() => {
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistration().then((reg) => {
-          const key = reg?.active?.state || '';
-          if (reg?.waiting) onUpdate();
-          if (lastSw && reg?.active?.state === 'activated') {
-            lastSw = '';
-          }
-          lastSw = key;
-        });
-      }
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleReload = async () => {
-    if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg?.waiting) {
-        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-      }
-    }
-    window.location.reload();
+  const handleActivate = async () => {
+    await updateServiceWorker(true);
+    // O SW assume o controlo; recarregamos para aplicar os novos assets.
+    setTimeout(() => window.location.reload(), 600);
   };
 
-  if (!updateAvailable) return null;
+  if (!needRefresh) return null;
 
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md animate-in slide-in-from-top-4 fade-in">
@@ -64,12 +38,12 @@ export function UpdateNotifier() {
           <p className="text-xs font-bold text-slate-900">
             Nova versão disponível
             <span className="block text-[10px] font-semibold text-slate-600">
-              Atualização em segundo plano concluída
+              Connected v{APP_VERSION} · atualização em segundo plano concluída
             </span>
           </p>
         </div>
         <button
-          onClick={handleReload}
+          onClick={handleActivate}
           className="bg-primary text-primary-foreground rounded-xl px-4 py-2 text-xs font-bold shadow-md hover:opacity-90 transition-all shrink-0"
         >
           Atualizar

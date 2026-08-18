@@ -2,24 +2,29 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { ImageIcon, Video, Send, Home, Camera, X, Heart, MessageSquare, Share2, MoreHorizontal, Star, ChevronDown, ChevronUp, LayoutGrid, Play, Radio, FileText } from 'lucide-react';
+import { ImageIcon, Video, Send, Home, Camera, X, Heart, MessageSquare, Share2, MoreHorizontal, Star, ChevronDown, ChevronUp, LayoutGrid, Play, Pause, Radio, FileText, Film, Music } from 'lucide-react';
 import PostCard from '../components/PostCard';
+import { AudioVisualizer } from '../components/AudioVisualizer';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '../lib/image-utils';
+import { classifyFile, UploadKind } from '../lib/upload-engine';
 import { storage } from '../firebase';
 import { addDoc, collection, onSnapshot, query, orderBy, where, updateDoc, doc, increment, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { LiveRoom } from '../components/LiveRoom';
 import { GoLiveModal } from '../components/GoLiveModal';
+import { buildFeed } from '../lib/discovery';
 
 interface FeedPageProps {
   user: any;
   profileData: any;
   posts: any[];
+  allUsers: any[];
   newPostContent: string;
   setNewPostContent: (val: string) => void;
   isPosting: boolean;
   handlePublish: () => void;
+  handleMediaPublish: (file: File, onProgress?: (fraction: number) => void, options?: { forceKind?: 'reel' }) => Promise<boolean>;
   handleRatePost: (postId: string, score: number) => void;
   handleLikePost: (post: any) => void;
   handleSharePost: (post: any) => void;
@@ -32,6 +37,7 @@ interface FeedPageProps {
   setCommentInputs: (val: Record<string, string>) => void;
   handleAddComment: (postId: string) => void;
   isCommenting: Record<string, boolean>;
+  onOpenProfile?: (userId: string) => void;
 }
 
 const FEED_MODE_KEY = 'connected_feed_mode';
@@ -40,10 +46,12 @@ const FeedPage: React.FC<FeedPageProps> = ({
   user,
   profileData,
   posts,
+  allUsers,
   newPostContent,
   setNewPostContent,
   isPosting,
   handlePublish,
+  handleMediaPublish,
   handleRatePost,
   handleLikePost,
   handleSharePost,
@@ -56,6 +64,7 @@ const FeedPage: React.FC<FeedPageProps> = ({
   setCommentInputs,
   handleAddComment,
   isCommenting,
+  onOpenProfile,
 }) => {
   const [feedSubTab, setFeedSubTab] = useState<'global' | 'following' | 'trending'>('global');
   const [showStoryCam, setShowStoryCam] = useState(false);
@@ -74,9 +83,13 @@ const FeedPage: React.FC<FeedPageProps> = ({
   const [viewingLive, setViewingLive] = useState<any | null>(null);
   const [showGoLive, setShowGoLive] = useState(false);
   const [myActiveLive, setMyActiveLive] = useState<string | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<{ file: File; kind: UploadKind; previewUrl?: string; label: string } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const storyInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const reelInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
@@ -109,89 +122,77 @@ const FeedPage: React.FC<FeedPageProps> = ({
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, type: 'photo' | 'video' | 'story') => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-    try {
-      const dataUrl = await compressImage(file);
-      if (type === 'story') {
+
+    if (type === 'story') {
+      try {
+        const dataUrl = await compressImage(file);
         setStoryPreview(dataUrl);
-      } else {
-        await handleMediaUpload(dataUrl, type);
+      } catch (err) {
+        console.error('Error processing story image:', err);
+        alert('Erro ao processar a imagem.');
       }
-    } catch (err) {
-      console.error('Error processing file:', err);
-      alert('Erro ao processar o ficheiro.');
+      return;
     }
-  };
 
-  const handleMediaUpload = async (dataUrl: string, type: 'photo' | 'video') => {
-    if (!user) return;
     try {
-      const fileName = `${Date.now()}_${user.uid}`;
-      const storageRef = ref(storage, `${type}s/${fileName}`);
-      await uploadString(storageRef, dataUrl, 'data_url');
-      const url = await getDownloadURL(storageRef);
-      const mediaType = type === 'video' ? 'video' : 'photo';
-      await addDoc(collection(db, 'posts'), {
-        userId: user.uid,
-        authorName: profileData.displayName || user.email?.split('@')[0] || 'Unknown',
-        authorHandle: `@${(profileData.displayName || user.email?.split('@')[0] || 'user').toLowerCase().replace(/\s+/g, '')}`,
-        authorAvatar: profileData.photoURL || 'https://github.com/shadcn.png',
-        content: '',
-        media: { type: mediaType, url },
-        ratings: { totalScore: 0, count: 0, userRatings: {} },
-        likes: 0,
-        comments: 0,
-        createdAt: Date.now(),
-      });
-    } catch (error) {
-      console.error('Error uploading media:', error);
-      alert('Erro ao enviar ficheiro.');
+      const classified = classifyFile(file);
+      const label = classified.kind === 'photo' ? '📷 Foto'
+        : classified.kind === 'video' ? '🎬 Vídeo'
+        : classified.kind === 'audio' ? '🎵 Áudio'
+        : classified.kind === 'pdf' ? '📄 PDF'
+        : classified.kind === 'slides' ? '📊 Slides'
+        : '📦 Outros';
+      const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : file.type.startsWith('video/') ? URL.createObjectURL(file) : undefined;
+      setSelectedMedia({ file, kind: classified.kind, previewUrl: previewUrl || undefined, label });
+    } catch (err: any) {
+      alert(err?.message || 'Formato não suportado.');
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !user) return;
-    const isAudio = file.type.startsWith('audio/');
-    const isPdf = file.type === 'application/pdf';
-    const isSlides = /pptx|powerpoint/.test(file.type) || /\.pptx?$/.test(file.name) || /\.key$/.test(file.name);
-    if (!isAudio && !isPdf && !isSlides) {
-      alert('Suportados: documentos PDF, apresentações (PPT/PPTX/KEY) e áudio (MP3, WAV, M4A, OGG).');
-      return;
-    }
-    if (file.size > 50 * 1024 * 1024) {
-      alert('Ficheiro demasiado grande (máx. 50 MB).');
-      return;
-    }
+    if (!file) return;
     try {
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const dataUrl = ev.target?.result as string;
-        const fileName = `doc_${Date.now()}_${user.uid}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-        const storageRef = ref(storage, `documents/${fileName}`);
-        await uploadString(storageRef, dataUrl, 'data_url');
-        const url = await getDownloadURL(storageRef);
-        const mediaType = isAudio ? 'audio' : isSlides ? 'slides' : 'pdf';
-        await addDoc(collection(db, 'posts'), {
-          userId: user.uid,
-          authorName: profileData.displayName || user.email?.split('@')[0] || 'Unknown',
-          authorHandle: `@${(profileData.displayName || user.email?.split('@')[0] || 'user').toLowerCase().replace(/\s+/g, '')}`,
-          authorAvatar: profileData.photoURL || 'https://github.com/shadcn.png',
-          content: newPostContent.trim() || `📎 Partilhou ${isAudio ? 'áudio' : isSlides ? 'uma apresentação' : 'um documento'}: ${file.name}`,
-          media: { type: mediaType, url, fileName: file.name },
-          ratings: { totalScore: 0, count: 0, userRatings: {} },
-          likes: 0,
-          comments: 0,
-          createdAt: Date.now(),
-        });
-        setNewPostContent('');
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('Erro ao enviar o ficheiro.');
+      const classified = classifyFile(file);
+      const label = classified.kind === 'audio' ? '🎵 Áudio' : classified.kind === 'pdf' ? '📄 PDF' : classified.kind === 'slides' ? '📊 Slides' : '📦 Outros';
+      setSelectedMedia({ file, kind: classified.kind, label });
+    } catch (err: any) {
+      alert(err?.message || 'Formato não suportado.');
     }
+  };
+
+  const handleReelSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const classified = classifyFile(file);
+      if (classified.kind !== 'video') {
+        alert('O Reel tem de ser um vídeo (MP4/WebM/MOV/M4V).');
+        return;
+      }
+      const previewUrl = file.type.startsWith('video/') ? URL.createObjectURL(file) : undefined;
+      setSelectedMedia({ file, kind: 'reel', previewUrl: previewUrl || undefined, label: '🎞 Reel' });
+    } catch (err: any) {
+      alert(err?.message || 'Formato não suportado.');
+    }
+  };
+
+  const clearSelectedMedia = () => {
+    setSelectedMedia(null);
+    setUploadProgress(null);
+  };
+
+  const publishSelected = async () => {
+    if (selectedMedia) {
+      const ok = await handleMediaPublish(selectedMedia.file, setUploadProgress, selectedMedia.kind === 'reel' ? { forceKind: 'reel' } : undefined);
+      if (ok) clearSelectedMedia();
+      return;
+    }
+    handlePublish();
   };
 
   const handlePublishStory = async () => {
@@ -246,11 +247,23 @@ const FeedPage: React.FC<FeedPageProps> = ({
     }
   };
 
+  const forYouPosts = React.useMemo(
+    () =>
+      buildFeed({
+        followingIds,
+        posts,
+        allUsers,
+        viewerTags: profileData?.tags,
+        limit: 500,
+      }),
+    [followingIds, posts, allUsers, profileData?.tags]
+  );
+
   const filteredPosts = feedSubTab === 'trending'
     ? [...posts].sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     : feedSubTab === 'following'
     ? posts.filter((p) => followingIds.includes(p.userId))
-    : posts;
+    : forYouPosts;
 
   return (
     <div className={feedMode === 'immersive' ? 'animate-in fade-in duration-500 -mx-4 md:-mx-6 lg:-mx-8 -mt-4 md:-mt-6 lg:-mt-8 h-[calc(100dvh-4rem)] pb-14 sm:pb-0' : 'space-y-6 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500'}>
@@ -277,7 +290,7 @@ const FeedPage: React.FC<FeedPageProps> = ({
           {/* Sub-aba Navigation */}
           <div className="flex gap-1 p-1 bg-white/50 rounded-xl border border-white/30 shadow-sm">
             {[
-              { id: 'global' as const, label: '🌍 Global' },
+              { id: 'global' as const, label: '✨ Para ti' },
               { id: 'following' as const, label: '👥 Seguindo' },
               { id: 'trending' as const, label: '🔥 Destaques' },
             ].map((tab) => (
@@ -403,11 +416,11 @@ const FeedPage: React.FC<FeedPageProps> = ({
                     </div>
                   ) : (
                     <div className="flex justify-center">
-                      <Button variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()}>
+                      <Button variant="outline" className="gap-2" onClick={() => storyInputRef.current?.click()}>
                         <ImageIcon className="h-5 w-5" /> Escolher Foto
                       </Button>
                       <input
-                        ref={fileInputRef}
+                        ref={storyInputRef}
                         type="file"
                         accept="image/*"
                         className="hidden"
@@ -465,14 +478,56 @@ const FeedPage: React.FC<FeedPageProps> = ({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="application/pdf,.ppt,.pptx,.key,audio/*"
+                    accept="application/pdf,.ppt,.pptx,.key,audio/*,.txt,.doc,.docx,.xls,.xlsx,.csv,.odt,.zip,.rar,.7z"
                     className="hidden"
                     onChange={handleFileUpload}
                   />
                 </div>
-                <Button size="sm" className="rounded-xl px-6 font-bold shadow-md" onClick={handlePublish} disabled={isPosting || !newPostContent.trim()}>
-                  {isPosting ? 'Publicando...' : 'Publicar'}
-                </Button>
+
+                {selectedMedia && (
+                  <div className="mt-3 rounded-xl border border-primary/30 bg-white/50 p-2.5 animate-in fade-in slide-in-from-bottom-2">
+                    <div className="flex items-center gap-3">
+                      {selectedMedia.previewUrl && (selectedMedia.kind === 'photo' || selectedMedia.kind === 'video' || selectedMedia.kind === 'reel') ? (
+                        selectedMedia.kind === 'photo' ? (
+                          <img src={selectedMedia.previewUrl} alt="Pré-visualização" className="h-14 w-14 rounded-lg object-cover border border-white shadow-sm" />
+                        ) : (
+                          <video src={selectedMedia.previewUrl} className="h-14 w-14 rounded-lg object-cover border border-white shadow-sm" muted playsInline />
+                        )
+                      ) : (
+                        <span className="h-14 w-14 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center text-2xl shadow-sm shrink-0">
+                          {selectedMedia.kind === 'audio' ? '🎵' : selectedMedia.kind === 'pdf' ? '📄' : selectedMedia.kind === 'slides' ? '📊' : '📦'}
+                        </span>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-900 truncate">{selectedMedia.label}</p>
+                        <p className="text-[11px] text-slate-500 font-medium truncate">{selectedMedia.file.name} · {(selectedMedia.file.size / 1024 / 1024).toFixed(1)} MB</p>
+                      </div>
+                      <button onClick={clearSelectedMedia} className="p-2 rounded-full hover:bg-white text-slate-500 hover:text-rose-600 transition-colors shrink-0" aria-label="Remover ficheiro">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {uploadProgress !== null && (
+                      <div className="mt-2.5">
+                        <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-200"
+                            style={{ width: `${Math.round(uploadProgress * 100)}%` }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-bold mt-1">
+                          {uploadProgress >= 1 ? 'Armazenado na Connected Cloud ✓' : `A enviar para a Connected Cloud... ${Math.round(uploadProgress * 100)}%`}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200/40">
+                  <p className="text-[10px] text-slate-400 font-medium">A publicação só é criada depois de o ficheiro estar armazenado na Connected Cloud.</p>
+                  <Button size="sm" className="rounded-xl px-6 font-bold shadow-md" onClick={publishSelected} disabled={isPosting || (!newPostContent.trim() && !selectedMedia)}>
+                    {isPosting ? (uploadProgress !== null ? `Enviando ${Math.round((uploadProgress || 0) * 100)}%...` : 'Publicando...') : 'Publicar'}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -495,6 +550,7 @@ const FeedPage: React.FC<FeedPageProps> = ({
                 onLike={handleLikePost}
                 onShare={handleSharePost}
                 onMoreOptions={handleMoreOptions}
+                onOpenProfile={onOpenProfile}
               />
             ))}
 
@@ -543,6 +599,7 @@ const FeedPage: React.FC<FeedPageProps> = ({
           isCommenting={isCommenting}
           setFeedSubTab={setFeedSubTab}
           feedSubTab={feedSubTab}
+          onOpenProfile={onOpenProfile}
         />
       )}
     </div>
@@ -565,6 +622,7 @@ interface ImmersiveFeedProps {
   isCommenting: Record<string, boolean>;
   setFeedSubTab: (tab: 'global' | 'following' | 'trending') => void;
   feedSubTab: 'global' | 'following' | 'trending';
+  onOpenProfile?: (userId: string) => void;
 }
 
 function ImmersiveFeed({
@@ -583,11 +641,31 @@ function ImmersiveFeed({
   isCommenting,
   setFeedSubTab,
   feedSubTab,
+  onOpenProfile,
 }: ImmersiveFeedProps) {
   const [index, setIndex] = useState(0);
   const touchStartY = useRef<number | null>(null);
   const wheelLock = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioIndex, setAudioIndex] = useState<string | null>(null);
+
+  const toggleAudio = (post: any) => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (audioIndex === post.id && audioPlaying) {
+      a.pause();
+      setAudioPlaying(false);
+      return;
+    }
+    if (a.getAttribute('src') !== post.media.url) {
+      a.src = post.media.url;
+    }
+    a.play().catch(() => {});
+    setAudioIndex(post.id);
+    setAudioPlaying(true);
+  };
 
   const goTo = useCallback((i: number) => {
     setIndex(Math.max(0, Math.min(posts.length - 1, i)));
@@ -650,7 +728,7 @@ function ImmersiveFeed({
         <p className="text-slate-500 font-medium px-6">Nenhuma publicação aqui ainda. Cria a primeira no Feed!</p>
         {feedSubTab !== 'global' && (
           <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setFeedSubTab('global')}>
-            Ver Feed Global
+            Ver Feed "Para ti"
           </Button>
         )}
       </div>
@@ -658,7 +736,9 @@ function ImmersiveFeed({
   }
 
   const hasMedia = current.media?.url || current.media?.album?.length > 0;
-  const isVideo = current.media?.type === 'video';
+  const isVideo = current.media?.type === 'video' || current.media?.type === 'reel';
+  const isAudio = current.media?.type === 'audio';
+  const isVertical = current.media?.format === 'vertical' || current.media?.type === 'reel';
   const commentsOpen = !!expandedComments[current.id];
   const postCommentsList = postComments[current.id] || [];
 
@@ -677,12 +757,49 @@ function ImmersiveFeed({
           className={`absolute inset-0 transition-transform duration-500 ease-out ${i === index ? 'z-10' : 'z-0'}`}
           style={{ transform: `translateY(${(i - index) * 100}%)` }}
         >
-          {post.media?.url ? (
+          {post.media?.url && post.media?.type === 'audio' ? (
+            <div className="absolute inset-0 flex items-center justify-center p-6 bg-gradient-to-br from-[#0d1a14] via-[#101512] to-[#1a2e20]">
+              <div className="w-full max-w-lg text-center">
+                <div className="relative mx-auto h-48 w-48 sm:h-56 sm:w-56 rounded-full bg-gradient-to-br from-emerald-500/30 to-teal-600/30 border border-emerald-300/40 shadow-2xl flex items-center justify-center mb-8">
+                  <span className="text-6xl">🎵</span>
+                  <span className="absolute inset-0 rounded-full border-2 border-dashed border-emerald-300/30 animate-[spin_24s_linear_infinite]" />
+                </div>
+                <p className="text-white text-lg font-bold truncate mb-1">{post.media.fileName || 'Áudio'}</p>
+                <AudioVisualizer playing={audioPlaying && audioIndex === post.id} bars={32} className="justify-center my-4" />
+                <button
+                  onClick={() => toggleAudio(post)}
+                  className="mx-auto mt-2 flex items-center gap-2 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-6 py-3 shadow-lg transition-all hover:scale-105"
+                >
+                  {audioPlaying && audioIndex === post.id ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                  {audioPlaying && audioIndex === post.id ? 'Pausar' : 'Reproduzir'}
+                </button>
+              </div>
+            </div>
+          ) : post.media?.url && (post.media?.type === 'pdf' || post.media?.type === 'slides' || post.media?.type === 'document') ? (
+            <div className="absolute inset-0 bg-slate-950 flex items-center justify-center p-6">
+              <a
+                href={post.media.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full max-w-lg flex items-center gap-4 p-5 rounded-2xl border border-white/15 bg-white/10 backdrop-blur-md hover:bg-white/15 transition-all group text-left"
+              >
+                <span className="h-14 w-14 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center shadow-lg shrink-0">
+                  <FileText className="h-7 w-7" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block font-bold text-white text-base truncate">{post.media.fileName || (post.media.type === 'pdf' ? 'Documento PDF' : post.media.type === 'slides' ? 'Apresentação (Slides)' : 'Ficheiro')}</span>
+                  <span className="block text-slate-400 text-xs font-medium">{post.media.type === 'pdf' ? '📄 Documento PDF' : post.media.type === 'slides' ? '🖼 Apresentação' : '📦 Ficheiro'} · {((post.media.sizeBytes || 0) / 1024 / 1024).toFixed(1)} MB</span>
+                </span>
+                <span className="text-indigo-300 font-bold text-sm shrink-0 group-hover:translate-x-0.5 transition-transform">Ver ↗</span>
+              </a>
+              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
+            </div>
+          ) : post.media?.url ? (
             <div className="absolute inset-0 bg-slate-950 flex items-center justify-center">
               {isVideo ? (
-                <video key={post.id} className="w-full h-full object-contain" poster={post.media.thumbnailUrl} controls preload="metadata" src={post.media.url} />
+                <video key={post.id} className={`w-full h-full ${isVertical ? 'object-cover' : 'object-contain'}`} poster={post.media.thumbnailUrl} controls preload="metadata" src={post.media.url} />
               ) : (
-                <img src={post.media.url} alt="" className="w-full h-full object-contain" draggable={false} />
+                <img src={post.media.url} alt="" className={`w-full h-full ${isVertical ? 'object-cover' : 'object-contain'}`} draggable={false} />
               )}
               <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
             </div>
@@ -699,14 +816,20 @@ function ImmersiveFeed({
             <div className="absolute inset-0 flex items-center justify-center p-6 bg-gradient-to-br from-[#1c150d] via-[#12100c] to-[#2a1e0a]">
               <div className="w-full max-w-xl">
                 <div className="mb-4 flex items-center gap-3">
-                  <div className="rounded-full p-0.5 bg-gradient-to-tr from-amber-300 via-primary to-amber-500">
+                  <button
+                    onClick={() => onOpenProfile?.(post.userId)}
+                    className="rounded-full p-0.5 bg-gradient-to-tr from-amber-300 via-primary to-amber-500 hover:scale-105 transition-transform"
+                    aria-label={`Ver perfil de ${post.authorName}`}
+                  >
                     <Avatar className="h-11 w-11 border-2 border-white/90 shadow-lg">
                       <AvatarImage src={post.authorAvatar} />
                       <AvatarFallback className="bg-primary/10 text-primary text-sm">{post.authorName?.[0] || 'U'}</AvatarFallback>
                     </Avatar>
-                  </div>
+                  </button>
                   <div className="min-w-0">
-                    <p className="font-bold text-white text-base truncate">{post.authorName}</p>
+                    <button onClick={() => onOpenProfile?.(post.userId)} className="font-bold text-white text-base truncate hover:underline">
+                      {post.authorName}
+                    </button>
                     <p className="text-slate-400 text-xs font-semibold">{post.authorHandle || '@user'}</p>
                   </div>
                 </div>
@@ -727,14 +850,20 @@ function ImmersiveFeed({
           {hasMedia && (
             <div className="absolute bottom-0 inset-x-0 z-20 p-4 sm:p-6 pb-20 sm:pb-6 pointer-events-none">
               <div className="flex items-center gap-3">
-                <div className="rounded-full p-0.5 bg-gradient-to-tr from-amber-300 via-primary to-amber-500">
+                <button
+                  onClick={() => onOpenProfile?.(post.userId)}
+                  className="rounded-full p-0.5 bg-gradient-to-tr from-amber-300 via-primary to-amber-500 hover:scale-105 transition-transform"
+                  aria-label={`Ver perfil de ${post.authorName}`}
+                >
                   <Avatar className="h-10 w-10 border-2 border-white/90 shadow-lg">
                     <AvatarImage src={post.authorAvatar} />
                     <AvatarFallback className="bg-primary/10 text-primary text-xs">{post.authorName?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
-                </div>
+                </button>
                 <div className="min-w-0">
-                  <p className="font-bold text-white text-sm truncate drop-shadow">{post.authorName}</p>
+                  <button onClick={() => onOpenProfile?.(post.userId)} className="font-bold text-white text-sm truncate drop-shadow hover:underline text-left">
+                    {post.authorName}
+                  </button>
                   <p className="text-white/70 text-[11px] font-semibold">{post.authorHandle || '@user'} · {formatDate(post.createdAt)}</p>
                 </div>
               </div>
@@ -904,6 +1033,8 @@ function ImmersiveFeed({
           </div>
         </div>
       )}
+
+      <audio ref={audioRef} className="hidden" onEnded={() => setAudioPlaying(false)} onPause={() => setAudioPlaying(false)} />
     </div>
   );
 }

@@ -317,13 +317,46 @@ service cloud.firestore {
 
     function isValidOfflineSms(data) {
       return hasRequiredFields(['senderId', 'receiverId', 'content']) &&
-             data.senderId is string && data.senderId.size() > 0 &&
-             data.receiverId is string && data.receiverId.size() > 0 &&
-             data.content is string && data.content.size() > 0 && data.content.size() <= 1000 &&
-             ((data.createdAt is number) || (data.createdAt is timestamp) || (data.timestamp is number)) &&
-             (!('read' in data) || data.read is bool) &&
-             isValidOptionalString('senderName', 0, 100) &&
-             isValidOptionalString('receiverName', 0, 100);
+              data.senderId is string && data.senderId.size() > 0 &&
+              data.receiverId is string && data.receiverId.size() > 0 &&
+              data.content is string && data.content.size() > 0 && data.content.size() <= 1000 &&
+              ((data.createdAt is number) || (data.createdAt is timestamp) || (data.timestamp is number)) &&
+              (!('read' in data) || data.read is bool) &&
+              isValidOptionalString('senderName', 0, 100) &&
+              isValidOptionalString('receiverName', 0, 100);
+    }
+
+    function isValidCloudAsset(data) {
+      return hasRequiredFields(['ownerUid', 'ownerName', 'kind', 'ext', 'fileName', 'mimeType', 'sizeBytes', 'visibility', 'storagePath', 'processingState', 'uploadedBytes', 'totalBytes', 'createdAt', 'updatedAt']) &&
+        data.ownerUid is string && data.ownerUid.size() > 0 && data.ownerUid.size() < 128 &&
+        data.ownerName is string && data.ownerName.size() > 0 && data.ownerName.size() <= 100 &&
+        data.kind is string && data.kind.size() > 0 && data.kind.size() <= 30 &&
+        data.ext is string && data.ext.size() > 0 && data.ext.size() <= 20 &&
+        data.fileName is string && data.fileName.size() >= 0 && data.fileName.size() <= 500 &&
+        data.mimeType is string && data.mimeType.size() > 0 && data.mimeType.size() <= 200 &&
+        data.sizeBytes is number && data.sizeBytes >= 0 &&
+        data.visibility in ['public', 'followers', 'private'] &&
+        data.storagePath is string && data.storagePath.size() > 0 && data.storagePath.size() <= 500 &&
+        data.processingState in ['pending', 'uploading', 'processing', 'ready', 'failed'] &&
+        data.uploadedBytes is number && data.uploadedBytes >= 0 &&
+        data.totalBytes is number && data.totalBytes >= 0 &&
+        (data.createdAt is number || data.createdAt is timestamp) &&
+        (data.updatedAt is number || data.updatedAt is timestamp) &&
+        isValidOptionalString('downloadUrl', 0, 1000) &&
+        isValidOptionalString('thumbnailUrl', 0, 1000) &&
+        isValidOptionalString('thumbnailPath', 0, 500) &&
+        isValidOptionalString('ownerAvatar', 0, 1000000) &&
+        isValidOptionalString('ownerHandle', 0, 100) &&
+        isValidOptionalString('sourceRef', 0, 200) &&
+        (!('id' in data) || (data.id is string && data.id.size() > 0 && data.id.size() < 128)) &&
+        (!('width' in data) || data.width is number) &&
+        (!('height' in data) || data.height is number) &&
+        (!('duration' in data) || data.duration is number) &&
+        (!('format' in data) || data.format in ['vertical', 'horizontal', 'square']) &&
+        (!('uploadSessionUri' in data) || (data.uploadSessionUri is string && data.uploadSessionUri.size() <= 2000)) &&
+        (!('chunkSize' in data) || data.chunkSize is number) &&
+        (!('totalChunks' in data) || data.totalChunks is number) &&
+        (!('uploadedChunks' in data) || data.uploadedChunks is number);
     }
 
     function isValidSecurityLog(data) {
@@ -519,6 +552,27 @@ service cloud.firestore {
         allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       }
     }
+
+    function isValidFinanceTransaction(data) {
+      return hasRequiredFields(['userId', 'type', 'description', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() < 128 &&
+             data.type is string && data.type.size() > 0 && data.type.size() <= 100 &&
+             data.description is string && data.description.size() > 0 && data.description.size() <= 2000 &&
+             (data.createdAt is number || data.createdAt is timestamp) &&
+             (!('amount' in data) || data.amount is number) &&
+             (!('currency' in data) || data.currency is string && data.currency.size() <= 10) &&
+             (!('refId' in data) || data.refId is string && data.refId.size() <= 200) &&
+             (!('actorId' in data) || data.actorId is string && data.actorId.size() < 128);
+    }
+
+    match /finance_transactions/{txId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidFinanceTransaction(request.resource.data) && (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /tv_queue/{itemId} {
       allow read: if true;
       allow create: if isAuthenticated() && isValidTvQueueItem(request.resource.data) && request.resource.data.userId == request.auth.uid;
       allow update: if isAuthenticated() && isValidTvQueueItem(request.resource.data) && (resource.data.userId == request.auth.uid || isAdmin() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
@@ -563,6 +617,13 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && request.resource.data.deviceId is string && request.resource.data.deviceId.size() > 0 && request.resource.data.deviceId.size() <= 128 && request.resource.data.createdAt is number && request.resource.data.lastSeen is number;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeen']);
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
     match /companies/{companyId} {
       allow read: if true;
       allow create: if isAuthenticated() && isValidCompany(request.resource.data) && request.resource.data.ownerId == request.auth.uid;
@@ -590,5 +651,172 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
+
+    // Connected Music — publicação e reprodução de áudio (backend real)
+    function isValidMusic(data) {
+      return hasRequiredFields(['artistId', 'artistName', 'title', 'audioUrl', 'plays', 'likes', 'shares', 'comments', 'downloads', 'rights', 'createdAt']) &&
+        data.artistId is string && data.artistId.size() > 0 && data.artistId.size() < 128 &&
+        data.artistName is string && data.artistName.size() > 0 && data.artistName.size() <= 100 &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+        data.audioUrl is string && data.audioUrl.size() > 0 && data.audioUrl.size() <= 1000 &&
+        data.rights in ['original', 'authorized', 'cover'] &&
+        (data.createdAt is number || data.createdAt is timestamp) &&
+        isValidOptionalString('cover', 0, 1000000) &&
+        isValidOptionalString('genre', 0, 60) &&
+        isValidOptionalString('description', 0, 2000) &&
+        (!('duration' in data) || data.duration is number) &&
+        (!('plays' in data) || data.plays is number) &&
+        (!('likes' in data) || data.likes is number) &&
+        (!('shares' in data) || data.shares is number) &&
+        (!('comments' in data) || data.comments is number) &&
+        (!('downloads' in data) || data.downloads is number) &&
+        isValidOptionalString('artistAvatar', 0, 1000000);
+    }
+
+    match /music/{trackId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidMusic(request.resource.data) && request.resource.data.artistId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.artistId == request.auth.uid ||
+        isAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plays', 'likes', 'shares', 'comments', 'downloads'])
+      );
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.artistId == request.auth.uid);
+
+      match /likes/{likeId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && likeId == request.auth.uid;
+        allow update: if isAuthenticated() && likeId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active']);
+        allow delete: if isAuthenticated() && likeId == request.auth.uid;
+      }
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && isValidComment(request.resource.data) && request.resource.data.userId == request.auth.uid;
+        allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+        allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      }
+    }
+
+    // Connected Business — perfis, parcerias e tesouraria (backend real)
+    function isValidBusinessProfile(data) {
+      return hasRequiredFields(['ownerId', 'ownerName', 'name', 'category', 'description', 'createdAt']) &&
+        data.ownerId is string && data.ownerId.size() > 0 && data.ownerId.size() < 128 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.category is string && data.category.size() > 0 && data.category.size() <= 60 &&
+        data.description is string && data.description.size() > 0 && data.description.size() <= 2000 &&
+        (data.createdAt is number || data.createdAt is timestamp) &&
+        isValidOptionalString('website', 0, 200) &&
+        isValidOptionalString('email', 0, 200) &&
+        isValidOptionalString('whatsapp', 0, 50) &&
+        isValidOptionalString('ownerName', 0, 100);
+    }
+
+    function isValidPartnerContract(data) {
+      return hasRequiredFields(['businessId', 'businessName', 'type', 'value', 'period', 'services', 'status', 'createdAt']) &&
+        data.businessId is string && data.businessId.size() > 0 && data.businessId.size() < 128 &&
+        data.businessName is string && data.businessName.size() > 0 && data.businessName.size() <= 100 &&
+        data.type in ['publicidade', 'patrocinio', 'creator', 'connected_tv', 'music', 'jobs'] &&
+        data.value is number && data.value >= 0 &&
+        data.status in ['pendente', 'ativo', 'concluido', 'cancelado'] &&
+        (data.createdAt is number || data.createdAt is timestamp) &&
+        isValidOptionalString('period', 0, 60) &&
+        isValidOptionalString('services', 0, 1000);
+    }
+
+    function isValidTreasuryEntry(data) {
+      return hasRequiredFields(['kind', 'category', 'amount', 'description', 'createdAt']) &&
+        data.kind in ['income', 'expense'] &&
+        data.category is string && data.category.size() > 0 && data.category.size() <= 60 &&
+        data.amount is number &&
+        data.description is string && data.description.size() >= 0 && data.description.size() <= 500 &&
+        (data.createdAt is number || data.createdAt is timestamp) &&
+        (!('relatedId' in data) || data.relatedId is string);
+    }
+
+    function isBusinessOwner(businessId) {
+      return get(/databases/$(database)/documents/businessProfiles/$(businessId)).data.ownerId == request.auth.uid;
+    }
+
+    match /businessProfiles/{id} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidBusinessProfile(request.resource.data) && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.ownerId == request.auth.uid);
+    }
+
+    match /partnerContracts/{id} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidPartnerContract(request.resource.data) && isBusinessOwner(request.resource.data.businessId);
+      allow update: if isAuthenticated() && (isBusinessOwner(resource.data.businessId) || isAdmin());
+      allow delete: if isAdmin() || (isAuthenticated() && isBusinessOwner(resource.data.businessId));
+    }
+
+    match /treasury/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidTreasuryEntry(request.resource.data);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Connect TV — catálogo de canais (backend real)
+    function isValidTvChannel(data) {
+      return hasRequiredFields(['title', 'creator', 'category', 'url', 'thumbnail', 'duration', 'views', 'rating', 'year', 'type', 'status', 'source', 'createdAt']) &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+        data.creator is string && data.creator.size() >= 0 && data.creator.size() <= 100 &&
+        data.category is string && data.category.size() > 0 && data.category.size() <= 60 &&
+        data.url is string && data.url.size() > 0 && data.url.size() <= 2000 &&
+        data.thumbnail is string && data.thumbnail.size() <= 1000 &&
+        data.duration is string && data.duration.size() <= 30 &&
+        data.views is number && data.views >= 0 &&
+        data.rating is number && data.rating >= 0 && data.rating <= 5 &&
+        data.year is string && data.year.size() <= 20 &&
+        data.type in ['integrated', 'official', 'external'] &&
+        data.status in ['authorized', 'pending', 'rejected'] &&
+        data.source in ['official', 'user'] &&
+        (data.createdAt is number || data.createdAt is timestamp) &&
+        isValidOptionalString('addedByName', 0, 100) &&
+        isValidOptionalString('authorizedBy', 0, 128) &&
+        (!('addedBy' in data) || (data.addedBy is string && data.addedBy.size() < 128));
+    }
+
+    match /tvChannels/{channelId} {
+      allow read: if isAuthenticated() && (
+        resource.data.status == 'authorized' ||
+        resource.data.addedBy == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && isValidTvChannel(request.resource.data) && (
+        (request.resource.data.source == 'user' && request.resource.data.addedBy == request.auth.uid) ||
+        (request.resource.data.source == 'official' && channelId.matches('^integrated-'))
+      );
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (resource.data.addedBy == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'title', 'category', 'thumbnail', 'views', 'rating', 'updatedAt'])) ||
+        (channelId.matches('^integrated-') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'creator', 'category', 'url', 'thumbnail', 'duration', 'views', 'rating', 'year', 'type', 'status', 'source', 'createdAt']))
+      );
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.addedBy == request.auth.uid);
+    }
+
+    // Connected Cloud Storage — registo real de cada ficheiro enviado
+    match /cloudAssets/{assetId} {
+      allow read: if isAuthenticated() && (
+        resource.data.visibility == 'public' ||
+        resource.data.ownerUid == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && isValidCloudAsset(request.resource.data) && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        (resource.data.ownerUid == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'processingState', 'uploadedBytes', 'uploadSessionUri', 'totalBytes',
+            'uploadedChunks', 'downloadUrl', 'thumbnailUrl', 'thumbnailPath',
+            'width', 'height', 'duration', 'format', 'visibility', 'updatedAt'
+          ])) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+    }
   }
 }
+

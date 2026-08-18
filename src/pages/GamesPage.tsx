@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Play, ExternalLink, Star, Users, X, Gamepad2, ShieldCheck, Code2, Send, Loader2 } from 'lucide-react';
+import { Play, ExternalLink, Star, Users, X, Gamepad2, ShieldCheck, Code2, Send, Loader2 } 
+from 'lucide-react';
+import { ConnectedRun } from '../game/ConnectedRun';
 import { collection, onSnapshot, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { playSound } from '../lib/sound-engine';
@@ -69,7 +71,7 @@ interface GameItem {
   isExternal?: boolean;
 }
 
-const GamesPage: React.FC<{ user: any; profileData: any }> = ({ user, profileData }) => {
+const GamesPage: React.FC<{ user: any; profileData: any; onOpenProfile?: (uid: string) => void }> = ({ user, profileData, onOpenProfile }) => {
   const [games, setGames] = useState<GameItem[]>([]);
   const [activeCategory, setActiveCategory] = useState('🎲 Todos');
   const [playing, setPlaying] = useState<GameItem | null>(null);
@@ -85,6 +87,7 @@ const GamesPage: React.FC<{ user: any; profileData: any }> = ({ user, profileDat
     embeddable: true,
   });
   const [submitMsg, setSubmitMsg] = useState('');
+  const [runOpen, setRunOpen] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'games'), (snapshot) => {
@@ -144,6 +147,20 @@ const GamesPage: React.FC<{ user: any; profileData: any }> = ({ user, profileDat
 
   const featured = filtered.filter(g => g.featured).slice(0, 3);
 
+  if (runOpen) {
+    return (
+      <div className="space-y-4 max-w-5xl mx-auto pb-10">
+        <button
+          onClick={() => setRunOpen(false)}
+          className="rounded-xl bg-white/70 text-slate-700 font-bold px-4 py-2 hover:bg-white"
+        >
+          ← Voltar aos Games
+        </button>
+        <ConnectedRun user={user} onOpenProfile={onOpenProfile} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
@@ -151,6 +168,23 @@ const GamesPage: React.FC<{ user: any; profileData: any }> = ({ user, profileDat
           <Gamepad2 className="h-6 w-6 text-indigo-600" /> Games Online
         </h2>
         <p className="text-slate-700 font-medium text-base">Joga gratuitamente no navegador ou explora jogos de parceiros.</p>
+      </div>
+
+      {/* Connected Run — jogo oficial offline-first */}
+      <div
+        onClick={() => setRunOpen(true)}
+        className="glass-card rounded-2xl border border-primary/30 shadow-lg p-5 flex items-center gap-4 cursor-pointer hover:shadow-xl transition-all"
+      >
+        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-amber-600 flex items-center justify-center text-3xl shrink-0">
+          🏃
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-bold text-slate-900 text-lg">Connected Run</h3>
+          <p className="text-sm text-slate-600 font-medium truncate">
+            Jogo de progressão por níveis. Funciona offline e sincroniza quando volta a Net. 100 níveis.
+          </p>
+        </div>
+        <span className="rounded-xl bg-primary text-black font-bold px-4 py-2 shrink-0">Jogar</span>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -312,7 +346,7 @@ const GamesPage: React.FC<{ user: any; profileData: any }> = ({ user, profileDat
             const safe = isValidGameUrl(game.url);
             const embeddable = game.embeddable && isSafeEmbed(game.url);
             const external = !embeddable;
-            return (
+  return (
             <Card key={game.id} className="border-white/30 shadow-md bg-white/60 overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all">
               <div className="relative">
                 <img src={game.coverUrl || `https://picsum.photos/seed/${game.id}/600/340`} alt={game.title} className="w-full h-36 object-cover" />

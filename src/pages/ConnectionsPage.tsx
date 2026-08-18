@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Users, Globe, Heart, UserPlus, Check, X, Clock, UserCheck, UserMinus } from 'lucide-react';
+import { DiscoverPanel } from '../components/DiscoverPanel';
+import { compatibility } from '../lib/discovery';
 
 interface ConnectionsPageProps {
   user: any;
@@ -14,24 +16,23 @@ interface ConnectionsPageProps {
   rejectFriendRequest: (requestId: string) => void;
   followingIds: string[];
   handleFollow: (targetId: string, targetName: string, targetAvatar?: string) => void;
+  onOpenProfile: (uid: string) => void;
 }
 
 const countries = ['Moçambique', 'Angola', 'Portugal', 'Brasil', 'Cabo Verde', 'São Tomé', 'Guiné-Bissau', 'Timor-Leste', 'Outros'];
 
 function getCompatibilidade(u1: any, u2: any): number {
-  const tags1 = (u1.tags || '').split(',').map((t: string) => t.trim().toLowerCase());
-  const tags2 = (u2.tags || '').split(',').map((t: string) => t.trim().toLowerCase());
-  const common = tags1.filter((t: string) => t && tags2.includes(t));
-  const base = Math.min(common.length * 15, 60);
-  const sameCountry = u1.country && u2.country && u1.country === u2.country ? 20 : 0;
-  return Math.min(base + sameCountry + Math.floor(Math.random() * 20), 99);
+  return compatibility(
+    { tags: (u1.tags || '').toString(), country: u1.country },
+    { tags: (u2.tags || '').toString(), country: u2.country }
+  ).score;
 }
 
 const ConnectionsPage: React.FC<ConnectionsPageProps> = ({
-  user, allUsers, friendRequests, sendFriendRequest, acceptFriendRequest, rejectFriendRequest,
-  followingIds, handleFollow,
+  user, profileData, allUsers, friendRequests, sendFriendRequest, acceptFriendRequest, rejectFriendRequest,
+  followingIds, handleFollow, onOpenProfile,
 }) => {
-  const [subTab, setSubTab] = useState<'friendly' | 'countries'>('friendly');
+  const [subTab, setSubTab] = useState<'friendly' | 'countries' | 'discovery'>('friendly');
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
 
   const friends = friendRequests.filter(r => r.status === 'accepted');
@@ -67,6 +68,7 @@ const ConnectionsPage: React.FC<ConnectionsPageProps> = ({
         {([
           { id: 'friendly' as const, label: '🤝 Conexão Amigável' },
           { id: 'countries' as const, label: '🌍 Amigos por Países' },
+          { id: 'discovery' as const, label: '🔎 Descoberta' },
         ]).map((tab) => (
           <button
             key={tab.id}
@@ -133,6 +135,37 @@ const ConnectionsPage: React.FC<ConnectionsPageProps> = ({
                     <span className="font-semibold text-sm text-slate-900 truncate">{u.displayName || 'Utilizador'}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {allUsers.filter((u) => followingIds.includes(u.uid)).length > 0 && (
+            <div>
+              <h4 className="text-sm font-bold text-indigo-700 flex items-center gap-2 mb-3">
+                <Users className="h-4 w-4" /> A quem sigues ({followingIds.length})
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {allUsers
+                  .filter((u) => followingIds.includes(u.uid))
+                  .map((u) => (
+                    <div key={u.uid} className="flex items-center gap-2 bg-white/60 border border-indigo-200/50 rounded-xl p-3 shadow-sm">
+                      <button onClick={() => onOpenProfile(u.uid)} className="shrink-0">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src={u.photoURL} />
+                          <AvatarFallback className="text-xs">{u.displayName?.[0] || 'U'}</AvatarFallback>
+                        </Avatar>
+                      </button>
+                      <span className="flex-1 font-semibold text-sm text-slate-900 truncate">{u.displayName || 'Utilizador'}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-xl text-xs shrink-0 border-rose-200 text-rose-600 hover:bg-rose-50"
+                        onClick={() => handleFollow(u.uid, u.displayName || 'Utilizador', u.photoURL || '')}
+                      >
+                        <UserMinus className="h-3.5 w-3.5" /> Deixar de seguir
+                      </Button>
+                    </div>
+                  ))}
               </div>
             </div>
           )}
@@ -286,6 +319,17 @@ const ConnectionsPage: React.FC<ConnectionsPageProps> = ({
             )}
           </div>
         </div>
+      )}
+
+      {subTab === 'discovery' && (
+        <DiscoverPanel
+          user={user}
+          profileData={profileData}
+          allUsers={allUsers}
+          followingIds={followingIds}
+          handleFollow={handleFollow}
+          onOpenProfile={onOpenProfile}
+        />
       )}
     </div>
   );

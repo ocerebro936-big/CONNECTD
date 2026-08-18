@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { ShieldCheck, ShoppingCart, Flag, Gamepad2, CheckCircle2, XCircle, Loader2, ExternalLink, BarChart3 } from 'lucide-react';
+import { ShieldCheck, ShoppingCart, Flag, Gamepad2, CheckCircle2, XCircle, Loader2, ExternalLink, BarChart3, Wallet } from 'lucide-react';
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, addDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase';
 import { formatCurrency } from '../lib/currency-utils';
 import { isValidStripeLink, getStripeLinks, setStripeLinks } from '../lib/payment-utils';
 import { playSound } from '../lib/sound-engine';
 import { TrafficPanel } from './TrafficPanel';
+import { recordTransaction } from '../lib/finance-utils';
+import { FinancePanel } from './FinancePanel';
 
 interface Purchase {
   id: string;
@@ -48,7 +50,7 @@ interface GameItem {
   createdAt: number;
 }
 
-type Tab = 'purchases' | 'reports' | 'games' | 'traffic';
+type Tab = 'purchases' | 'reports' | 'games' | 'traffic' | 'finance';
 
 const PROVIDER_LABELS: Record<string, string> = {
   stripe: '💳 Stripe',
@@ -97,6 +99,15 @@ export function AdminPanel({ user }: { user: any }) {
         note: 'Confirmado manualmente pelo administrador',
       });
       await updateDoc(doc(db, 'users', p.userId), { points: increment(p.points) });
+      recordTransaction({
+        userId: p.userId,
+        type: 'purchase_confirmed',
+        description: `Compra confirmada: ${p.title} (${p.provider}, ref. ${p.reference})`,
+        amount: p.price,
+        currency: 'MZN',
+        refId: p.id,
+        actorId: user.uid,
+      });
       await addDoc(collection(db, 'notifications'), {
         userId: p.userId,
         type: 'purchase',
@@ -125,6 +136,15 @@ export function AdminPanel({ user }: { user: any }) {
         status: 'rejected',
         confirmedAt: Date.now(),
         confirmedBy: user.uid,
+      });
+      recordTransaction({
+        userId: p.userId,
+        type: 'purchase_rejected',
+        description: `Compra rejeitada: ${p.title} (${p.provider}, ref. ${p.reference})`,
+        amount: p.price,
+        currency: 'MZN',
+        refId: p.id,
+        actorId: user.uid,
       });
     } catch (e) {
       console.error('Error rejecting purchase:', e);
@@ -279,6 +299,7 @@ export function AdminPanel({ user }: { user: any }) {
     { id: 'reports', label: 'Denúncias', icon: <Flag className="h-4 w-4" />, count: reports.length, color: 'bg-rose-600 text-white' },
     { id: 'games', label: 'Jogos', icon: <Gamepad2 className="h-4 w-4" />, count: games.length, color: 'bg-indigo-600 text-white' },
     { id: 'traffic', label: 'Tráfego', icon: <BarChart3 className="h-4 w-4" />, count: 0, color: 'bg-violet-600 text-white' },
+    { id: 'finance', label: 'Financeiro', icon: <Wallet className="h-4 w-4" />, count: 0, color: 'bg-amber-600 text-white' },
   ];
 
   return (
@@ -340,6 +361,10 @@ export function AdminPanel({ user }: { user: any }) {
 
         {tab === 'traffic' && (
           <TrafficPanel />
+        )}
+
+        {tab === 'finance' && (
+          <FinancePanel />
         )}
       </CardContent>
     </Card>

@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Camera, UserCircle, Palette, Youtube, Instagram, Facebook, MessageCircle, CheckCircle2, Award, Users, Share2, Link as LinkIcon } from 'lucide-react';
 import { CreditDisplay } from '../components/CreditDisplay';
 import { UserLevelBadge } from '../components/UserLevelBadge';
+import { CrownBadge } from '../components/CrownBadge';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -47,7 +48,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
       let photos = 0;
       let videos = 0;
       snap.docs.forEach((d) => {
-        const m = d.data().media;
+        const data = d.data();
+        if (data.status === 'deleted') return;
+        const m = data.media;
         if (m?.type === 'video') videos += 1;
         else if (m?.type === 'photo') photos += 1;
       });
@@ -99,7 +102,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
               </div>
             </div>
             <div className="flex-1 pb-2 sm:pb-4">
-              <h1 className="text-3xl font-bold text-slate-900">{profileData.displayName || 'Novo Usuário'}</h1>
+              <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2 flex-wrap">{profileData.displayName || 'Novo Usuário'} <CrownBadge points={profileData.points || 0} size="md" /></h1>
               <p className="text-slate-700 font-medium text-base sm:text-lg mb-2">@{profileData.displayName?.toLowerCase().replace(/\s+/g, '') || 'usuario'} <UserLevelBadge points={profileData.points || 0} size="md" /></p>
 
               <div className="flex items-center gap-2 flex-wrap">

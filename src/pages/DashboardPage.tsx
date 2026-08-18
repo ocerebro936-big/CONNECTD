@@ -9,6 +9,7 @@ import { AdminPanel } from '../components/AdminPanel';
 import { formatCurrency } from '../lib/currency-utils';
 import { collection, query, where, onSnapshot, addDoc, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { softDeletePost, restorePost, withinRecoveryWindow } from '../lib/post-api';
 
 const jobs = [
   { title: 'Moderador de Comunidade', salary: 12000, desc: 'Gestão de chats e suporte ao utilizador' },
@@ -45,6 +46,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, posts }) => {
   }, [user]);
 
   const myPosts = useMemo(() => posts.filter((p) => p.userId === user?.uid), [posts, user]);
+  const [deletedPosts, setDeletedPosts] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const dq = query(collection(db, 'posts'), where('userId', '==', user.uid), where('status', '==', 'deleted'));
+    const unsub = onSnapshot(dq, (snap) => {
+      setDeletedPosts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+    }, (e) => console.error(e));
+    return () => unsub();
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -506,9 +517,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, posts }) => {
                           variant="outline"
                           className="rounded-lg text-[11px] font-bold text-rose-600 border-rose-200 hover:bg-rose-50"
                           onClick={async () => {
-                            if (!confirm('Apagar esta publicação?')) return;
+                            if (!confirm('Apagar esta publicação? Podes recuperá-la num prazo de 30 dias.')) return;
                             try {
-                              await deleteDoc(doc(db, 'posts', p.id));
+                              await softDeletePost(p.id);
                             } catch (e) {
                               console.error('Error deleting post:', e);
                               alert('Erro ao apagar publicação.');
@@ -525,6 +536,48 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, posts }) => {
                   </div>
                 </CardContent>
               </Card>
+
+              {deletedPosts.length > 0 && (
+                <Card className="border-amber-200/60 shadow-md">
+                  <CardHeader>
+                    <CardTitle className="text-slate-900 font-bold text-sm flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-amber-500" /> Publicações eliminadas (recuperáveis)
+                    </CardTitle>
+                    <CardDescription className="text-slate-600 font-medium text-xs">
+                      Recupera dentro de 30 dias. Depois, o Cleanup Engine remove definitivamente.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 max-h-[300px] overflow-auto">
+                      {deletedPosts.map((p) => (
+                        <div key={p.id} className="flex items-center gap-3 bg-amber-50/60 border border-amber-200 rounded-xl p-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-slate-900 truncate">{p.content || (p.media?.type === 'video' ? '🎬 Vídeo' : '📷 Foto')}</p>
+                            <p className="text-[10px] text-slate-500 font-semibold">
+                              {withinRecoveryWindow(p.deletedAt) ? 'Recuperável' : 'Fora da janela'}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-lg text-[11px] font-bold text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                            disabled={!withinRecoveryWindow(p.deletedAt)}
+                            onClick={async () => {
+                              try {
+                                await restorePost(p.id);
+                              } catch (e) {
+                                console.error('Error restoring post:', e);
+                              }
+                            }}
+                          >
+                            Restaurar
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </div>

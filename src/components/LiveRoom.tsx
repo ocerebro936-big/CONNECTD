@@ -7,6 +7,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { playSound } from '../lib/sound-engine';
+import { recordTransaction } from '../lib/finance-utils';
 
 interface LiveData {
   id?: string;
@@ -102,8 +103,19 @@ export function LiveRoom({ live, user, profileData, onClose, onEndLive }: LiveRo
     await sendMessage(`reaction:${emoji}`);
   };
 
-  const sendGift = async (gift: { emoji: string; name: string; points: number }) => {
+const sendGift = async (gift: { emoji: string; name: string; points: number }) => {
     await sendMessage(`🎁 ${gift.emoji} ${gift.name} (${gift.points} pts)`);
+    if (user) {
+      recordTransaction({
+        userId: user.uid,
+        type: 'gift_sent',
+        description: `Presente ${gift.emoji} ${gift.name} (${gift.points} pts) na live "${live.title}"`,
+        amount: gift.points,
+        currency: 'pts',
+        refId: live.id || '',
+        actorId: user.uid,
+      }).catch(() => {});
+    }
     playSound('live');
   };
 

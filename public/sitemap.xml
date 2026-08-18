@@ -1,47 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://ocerebro936-big.github.io/CONNECTD/</loc>
+    <loc>https://connected-ecossistema.web.app/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://ocerebro936-big.github.io/CONNECTD/?tab=feed</loc>
+    <loc>https://connected-ecossistema.web.app/?tab=feed</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://ocerebro936-big.github.io/CONNECTD/?tab=connect-tv</loc>
+    <loc>https://connected-ecossistema.web.app/?tab=music</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://connected-ecossistema.web.app/?tab=connect-tv</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ocerebro936-big.github.io/CONNECTD/?tab=games</loc>
+    <loc>https://connected-ecossistema.web.app/?tab=games</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ocerebro936-big.github.io/CONNECTD/?tab=gallery</loc>
+    <loc>https://connected-ecossistema.web.app/?tab=business</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://ocerebro936-big.github.io/CONNECTD/?tab=connections</loc>
+    <loc>https://connected-ecossistema.web.app/?tab=connections</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://ocerebro936-big.github.io/CONNECTD/?tab=network</loc>
+    <loc>https://connected-ecossistema.web.app/?tab=network</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://ocerebro936-big.github.io/CONNECTD/?tab=ai</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://ocerebro936-big.github.io/CONNECTD/?tab=overview</loc>
+    <loc>https://connected-ecossistema.web.app/?tab=profile</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>

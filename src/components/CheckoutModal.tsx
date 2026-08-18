@@ -6,6 +6,7 @@ import { PAYMENT_OPTIONS, POINTS_PACKAGES, PaymentMethod, getStripeLinkForPackag
 import { formatCurrency } from '../lib/currency-utils';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../firebase';
+import { recordTransaction } from '../lib/finance-utils';
 
 declare global {
   interface Window {
@@ -43,7 +44,7 @@ export function CheckoutModal({ user, onClose, onSuccess }: CheckoutModalProps) 
   const createPendingPurchase = async (provider: string, ref: string, note: string): Promise<string | null> => {
     if (!user || !selectedPackage) return null;
     try {
-      const purchaseRef = await addDoc(collection(db, 'purchases'), {
+const purchaseRef = await addDoc(collection(db, 'purchases'), {
         userId: user.uid,
         userEmail: user.email || '',
         userName: user.displayName || '',
@@ -57,6 +58,15 @@ export function CheckoutModal({ user, onClose, onSuccess }: CheckoutModalProps) 
         note,
         createdAt: Date.now(),
       });
+      recordTransaction({
+        userId: user.uid,
+        type: 'purchase_created',
+        description: `Compra de ${selectedPackage.points} pontos via ${provider} (${ref})`,
+        amount: selectedPackage.price,
+        currency: 'MZN',
+        refId: purchaseRef.id,
+        actorId: user.uid,
+      }).catch(() => {});
       return purchaseRef.id;
     } catch (e) {
       console.error('Error creating purchase:', e);

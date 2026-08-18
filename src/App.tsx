@@ -10,13 +10,19 @@ import {
   onAuthStateChanged,
   signOut,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  sendEmailVerification,
+  getMultiFactorResolver,
+  MultiFactorResolver,
+  TotpMultiFactorGenerator
 } from 'firebase/auth';
 import { doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, onSnapshot, where, increment, limit, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from './firebase';
 import { db } from './firebase';
 import { handleFirestoreError, OperationType } from './lib/firebase-errors';
+import { registerSession, getSessionVersion, setSessionVersion, getDeviceInfo } from './lib/security-utils';
+import { publishMediaPost } from './lib/upload-engine';
 import { 
   Bell, 
   Search,
@@ -29,7 +35,9 @@ import {
   Menu,
   X,
   AlertCircle,
+  ShieldAlert,
   Tv,
+  Music,
   Home,
   Share2,
   Sparkles, 
@@ -58,8 +66,9 @@ import {
   Globe,
   PhoneOff,
   Building2,
-  Github
-} from 'lucide-react';
+  Github,
+  Briefcase,
+  Cloud} from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from './components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
@@ -67,6 +76,7 @@ import { Progress } from './components/ui/progress';
 import { BackgroundSlider } from './components/BackgroundSlider';
 import { InstallPrompt } from './components/InstallPrompt';
 import { UpdateNotifier } from './components/UpdateNotifier';
+import { DivinoMordomo } from './components/DivinoMordomo';
 import { CallModal, IncomingCallListener } from './components/CallModal';
 import { ChatModal } from './components/ChatModal';
 import { UserProfileModal } from './components/UserProfileModal';
@@ -74,6 +84,7 @@ import { ConnectedLogo } from './components/ConnectedLogo';
 import { DayNightAmbience } from './components/DayNightAmbience';
 import { playSound } from './lib/sound-engine';
 import { DOMAINS } from './lib/domain-config';
+import { startCloudCore } from './lib/engines';
 
 const FeedPage = lazy(() => import('./pages/FeedPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -83,9 +94,12 @@ const AiInsightsPage = lazy(() => import('./pages/AiInsightsPage'));
 const NetworkPage = lazy(() => import('./pages/NetworkPage'));
 const GalleryPage = lazy(() => import('./pages/GalleryPage'));
 const ConnectTvPage = lazy(() => import('./pages/ConnectTvPage'));
+const MusicPage = lazy(() => import('./pages/MusicPage'));
 const GamesPage = lazy(() => import('./pages/GamesPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const CompaniesPage = lazy(() => import('./pages/CompaniesPage'));
+const BusinessPage = lazy(() => import('./pages/BusinessPage'));
+const CloudStatusPage = lazy(() => import('./pages/CloudStatusPage'));
 
 function PageLoader() {
   return (
@@ -123,6 +137,11 @@ export default function App() {
     setIncomingCall(call);
     setIncomingCallAccepted(false);
     playSound('call');
+  }, []);
+
+  useEffect(() => {
+    const stop = startCloudCore();
+    return stop;
   }, []);
 
   useEffect(() => {
@@ -166,6 +185,9 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [installFeedback, setInstallFeedback] = useState<string | null>(null);
   const [authError, setAuthError] = useState('');
+  const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [isVerifyingMfa, setIsVerifyingMfa] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [posts, setPosts] = useState<any[]>([]);
@@ -295,6 +317,14 @@ export default function App() {
             setProfileData(prev => ({ ...prev, displayName: currentUser.displayName || '', points: 0 }));
           } else {
             const data = userSnap.data();
+            const remoteVersion = data.sessionVersion || 0;
+            const localVersion = getSessionVersion(currentUser.uid);
+            if (remoteVersion > localVersion) {
+              setSessionVersion(currentUser.uid, remoteVersion);
+              await signOut(auth);
+              alert('A tua sessão foi terminada por segurança. Inicia sessão novamente.');
+              return;
+            }
             setProfileData({
               displayName: data.displayName || '',
               bio: data.bio || '',
@@ -313,6 +343,17 @@ export default function App() {
               coverURL: data.coverURL || '',
               points: data.points || 0,
             });
+          }
+
+          try {
+            const dev = getDeviceInfo();
+            const { isNewDevice } = await registerSession(currentUser.uid);
+            if (isNewDevice) {
+              await logSecurityEvent(currentUser.uid, 'NEW_DEVICE_LOGIN', `Novo dispositivo: ${dev.browser} ${dev.os} (${dev.isMobile ? 'telemóvel' : 'computador'})`);
+              await createNotification(currentUser.uid, 'security', `Novo acesso a partir de ${dev.browser} (${dev.os})`, '🛡️ Connected Segurança', '', '?tab=settings').catch(() => {});
+            }
+          } catch (e) {
+            console.warn('Session registration skipped:', e);
           }
         } catch (error) {
           handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
@@ -355,7 +396,7 @@ export default function App() {
           currentUserRating: user ? (ratings.userRatings?.[user.uid] || 0) : 0,
           isLiked: user ? (data.userLikes || []).includes(user.uid) : false,
         };
-      }).filter((p: any) => !blockedIds.includes(p.userId));
+      }).filter((p: any) => !blockedIds.includes(p.userId) && p.status !== 'deleted');
       setPosts(postsData);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'posts');
@@ -660,6 +701,30 @@ export default function App() {
     }
   };
 
+  const verifyMfaCode = async () => {
+    if (!mfaResolver || mfaCode.trim().length < 6) {
+      setAuthError('Insere o código de 6 dígitos da aplicação autenticadora.');
+      return;
+    }
+    setIsVerifyingMfa(true);
+    setAuthError('');
+    try {
+      const assertion = TotpMultiFactorGenerator.assertionForSignIn(mfaResolver.hints[0], mfaCode.trim());
+      await mfaResolver.resolveSignIn(assertion);
+      setMfaResolver(null);
+      setMfaCode('');
+    } catch (e: any) {
+      console.error('MFA verification error:', e);
+      if (e.code === 'auth/invalid-verification-code') {
+        setAuthError('Código inválido. Verifica o código na aplicação autenticadora e tenta novamente.');
+      } else {
+        setAuthError('Falha na verificação em duas etapas. Tenta novamente.');
+      }
+    } finally {
+      setIsVerifyingMfa(false);
+    }
+  };
+
   const handleEmailAuth = async (isSignUp: boolean) => {
     setAuthError('');
     
@@ -685,6 +750,11 @@ export default function App() {
       }
     } catch (error: any) {
       console.error("Email auth error:", error);
+      if (error.code === 'auth/multi-factor-auth-required') {
+        setMfaResolver(error.resolver as MultiFactorResolver);
+        setMfaCode('');
+        return;
+      }
       if (error.code === 'auth/email-already-in-use') {
         setAuthError('Este email já está em uso.');
       } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
@@ -816,6 +886,30 @@ export default function App() {
       console.error('Error publishing post:', error);
       handleFirestoreError(error, OperationType.CREATE, 'posts');
       alert('Erro ao publicar o post.');
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+  const handleMediaPublish = async (file: File, onProgress?: (fraction: number) => void, options?: { forceKind?: 'reel' }): Promise<boolean> => {
+    if (!user || !file) return false;
+    setIsPosting(true);
+    try {
+      await publishMediaPost({
+        user,
+        profileData,
+        file,
+        content: newPostContent,
+        onProgress,
+        forceKind: options?.forceKind,
+      });
+      setNewPostContent('');
+      playSound('post');
+      return true;
+    } catch (error: any) {
+      console.error('Error publishing media post:', error);
+      alert(error?.message || 'Erro ao publicar o conteúdo. O ficheiro não foi armazenado e a publicação não foi criada.');
+      return false;
     } finally {
       setIsPosting(false);
     }
@@ -1077,6 +1171,12 @@ export default function App() {
       }
     } catch (error: any) {
       console.error("Login error:", error);
+      if (error.code === 'auth/multi-factor-auth-required') {
+        setMfaResolver(error.resolver as MultiFactorResolver);
+        setMfaCode('');
+        setIsLoggingIn(false);
+        return;
+      }
       let msg = '';
       switch (error.code) {
         case 'auth/unauthorized-domain':
@@ -1273,6 +1373,36 @@ export default function App() {
 
               {showEmailLogin ? (
                 <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                  {mfaResolver ? (
+                    <div className="space-y-3">
+                      <div className="bg-amber-500/10 border border-amber-500/40 text-amber-200 text-sm p-3 rounded-xl flex items-start gap-2 text-left">
+                        <ShieldAlert className="h-5 w-5 shrink-0" />
+                        <p className="font-medium">Verificação em duas etapas ativada. Insere o código de 6 dígitos da tua aplicação autenticadora (Google Authenticator, Authy, etc.).</p>
+                      </div>
+                      {authError && (
+                        <div className="bg-rose-500/10 border border-rose-500/50 text-rose-400 text-sm p-3 rounded-xl flex items-start gap-2 text-left">
+                          <AlertCircle className="h-5 w-5 shrink-0" />
+                          <p className="font-medium">{authError}</p>
+                        </div>
+                      )}
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="Código de 6 dígitos"
+                        className="w-full glass-input-dark rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/60 text-white font-bold tracking-[0.5em] text-center placeholder:tracking-normal placeholder:font-medium placeholder:text-slate-400 shadow-sm"
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                      />
+                      <Button className="w-full rounded-xl shadow-md font-bold text-primary-foreground" onClick={verifyMfaCode} disabled={isVerifyingMfa || mfaCode.length < 6}>
+                        {isVerifyingMfa ? 'A verificar...' : 'Verificar código'}
+                      </Button>
+                      <Button variant="ghost" size="sm" className="w-full text-slate-300" onClick={() => { setMfaResolver(null); setMfaCode(''); setAuthError(''); }}>
+                        Voltar
+                      </Button>
+                    </div>
+                  ) : (
+                  <>
                   {authError && (
                     <div className="bg-rose-500/10 border border-rose-500/50 text-rose-400 text-sm p-3 rounded-xl flex items-start gap-2 text-left">
                       <AlertCircle className="h-5 w-5 shrink-0" />
@@ -1302,6 +1432,8 @@ export default function App() {
                     </Button>
                   </div>
                   <Button variant="ghost" size="sm" className="w-full text-slate-300" onClick={() => setShowEmailLogin(false)}>Voltar</Button>
+                  </>
+                  )}
                 </div>
               ) : (
                 <Button
@@ -1374,6 +1506,17 @@ export default function App() {
       <InstallPrompt />
       {isAuthenticated && (
         <IncomingCallListener user={user} onIncoming={handleIncomingCall} />
+      )}
+      {isAuthenticated && (
+        <DivinoMordomo
+          user={user}
+          profileData={profileData}
+          allUsers={allUsers}
+          followingIds={followingIds}
+          onNavigate={handleTabSelect}
+          onCreatePost={() => handleTabSelect('feed')}
+          handleFollow={handleFollow}
+        />
       )}
       <div className="flex h-screen w-full text-slate-900 overflow-hidden">
       
@@ -1455,6 +1598,13 @@ export default function App() {
               Connect TV
             </button>
             <button 
+              onClick={() => handleTabSelect('music')}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'music' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
+            >
+              <Music className="h-5 w-5" />
+              Connected Music
+            </button>
+            <button 
               onClick={() => handleTabSelect('games')}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'games' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
@@ -1467,6 +1617,20 @@ export default function App() {
             >
               <Building2 className="h-5 w-5" />
               Empresas
+            </button>
+            <button 
+              onClick={() => handleTabSelect('business')}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'business' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
+            >
+              <Briefcase className="h-5 w-5" />
+              Negócios
+            </button>
+            <button
+              onClick={() => handleTabSelect('cloud')}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'cloud' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
+            >
+              <Cloud className="h-5 w-5" />
+              Cloud
             </button>
             <button 
               onClick={() => handleTabSelect('settings')}
@@ -1508,12 +1672,13 @@ export default function App() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 inset-x-0 z-50 sm:hidden glass-dark border-t border-primary/15 pb-[env(safe-area-inset-bottom)]">
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-6">
           {[
             { id: 'feed', label: 'Feed', icon: Home },
             { id: 'network', label: 'Rede', icon: Users },
             { id: 'games', label: 'Games', icon: Gamepad2 },
             { id: 'connect-tv', label: 'TV', icon: Tv },
+            { id: 'cloud', label: 'Cloud', icon: Cloud },
             { id: 'profile', label: 'Perfil', icon: UserCircle },
           ].map(({ id, label, icon: Icon }) => (
             <button
@@ -1746,6 +1911,28 @@ export default function App() {
           </div>
         </header>
 
+        {user && !user.emailVerified && (
+          <div className="bg-amber-500/90 text-white px-4 sm:px-6 py-2 flex flex-col sm:flex-row sm:items-center gap-2 text-xs font-semibold shadow-sm">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 shrink-0" />
+              <span>Verifica o teu e-mail para proteger a conta e desbloquear todas as funcionalidades.</span>
+            </div>
+            <button
+              className="ml-auto shrink-0 rounded-lg bg-white/20 hover:bg-white/30 px-3 py-1 font-bold transition-colors"
+              onClick={async () => {
+                try {
+                  await sendEmailVerification(user);
+                  alert('E-mail de verificação enviado! Verifica a tua caixa de entrada.');
+                } catch {
+                  alert('Não foi possível enviar o e-mail de verificação. Tenta novamente mais tarde.');
+                }
+              }}
+            >
+              Reenviar verificação
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
           <Suspense fallback={<PageLoader />}>
             {activeTab === 'feed' && (
@@ -1753,10 +1940,13 @@ export default function App() {
                 user={user}
                 profileData={profileData}
                 posts={posts}
+                allUsers={allUsers}
                 newPostContent={newPostContent}
                 setNewPostContent={setNewPostContent}
                 isPosting={isPosting}
                 handlePublish={handlePublish}
+                handleMediaPublish={handleMediaPublish}
+                onOpenProfile={(userId: string) => setViewingUser(userId)}
                 handleRatePost={handleRatePost}
                 handleLikePost={handleLikePost}
                 handleSharePost={handleSharePost}
@@ -1797,6 +1987,7 @@ export default function App() {
                 rejectFriendRequest={rejectFriendRequest}
                 followingIds={followingIds}
                 handleFollow={handleFollow}
+                onOpenProfile={(id: string) => setViewingUser(id)}
               />
             )}
             {activeTab === 'ai' && (
@@ -1847,11 +2038,25 @@ export default function App() {
                 isSendingTvChat={isSendingTvChat}
               />
             )}
+            {activeTab === 'music' && (
+              <MusicPage
+                user={user}
+                profileData={profileData}
+                allUsers={allUsers}
+                onOpenProfile={(id: string) => setViewingUser(id)}
+              />
+            )}
             {activeTab === 'games' && (
-              <GamesPage user={user} profileData={profileData} />
+              <GamesPage user={user} profileData={profileData} onOpenProfile={(id: string) => setViewingUser(id)} />
             )}
             {activeTab === 'empresas' && (
               <CompaniesPage user={user} profileData={profileData} initialCompanyId={initialCompanyId} onConsumedInitial={() => setInitialCompanyId(null)} />
+            )}
+            {activeTab === 'business' && (
+              <BusinessPage user={user} profileData={profileData} />
+            )}
+            {activeTab === 'cloud' && (
+              <CloudStatusPage />
             )}
             {activeTab === 'settings' && (
               <SettingsPage

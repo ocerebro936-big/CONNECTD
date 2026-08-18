@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://ocerebro936-big.github.io/CONNECTD/sitemap.xml
+Sitemap: https://connected-ecossistema.web.app/sitemap.xml

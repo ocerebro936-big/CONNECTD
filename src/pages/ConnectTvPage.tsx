@@ -8,7 +8,10 @@ import { ThermalBadge } from '../components/ThermalBadge';
 import { calculateTemperature } from '../lib/thermal-utils';
 import { updateDoc, doc, addDoc, collection, deleteDoc, increment, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { recordTransaction } from '../lib/finance-utils';
 import { playSound } from '../lib/sound-engine';
+import ChannelFinder from '../components/ChannelFinder';
+import { seedIntegratedChannels, listTvChannels, type ChannelDoc } from '../lib/connect-tv';
 
 const TV_GIFTS = [
   { emoji: '💖', name: 'Coração', points: 5 },
@@ -110,6 +113,8 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
   const [selectedVideo, setSelectedVideo] = useState<TvLibraryItem | null>(null);
   const isModerator = profileData?.role === 'admin' || (user && user.email === 'ocerebro936@gmail.com');
 
+  const [tvChannels, setTvChannels] = useState<ChannelDoc[]>([]);
+
   useEffect(() => {
     if (user?.uid) {
       getDoc(doc(db, 'users', user.uid)).then((snap) => {
@@ -117,6 +122,33 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
       });
     }
   }, [user]);
+
+  // Biblioteca Connect TV passa a ser real (Firestore). Semeada + lida do backend.
+  useEffect(() => {
+    (async () => {
+      try {
+        await seedIntegratedChannels();
+        const list = await listTvChannels(user?.uid, isModerator);
+        setTvChannels(list);
+      } catch (e) {
+        console.error('Erro ao carregar canais da TV:', e);
+      }
+    })();
+  }, [user, isModerator]);
+
+  const libraryCats = Array.from(new Set(tvChannels.map((c) => c.category)));
+  const libraryItems = tvChannels.filter((c) => c.category === activeLibraryCat);
+  const toLibraryItem = (c: ChannelDoc): TvLibraryItem => ({
+    title: c.title,
+    creator: c.creator,
+    duration: c.duration,
+    category: c.category,
+    url: c.url,
+    thumbnail: c.thumbnail,
+    views: c.views,
+    rating: c.rating,
+    year: c.year,
+  });
 
   const playingVideo = tvQueue.find((v: any) => v.status === 'playing');
 
@@ -141,6 +173,15 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
         points: gift.points,
         createdAt: Date.now(),
       });
+      recordTransaction({
+        userId: user.uid,
+        type: 'gift_sent',
+        description: `Presente ${gift.emoji} ${gift.name} (${gift.points} pts) na Connect TV`,
+        amount: gift.points,
+        currency: 'pts',
+        refId: playingVideo.userId || '',
+        actorId: user.uid,
+      }).catch(() => {});
       await addDoc(collection(db, 'tv_chat'), {
         userId: user.uid,
         authorName: profileData.displayName || user.email?.split('@')[0] || 'Unknown',
@@ -180,6 +221,7 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
         {[
           { id: 'jukebox' as const, label: '🎵 Jukebox' },
           { id: 'biblioteca' as const, label: '📚 Biblioteca' },
+          { id: 'canais' as const, label: '🔎 Canais' },
           { id: 'programacao' as const, label: '📋 Programação' },
           { id: 'classicos' as const, label: '🏆 Clássicos' },
         ].map((tab) => (
@@ -465,7 +507,8 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {Object.keys(TV_LIBRARY).map((cat) => (
+          {libraryCats.length === 0 && <span className="text-sm text-slate-500">A carregar catálogo…</span>}
+          {libraryCats.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveLibraryCat(cat)}
@@ -480,19 +523,24 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
           ))}
         </div>
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {TV_LIBRARY[activeLibraryCat].map((v) => (
-            <Card key={v.title} className="glass-card border-white/30 shadow-lg overflow-hidden group cursor-pointer hover:shadow-2xl transition-all" onClick={() => setSelectedVideo(v)}>
+          {libraryItems.map((c) => (
+            <Card key={c.id} className="glass-card border-white/30 shadow-lg overflow-hidden group cursor-pointer hover:shadow-2xl transition-all" onClick={() => setSelectedVideo(toLibraryItem(c))}>
               <div className="relative h-40 w-full overflow-hidden bg-slate-900">
                 <img
-                  src={v.thumbnail}
-                  alt={v.title}
+                  src={c.thumbnail}
+                  alt={c.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = `https://picsum.photos/seed/${encodeURIComponent(v.title)}/600/400`; }}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = `https://picsum.photos/seed/${encodeURIComponent(c.title)}/600/400`; }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                 <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-lg text-xs font-semibold">
-                  ⏱ {v.duration}
+                  ⏱ {c.duration}
                 </div>
+                {c.status === 'pending' && (
+                  <div className="absolute top-2 left-2 bg-amber-500/90 text-white px-2 py-0.5 rounded-md text-[10px] font-bold">
+                    Pendente
+                  </div>
+                )}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <span className="bg-primary/90 text-white rounded-full p-3.5 shadow-xl">
                     <Play className="h-6 w-6" />
@@ -500,19 +548,22 @@ const ConnectTvPage: React.FC<ConnectTvPageProps> = ({
                 </div>
               </div>
               <CardContent className="p-4">
-                <h3 className="font-bold text-slate-900 text-base line-clamp-1">{v.title}</h3>
-                <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{v.creator} · {v.year}</p>
+                <h3 className="font-bold text-slate-900 text-base line-clamp-1">{c.title}</h3>
+                <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{c.creator} · {c.year}</p>
                 <div className="flex items-center justify-between mt-2">
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-white/60 rounded-full px-2 py-0.5">
-                    <Eye className="h-3 w-3" /> {formatViews(v.views)} visualizações
+                    <Eye className="h-3 w-3" /> {formatViews(c.views)} visualizações
                   </span>
-                  <span className="text-[11px] font-black text-amber-600">⭐ {v.rating.toFixed(1)}</span>
+                  <span className="text-[11px] font-black text-amber-600">⭐ {c.rating.toFixed(1)}</span>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       </div>
+    )}
+    {tvSubTab === 'canais' && (
+      <ChannelFinder user={user} profileData={profileData} />
     )}
     {selectedVideo && (
       <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in" onClick={() => setSelectedVideo(null)}>
