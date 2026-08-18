@@ -11,7 +11,7 @@
 
   **PENDENTE** — verificava últimas 1× no console:
   1. **Storage** (bucket default ainda NÃO criado): Build > Storage > Get started → criar bucket `connected-ecossistema.firebasestorage.app` (mesma região do Firestore). Depois correr `firebase deploy --only storage`.
-  2. **Authentication**: Build > Authentication > Sign-in method → ativar **Google** e **Email/Password**; em *Authorized domains* adicionar `connected-ecossistema.web.app` (e manter `ocerebro936-big.github.io` se o GH Pages continuar).
+   2. **Authentication**: Build > Authentication > Sign-in method → ativar **Google** e **Email/Password**; em *Authorized domains* adicionar `connected-ecossistema.web.app` (manter `ocerebro936-big.github.io` apenas se o GH Pages continuar ativo).
   3. (Se um dia começar App Hosting: exige plano Blaze + conta de billing no projeto — a conta `0189C7-F5843D-071E0F` está associada a `keen-cargo-m8qfq`, não a este projeto.)
 
 ## Comandos úteis

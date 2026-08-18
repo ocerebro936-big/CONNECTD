@@ -37,7 +37,7 @@ Todas as correções foram implementadas, publicadas e commitadas (`4db2ee2`). E
 
 | Item | Estado | Notas |
 |---|---|---|
-| Frontend hospedado (GitHub Pages) | 🟢 | `https://ocerebro936-big.github.io/CONNECTD/` — deploy automático por `npm run build` + `gh-pages` |
+| Frontend hospedado (Firebase Hosting) | 🟢 | `https://connected-ecossistema.web.app/` — deploy por `firebase deploy --only hosting` |
 | Autenticação Firebase Auth | 🟢 | Email + Google; funciona a partir de qualquer hosting (é um serviço cloud, não depende do GitHub Pages) |
 | Firestore (base de dados) | 🟢 | Regras escritas no repo; **pendente deploy das regras** (CLI Firebase não instalada) |
 | Firebase Storage (uploads) | 🟢 | Configurado no código (`src/firebase.ts:10`); **sem `storage.rules` no repo** — regras ativas dependem da console Firebase |
