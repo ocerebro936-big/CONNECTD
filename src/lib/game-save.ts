@@ -22,6 +22,20 @@ export interface RunSave {
   unlockedLevel: number; // maior nível desbloqueado (1-based)
   scores: Record<number, number>; // melhor pontuação por nível
   displayName?: string;
+  // --- Connected RUN: KINGDOM ---
+  xp?: number;
+  gems?: number;
+  tickets?: number;
+  badges?: number;
+  energy?: number;
+  region?: string; // região atual
+  regionsUnlocked?: string[]; // regiões desbloqueadas
+  items?: string[]; // itens colecionáveis
+  cosmetics?: string[]; // cosméticos desbloqueados
+  kingVersion?: 'runner' | 'hero' | 'legend';
+  bestCombo?: number;
+  bestDistance?: number;
+  itemsCollected?: number;
 }
 
 const LOCAL_KEY = 'connected_run_save_v1';
@@ -39,6 +53,20 @@ export function loadLocalSave(): RunSave {
       coins: Number(parsed.coins) || 0,
       unlockedLevel: Number(parsed.unlockedLevel) || 1,
       scores: parsed.scores && typeof parsed.scores === 'object' ? parsed.scores : {},
+      xp: Number(parsed.xp) || 0,
+      gems: Number(parsed.gems) || 0,
+      tickets: Number(parsed.tickets) || 0,
+      badges: Number(parsed.badges) || 0,
+      energy: Number(parsed.energy) ?? 100,
+      region: parsed.region || 'city',
+      regionsUnlocked: Array.isArray(parsed.regionsUnlocked) ? parsed.regionsUnlocked : ['city'],
+      items: Array.isArray(parsed.items) ? parsed.items : [],
+      cosmetics: Array.isArray(parsed.cosmetics) ? parsed.cosmetics : [],
+      kingVersion: parsed.kingVersion || 'runner',
+      bestCombo: Number(parsed.bestCombo) || 0,
+      bestDistance: Number(parsed.bestDistance) || 0,
+      itemsCollected: Number(parsed.itemsCollected) || 0,
+      displayName: parsed.displayName,
     };
   } catch {
     return defaultSave();
@@ -62,6 +90,19 @@ export async function loadCloudSave(uid: string): Promise<RunSave | null> {
       coins: Number(d.coins) || 0,
       unlockedLevel: Number(d.unlockedLevel) || 1,
       scores: d.scores && typeof d.scores === 'object' ? d.scores : {},
+      xp: Number(d.xp) || 0,
+      gems: Number(d.gems) || 0,
+      tickets: Number(d.tickets) || 0,
+      badges: Number(d.badges) || 0,
+      energy: Number(d.energy) ?? 100,
+      region: d.region || 'city',
+      regionsUnlocked: Array.isArray(d.regionsUnlocked) ? d.regionsUnlocked : ['city'],
+      items: Array.isArray(d.items) ? d.items : [],
+      cosmetics: Array.isArray(d.cosmetics) ? d.cosmetics : [],
+      kingVersion: d.kingVersion || 'runner',
+      bestCombo: Number(d.bestCombo) || 0,
+      bestDistance: Number(d.bestDistance) || 0,
+      itemsCollected: Number(d.itemsCollected) || 0,
       displayName: d.displayName,
     };
   } catch {
@@ -77,6 +118,19 @@ export async function syncSaveToCloud(uid: string, save: RunSave): Promise<void>
         coins: save.coins,
         unlockedLevel: save.unlockedLevel,
         scores: save.scores,
+        xp: save.xp ?? 0,
+        gems: save.gems ?? 0,
+        tickets: save.tickets ?? 0,
+        badges: save.badges ?? 0,
+        energy: save.energy ?? 100,
+        region: save.region || 'city',
+        regionsUnlocked: save.regionsUnlocked || ['city'],
+        items: save.items || [],
+        cosmetics: save.cosmetics || [],
+        kingVersion: save.kingVersion || 'runner',
+        bestCombo: save.bestCombo ?? 0,
+        bestDistance: save.bestDistance ?? 0,
+        itemsCollected: save.itemsCollected ?? 0,
         displayName: save.displayName || null,
         updatedAt: Date.now(),
       },
@@ -96,10 +150,24 @@ export function mergeSaves(local: RunSave, cloud: RunSave | null): RunSave {
     const key = Number(k);
     scores[key] = Math.max(scores[key] || 0, cloud.scores[key] || 0);
   }
+  const union = <T>(a: T[] = [], b: T[] = []): T[] => Array.from(new Set([...a, ...b]));
   return {
     coins: Math.max(local.coins, cloud.coins),
     unlockedLevel: Math.max(local.unlockedLevel, cloud.unlockedLevel),
     scores,
+    xp: Math.max(local.xp ?? 0, cloud.xp ?? 0),
+    gems: Math.max(local.gems ?? 0, cloud.gems ?? 0),
+    tickets: Math.max(local.tickets ?? 0, cloud.tickets ?? 0),
+    badges: Math.max(local.badges ?? 0, cloud.badges ?? 0),
+    energy: Math.max(local.energy ?? 100, cloud.energy ?? 100),
+    region: cloud.region || local.region || 'city',
+    regionsUnlocked: union(local.regionsUnlocked, cloud.regionsUnlocked),
+    items: union(local.items, cloud.items),
+    cosmetics: union(local.cosmetics, cloud.cosmetics),
+    kingVersion: (cloud.kingVersion as any) || local.kingVersion || 'runner',
+    bestCombo: Math.max(local.bestCombo ?? 0, cloud.bestCombo ?? 0),
+    bestDistance: Math.max(local.bestDistance ?? 0, cloud.bestDistance ?? 0),
+    itemsCollected: Math.max(local.itemsCollected ?? 0, cloud.itemsCollected ?? 0),
     displayName: cloud.displayName || local.displayName,
   };
 }
