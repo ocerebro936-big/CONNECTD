@@ -16,7 +16,7 @@ export async function seedDemoBusinesses(user: any, ownerName: string): Promise<
       name: 'Connected Store',
       category: 'Tecnologia',
       description: 'Loja oficial de produtos Connected: merchandise, acessórios e criatividade digital.',
-      website: 'https://connected-ecossistema.web.app',
+      website: 'https://www.connectedking.web.app',
       email: 'loja@connected.com',
     },
     {

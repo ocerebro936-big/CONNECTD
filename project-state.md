@@ -43,3 +43,12 @@ Plataforma social (React + Firebase) com backend real: Social + Connected Music 
 - Credenciais MEGA: env vars da funcao (MEGA_EMAIL/MEGA_PASSWORD). Nunca no cliente.
 - Selecionar via createStorageProvider('mega', { bridgeUrl, getIdToken }).
 - Registado no Billing Core (PROVIDER_REGISTRY: mega-storage).
+
+## Rebrand -> Connected King (CK)
+- Nome oficial: Connected King 👑 (CK). URL pretendida: https://www.connectedking.web.app.
+- Central: src/lib/brand.ts (BRAND). domain-config OFFICIAL_URL atualizado.
+- index.html (title/OG/twitter/canonical/theme-color #050b20/JSON-LD), public/manifest.json (novo), public/logo.svg (CK + coroa).
+- App.tsx titulos/header/share/moderacao, DIVINO (divino-core + divino-engine) saudacao -> Connected King, CloudStatusPage, DivinoIa, DivinoMordomo, AdminPanel, SettingsPage, ProfilePage, app-version APP_NAME.
+- SEO: robots.txt + sitemap.xml apontam para connectedking.web.app.
+- Pillares (Connected Music/Business/TV/Run) mantidos como sub-marcas; 'Connected Cloud' -> 'Connected King Cloud'.
+- PNG icons em public/icons/ precisam ser regenerados com a nova identidade (avatar/coroa).

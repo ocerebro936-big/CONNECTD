@@ -29,10 +29,10 @@ export function CloudStatusPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <Cloud className="h-8 w-8 text-primary" /> Connected Cloud Core
+            <Cloud className="h-8 w-8 text-primary" /> Connected King Cloud Core
           </h1>
           <p className="text-slate-600 font-medium">
-            Infraestrutura própria da Connected: motores autónomos de storage, media, SEO, discovery e segurança.
+            Infraestrutura própria da Connected King: motores autónomos de storage, media, SEO, discovery e segurança.
           </p>
         </div>
         <Button onClick={runNow} disabled={running} className="rounded-xl bg-primary text-black font-bold hover:bg-primary/90">

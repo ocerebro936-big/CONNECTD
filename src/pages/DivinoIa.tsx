@@ -26,7 +26,7 @@ export default function DivinoIa({ user, profileData }: DivinoIaProps) {
   const [messages, setMessages] = useState<{ sender: 'user' | 'divino'; text: string }[]>([
     {
       sender: 'divino',
-      text: `Sou o DIVINO IA, o núcleo inteligente da Connected, criado pela Bluewhite Corporation. Uso o motor ${apiKey ? 'Gemini 2.0 Flash (externo)' : 'DIVINO Core (local)'}. Como posso orientar a tua jornada no Mundo Connected?`,
+      text: `Sou o DIVINO IA, o núcleo inteligente da Connected King, criado pela Bluewhite Corporation. Uso o motor ${apiKey ? 'Gemini 2.0 Flash (externo)' : 'DIVINO Core (local)'}. Como posso orientar a tua jornada no Mundo Connected King?`,
     },
   ]);
   const [input, setInput] = useState('');
@@ -104,7 +104,7 @@ export default function DivinoIa({ user, profileData }: DivinoIaProps) {
             DIVINO IA
           </h2>
           <p className="text-slate-700 font-medium text-base">
-            O Líder Supremo do ecossistema Connected • Bluewhite Corporation Lda.
+            O Líder Supremo do ecossistema Connected King • Bluewhite Corporation Lda.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -213,7 +213,7 @@ export default function DivinoIa({ user, profileData }: DivinoIaProps) {
               type="text"
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Pergunta ao DIVINO IA sobre o Mundo Connected..."
+              placeholder="Pergunta ao DIVINO IA sobre o Mundo Connected King..."
               className="flex-1 glass-input bg-white/70 border-white/50 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-sm"
               disabled={isTyping}
             />

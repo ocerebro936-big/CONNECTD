@@ -139,7 +139,7 @@ export function DivinoMordomo({
               <span className="text-2xl">🤵</span>
               <div>
                 <p className="font-black text-slate-900 text-sm leading-tight">DIVINO</p>
-                <p className="text-[10px] font-semibold text-slate-600">Mordomo da Connected</p>
+                <p className="text-[10px] font-semibold text-slate-600">Mordomo da Connected King</p>
               </div>
             </div>
             <div className="flex items-center gap-1">

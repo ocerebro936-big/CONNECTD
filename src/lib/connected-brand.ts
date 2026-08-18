@@ -23,7 +23,7 @@ export const BRAND_HIERARCHY: BrandTier[] = [
   { key: 'connected_king', label: 'Connected King', minPoints: 15000, crown: true, color: '#eab308', blurb: 'Excelência, liderança e contribuição para a Connected.' },
 ];
 
-export const BRAND_MARK = '👑 Connected';
+export const BRAND_MARK = '👑 Connected King';
 
 export function getBrandTier(points: number): BrandTier {
   let tier = BRAND_HIERARCHY[0];

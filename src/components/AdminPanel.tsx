@@ -113,7 +113,7 @@ export function AdminPanel({ user }: { user: any }) {
         type: 'purchase',
         message: `${p.points} pontos foram creditados na tua conta (compra ${p.title} confirmada).`,
         actorId: user.uid,
-        actorName: 'Connected Admin',
+        actorName: 'Connected King Admin',
         actorAvatar: '',
         link: '',
         read: false,

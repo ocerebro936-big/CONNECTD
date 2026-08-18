@@ -448,7 +448,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, profileData, toggleCo
                         <div className="mt-2 space-y-1.5">
                           <div className="flex items-center gap-2 text-xs font-mono text-slate-700 bg-white/60 rounded-lg px-3 py-2 border border-white/80">
                             <span className="text-emerald-500 font-bold">✓</span>
-                            <span>https://connected-ecossistema.web.app/ <span className="text-emerald-600 font-bold">— Oficial</span></span>
+                            <span>https://www.connectedking.web.app/ <span className="text-emerald-600 font-bold">— Oficial</span></span>
                           </div>
                           <div className="flex items-center gap-2 text-xs font-mono text-slate-700 bg-white/60 rounded-lg px-3 py-2 border border-white/80">
                             <span className="text-emerald-500 font-bold">✓</span>

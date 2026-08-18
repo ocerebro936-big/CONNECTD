@@ -81,7 +81,7 @@ function has(message: string, words: string[]): boolean {
 }
 
 const DEFAULT_ACTIONS: DivinoQuickAction[] = [
-  { id: 'explorar', label: '🔎 Explorar a Connected' },
+  { id: 'explorar', label: '🔎 Explorar a Connected King' },
   { id: 'encontrar_pessoas', label: '👥 Encontrar pessoas' },
   { id: 'ver_tv', label: '🎬 Ver vídeos / TV' },
   { id: 'criar_post', label: '✍️ Criar publicação' },
@@ -90,7 +90,7 @@ const DEFAULT_ACTIONS: DivinoQuickAction[] = [
 
 export class DivinoCore {
   readonly name = 'DIVINO';
-  readonly role = 'Mordomo da Connected';
+  readonly role = 'Mordomo da Connected King';
 
   private llm?: DivinoLlm;
   private memoryStore?: DivinoMemoryStore;
@@ -167,7 +167,7 @@ export class DivinoCore {
       case 'goodbye':
         response = {
           type: 'assistant',
-          text: 'Até logo! Continua a construir a tua presença na Connected. 👋',
+          text: 'Até logo! Continua a construir a tua presença na Connected King. 👋',
           quickActions: DEFAULT_ACTIONS,
         };
         break;
@@ -212,8 +212,8 @@ export class DivinoCore {
     return {
       type: 'welcome',
       text:
-        `Olá ${name}! 👋 Eu sou o DIVINO, o mordomo inteligente da Connected.\n` +
-        `Seja muito bem-vindo! 🌎 Posso ajudar-te a conhecer a Connected, ` +
+        `Olá ${name}! 👑 Eu sou o DIVINO, o mordomo inteligente da Connected King.\n` +
+        `Seja muito bem-vindo! 🌎 Posso ajudar-te a conhecer a Connected King, ` +
         `encontrar pessoas, descobrir conteúdos, publicar, organizar o teu perfil e tirar dúvidas.\n\n` +
         `O que gostarias de fazer primeiro?`,
       quickActions: DEFAULT_ACTIONS,
@@ -224,13 +224,13 @@ export class DivinoCore {
     return {
       type: 'guide',
       text:
-        'Posso ajudar com várias coisas dentro da Connected. Alguns exemplos:\n' +
+        'Posso ajudar com várias coisas dentro da Connected King. Alguns exemplos:\n' +
         '• 🔎 Explorar a Connect TV e vídeos\n' +
         '• 👥 Encontrar pessoas com interesses parecidos\n' +
         '• ✍️ Criar e otimizar publicações\n' +
         '• 📈 Melhorar o teu perfil e alcance\n' +
         '• 🔐 Explicar privacidade e segurança\n' +
-        '• 💬 Responder dúvidas sobre a Connected\n\n' +
+        '• 💬 Responder dúvidas sobre a Connected King\n\n' +
         'É só escrever o que precisas.',
       quickActions: DEFAULT_ACTIONS,
     };
@@ -240,10 +240,10 @@ export class DivinoCore {
     return {
       type: 'assistant',
       text:
-        'A Connected é um ecossistema social e digital onde podes ligar-te a pessoas, ' +
+        'A Connected King é um ecossistema social e digital onde podes ligar-te a pessoas, ' +
         'publicar fotos/vídeos/áudio/documentos, assistir à Connect TV, jogar, ' +
         'comprar e vender, e usar serviços com a ajuda do DIVINO. ' +
-        'Tudo passa pelo Connected Cloud (armazenamento próprio) para que o que ' +
+        'Tudo passa pelo Connected King Cloud (armazenamento próprio) para que o que ' +
         'ves na interface exista mesmo no backend.',
       quickActions: DEFAULT_ACTIONS,
     };
@@ -394,7 +394,7 @@ export class DivinoCore {
       type: 'assistant',
       text:
         `Entendi, ${user.name?.split(' ')[0] || 'amigo'}. ` +
-        `Estou aqui para ajudar dentro das funções da Connected. ` +
+        `Estou aqui para ajudar dentro das funções da Connected King. ` +
         `Podes pedir para explorar, encontrar pessoas, criar publicações, ` +
         `melhorar o perfil ou aumentar o teu alcance.`,
       quickActions: DEFAULT_ACTIONS,

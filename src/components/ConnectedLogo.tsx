@@ -76,7 +76,7 @@ export function ConnectedLogo({
       <svg
         viewBox="0 0 512 512"
         role="img"
-        aria-label="Connected"
+        aria-label="Connected King"
         className={`${className} cl-svg`}
         style={glow ? { filter: 'drop-shadow(0 0 14px rgba(233,184,84,0.35))' } : undefined}
       >

@@ -82,7 +82,7 @@ export const KNOWLEDGE_BASE: KnowledgeItem[] = [
     category: '📚 Interna',
     title: 'Games Online',
     keywords: ['jogo', 'jogos', 'game', 'games', 'arcade'],
-    answer: 'A aba Games Online é o diretório de jogos do navegador da Connected, com categorias como Puzzle, Corrida, Desporto e Multiplayer. Jogos incorporáveis abrem em iframe; os restantes abrem no site oficial.',
+    answer: 'A aba Games Online é o diretório de jogos do navegador da Connected King, com categorias como Puzzle, Corrida, Desporto e Multiplayer. Jogos incorporáveis abrem em iframe; os restantes abrem no site oficial.',
   },
   {
     category: '📚 Interna',
@@ -94,7 +94,7 @@ export const KNOWLEDGE_BASE: KnowledgeItem[] = [
     category: '⚖️ Jurídica',
     title: 'Propriedade da plataforma',
     keywords: ['bluewhite', 'proprietário', 'empresa', 'corporation', 'dono'],
-    answer: 'A Connected Platform é operada pela Bluewhite Corporation Lda. O DIVINO IA é o núcleo inteligente da plataforma, com toda a lógica sob o controlo da empresa.',
+    answer: 'A Connected King Platform é operada pela Bluewhite Corporation Lda. O DIVINO IA é o núcleo inteligente da plataforma, com toda a lógica sob o controlo da empresa.',
   },
   {
     category: '⚖️ Jurídica',
@@ -106,7 +106,7 @@ export const KNOWLEDGE_BASE: KnowledgeItem[] = [
     category: '💡 Técnica',
     title: 'Acesso e domínios',
     keywords: ['domínio', 'domínio', 'link', 'url', 'acesso', 'login'],
-    answer: 'Acede pela URL oficial https://connected-ecossistema.web.app/. O login aceita Google, Microsoft, Yahoo, Email e Modo Convidado. Domínios autorizados estão configurados no Firebase.',
+    answer: 'Acede pela URL oficial https://www.connectedking.web.app/. O login aceita Google, Microsoft, Yahoo, Email e Modo Convidado. Domínios autorizados estão configurados no Firebase.',
   },
   {
     category: '💡 Técnica',
@@ -196,8 +196,8 @@ export interface DivinoResponse {
 
 const FALLBACKS = [
   'O DIVINO IA está a meditar sobre essa questão. Podes reformular de outra forma? Também posso explicar os pontos, cargos, Connect TV, Galeria, Games ou avaliações 0-10.',
-  'O meu conhecimento da Connected é vasto, mas essa questão escapa ao meu alcance atual. Pergunta sobre pontos, níveis, chamadas, Galeria, Connect TV ou avaliações.',
-  'Sou o DIVINO IA da Bluewhite Corporation. Conheço bem a plataforma Connected — experimenta perguntar sobre avaliações 0-10, modos de login ou como ganhar pontos.',
+  'O meu conhecimento da Connected King é vasto, mas essa questão escapa ao meu alcance atual. Pergunta sobre pontos, níveis, chamadas, Galeria, Connect TV ou avaliações.',
+  'Sou o DIVINO IA da Bluewhite Corporation. Conheço bem a plataforma Connected King — experimenta perguntar sobre avaliações 0-10, modos de login ou como ganhar pontos.',
 ];
 
 let fallbackIndex = 0;
@@ -218,7 +218,7 @@ export function divinoLocalReply(query: string, userName?: string, modelId = 'di
 
   if (name) {
     return {
-      text: 'Sou o DIVINO IA, o núcleo inteligente da Connected, criado e controlado pela Bluewhite Corporation Lda. Posso responder sobre a plataforma, ajudar com o conhecimento interno e orientar-te no ecossistema.',
+      text: 'Sou o DIVINO IA, o núcleo inteligente da Connected King, criado e controlado pela Bluewhite Corporation Lda. Posso responder sobre a plataforma, ajudar com o conhecimento interno e orientar-te no ecossistema.',
       source: 'knowledge',
       modelUsed: modelId,
     };
@@ -227,7 +227,7 @@ export function divinoLocalReply(query: string, userName?: string, modelId = 'di
   if (greeting) {
     const storedName = userName || recall('user', 'displayName') || 'membro';
     return {
-      text: `Saudações, ${storedName}! Sou o DIVINO IA, o oráculo da Connected. Em que posso ajudar? Posso falar sobre pontos, níveis, cargos, Connect TV, Galeria, Games ou avaliações.`,
+      text: `Saudações, ${storedName}! Sou o DIVINO IA, o oráculo da Connected King. Em que posso ajudar? Posso falar sobre pontos, níveis, cargos, Connect TV, Galeria, Games ou avaliações.`,
       source: 'knowledge',
       modelUsed: modelId,
     };
@@ -273,7 +273,7 @@ export async function divinoChat(
       body: JSON.stringify({
         systemInstruction: {
           parts: [{
-            text: 'Tu és o DIVINO IA, o núcleo inteligente da Connected, criado pela Bluewhite Corporation Lda. Responde em português de Portugal, de forma útil e oracular.',
+            text: 'Tu és o DIVINO IA, o núcleo inteligente da Connected King, criado pela Bluewhite Corporation Lda. Responde em português de Portugal, de forma útil e oracular.',
           }],
         },
         contents,

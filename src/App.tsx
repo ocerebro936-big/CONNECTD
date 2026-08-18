@@ -156,19 +156,19 @@ export default function App() {
     setActiveTab(tabName);
     setIsMobileMenuOpen(false);
     const titles: Record<string, string> = {
-      feed: 'Feed — Connected',
-      profile: 'Perfil — Connected',
-      overview: 'Dashboard — Connected',
-      connections: 'Rede de Conexões — Connected',
-      ai: 'DIVINO IA — Connected',
-      network: 'Networking — Connected',
-      gallery: 'Galeria & Direitos Autorais — Connected',
-      'connect-tv': 'Connect TV — Connected',
-      games: 'Games Online — Connected',
-      settings: 'Definições — Connected',
-      empresas: 'Empresas — Connected',
+      feed: 'Feed — Connected King',
+      profile: 'Perfil — Connected King',
+      overview: 'Dashboard — Connected King',
+      connections: 'Rede de Conexões — Connected King',
+      ai: 'DIVINO IA — Connected King',
+      network: 'Networking — Connected King',
+      gallery: 'Galeria & Direitos Autorais — Connected King',
+      'connect-tv': 'Connect TV — Connected King',
+      games: 'Games Online — Connected King',
+      settings: 'Definições — Connected King',
+      empresas: 'Empresas — Connected King',
     };
-    document.title = titles[tabName] || 'Connected — Rede Social & Ecossistema Digital';
+    document.title = titles[tabName] || 'Connected King 👑 — Rede Social & Ecossistema Digital';
     try {
       const url = new URL(window.location.href);
       url.searchParams.set('tab', tabName);
@@ -350,7 +350,7 @@ export default function App() {
             const { isNewDevice } = await registerSession(currentUser.uid);
             if (isNewDevice) {
               await logSecurityEvent(currentUser.uid, 'NEW_DEVICE_LOGIN', `Novo dispositivo: ${dev.browser} ${dev.os} (${dev.isMobile ? 'telemóvel' : 'computador'})`);
-              await createNotification(currentUser.uid, 'security', `Novo acesso a partir de ${dev.browser} (${dev.os})`, '🛡️ Connected Segurança', '', '?tab=settings').catch(() => {});
+              await createNotification(currentUser.uid, 'security', `Novo acesso a partir de ${dev.browser} (${dev.os})`, '🛡️ Connected King Segurança', '', '?tab=settings').catch(() => {});
             }
           } catch (e) {
             console.warn('Session registration skipped:', e);
@@ -683,7 +683,7 @@ export default function App() {
       logSecurityEvent(user.uid, 'REPORT_SUBMITTED', `${reportModal.type} ${reportModal.targetId}`);
       setReportModal(null);
       setReportReason('');
-      alert('Denúncia enviada. A moderação da Connected vai analisar.');
+      alert('Denúncia enviada. A moderação da Connected King vai analisar.');
     } catch (e) {
       console.error('Error submitting report:', e);
       handleFirestoreError(e, OperationType.CREATE, 'reports');
@@ -1020,7 +1020,7 @@ export default function App() {
     const url = `${APP_BASE}/?post=${post.id}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: post.content?.slice(0, 80), text: `Publicação de ${post.authorName} na Connected`, url });
+        await navigator.share({ title: post.content?.slice(0, 80), text: `Publicação de ${post.authorName} na Connected King`, url });
       } catch {}
     } else {
       navigator.clipboard.writeText(url);
@@ -1270,7 +1270,8 @@ export default function App() {
   if (!isAuthReady) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#12100c]">
-        <ConnectedLogo className="h-16 w-16" breathing enter />
+              <ConnectedLogo className="h-16 w-16" breathing enter />
+              <span className="sr-only">Connected King</span>
       </div>
     );
   }
@@ -1286,7 +1287,7 @@ export default function App() {
             <div className="text-center space-y-3">
               <ConnectedLogo className="h-20 w-20 mx-auto" breathing />
               <div>
-                <h1 className="text-3xl font-bold tracking-tight gold-text-gradient">Connected</h1>
+                <h1 className="text-3xl font-bold tracking-tight gold-text-gradient">Connected King</h1>
                 <p className="flex items-center justify-center gap-2 text-amber-200/90 font-semibold tracking-wider text-base">
                   <span>Conecte.</span><span className="text-primary">·</span><span>Compartilhe.</span><span className="text-primary">·</span><span>Cresça.</span>
                 </p>
@@ -1484,7 +1485,7 @@ export default function App() {
             <div className="pt-3 border-t border-white/15 text-center">
               <p className="text-[10px] font-bold text-amber-400">🛠️ Usar Domínio Próprio</p>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Podes apontar o teu CNAME para a Connected e usar o teu próprio domínio.
+                Podes apontar o teu CNAME para a Connected King e usar o teu próprio domínio.
               </p>
             </div>
 
@@ -1533,7 +1534,7 @@ export default function App() {
         <div className="flex h-16 items-center justify-between px-6 border-b border-primary/15">
           <div className="flex items-center gap-3 font-bold text-white">
             <ConnectedLogo className="h-9 w-9" />
-            <span className="text-2xl tracking-tight gold-text-gradient font-bold">Connected</span>
+            <span className="text-2xl tracking-tight gold-text-gradient font-bold">Connected King</span>
           </div>
           <button className="sm:hidden text-slate-300" onClick={() => setIsMobileMenuOpen(false)}>
             <X className="h-6 w-6" />
@@ -2086,7 +2087,7 @@ export default function App() {
                   <Share2 className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg font-bold text-slate-900">Link Oficial da Rede Connected</CardTitle>
+                  <CardTitle className="text-lg font-bold text-slate-900">Link Oficial da Rede Connected King</CardTitle>
                   <CardDescription className="text-xs text-slate-600 font-medium">Usa estes links para aceder ou convidar outros utilizadores.</CardDescription>
                 </div>
               </div>
@@ -2103,7 +2104,7 @@ export default function App() {
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                   <Globe className="h-3.5 w-3.5 text-primary" />
-                  Domínio Principal (Connected):
+                  Domínio Principal (Connected King):
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -2128,7 +2129,7 @@ export default function App() {
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                   <Sparkles className="h-3.5 w-3.5 text-cyan-500" />
-                  Link Curto (Connected):
+                  Link Curto (Connected King):
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -2196,7 +2197,7 @@ export default function App() {
                     <CheckCircle2 className="h-4 w-4" />
                   </button>
                 </div>
-                <p className="text-[10px] text-slate-500">Empresa Connected — código e ecossistema em github.com/enterprises/connectednetworking</p>
+                <p className="text-[10px] text-slate-500">Empresa Connected King — código e ecossistema em github.com/enterprises/connectednetworking</p>
               </div>
             </CardContent>
 
@@ -2338,7 +2339,7 @@ export default function App() {
                 <div>
                   <CardTitle className="text-base font-bold text-slate-900">Denunciar {reportModal.type === 'post' ? 'Publicação' : 'Utilizador'}</CardTitle>
                   <CardDescription className="text-xs text-slate-600 font-medium">
-                    {reportModal.authorName ? `Conteúdo de ${reportModal.authorName}` : 'Ajuda-nos a manter a Connected segura'}
+                    {reportModal.authorName ? `Conteúdo de ${reportModal.authorName}` : 'Ajuda-nos a manter a Connected King segura'}
                   </CardDescription>
                 </div>
               </div>
@@ -2350,7 +2351,7 @@ export default function App() {
                 placeholder="Descreve o motivo da denúncia (conteúdo impróprio, assédio, spam...)"
                 className="w-full glass-input bg-white/60 border-white/50 text-sm px-3 py-2.5 rounded-xl min-h-[100px] focus:outline-none focus:ring-2 focus:ring-amber-400/40 text-slate-900"
               />
-              <p className="text-[10px] text-slate-500 font-medium">A denúncia é anónima para o denunciado e analisada pela moderação da Connected.</p>
+                <p className="text-[10px] text-slate-500 font-medium">A denúncia é anónima para o denunciado e analisada pela moderação da Connected King.</p>
             </CardContent>
             <CardFooter className="p-4 pt-0 flex justify-end gap-2">
               <Button variant="ghost" size="sm" className="rounded-xl text-xs text-slate-600" onClick={() => { setReportModal(null); setReportReason(''); }}>Cancelar</Button>
