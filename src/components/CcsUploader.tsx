@@ -6,7 +6,7 @@
 // documentos, com barra de progresso e verificação de quota.
 // ============================================================================
 import React, { useRef, useState } from 'react';
-import { uploadToCcs, CcsFolder } from '../lib/ccs/upload';
+import { uploadToCcs, CcsFolder, CcsUploadResult } from '../lib/ccs/upload';
 import type { CcsVisibility } from '../lib/ccs';
 
 interface CcsUploaderProps {
@@ -22,7 +22,7 @@ interface CcsUploaderProps {
   className?: string;
   user?: any;
   profileData?: any;
-  onUploaded?: (urls: string[]) => void;
+  onUploaded?: (results: CcsUploadResult[]) => void;
 }
 
 export const CcsUploader: React.FC<CcsUploaderProps> = ({
@@ -53,7 +53,7 @@ export const CcsUploader: React.FC<CcsUploaderProps> = ({
     for (let i = 0; i < list.length; i++) files.push(list[i]);
     setBusy(true);
     setError(undefined);
-    const urls: string[] = [];
+    const results: CcsUploadResult[] = [];
     try {
       for (const f of files) {
         const r = await uploadToCcs({
@@ -67,9 +67,9 @@ export const CcsUploader: React.FC<CcsUploaderProps> = ({
           profileData,
           onProgress: setProgress,
         });
-        urls.push(r.url);
+        results.push(r);
       }
-      onUploaded?.(urls);
+      onUploaded?.(results);
     } catch (err: any) {
       setError(err?.message || 'Erro ao enviar para a Connected Cloud.');
     } finally {

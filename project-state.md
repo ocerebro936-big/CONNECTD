@@ -66,3 +66,9 @@ Plataforma social (React + Firebase) com backend real: Social + Connected Music 
 - cloud-upload.ts publishMediaPost: storagePath/thumbnailPath agora usam ccsUserKey (users/{uid}/{photos|videos|audio|documents}).
 - App.handleImageUpload (avatar/capa): passa a usar uploadToCcs (CCS) em vez de uploadString direto.
 - ProfilePage: overlay do avatar usa CcsUploader (avatar); secao 'Galeria Connected Cloud' com CcsUploader para fotos e videos.
+
+## Compositor (FeedPage) com CcsUploader
+- CcsUploader ligado ao compositor para 'audio' (pasta audio) e 'document' (pasta documents), com barra de progresso e verificacao de quota.
+- uploadToCcs passa a devolver {url, assetId, key, file}; CcsUploader devolve CcsUploadResult[] em onUploaded.
+- publishCcsMediaPost (cloud-upload.ts): cria o post com o URL ja carregado para a CCS, sem duplo upload. O feed (onSnapshot no pai) atualiza automaticamente.
+- ProfilePage atualizado para o novo onUploaded (results[0]?.url).

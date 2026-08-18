@@ -14,6 +14,10 @@ import { db } from '../firebase';
 import { LiveRoom } from '../components/LiveRoom';
 import { GoLiveModal } from '../components/GoLiveModal';
 import { buildFeed } from '../lib/discovery';
+import { CcsUploader } from '../components/CcsUploader';
+import { publishCcsMediaPost } from '../lib/cloud-upload';
+import { ccsFolderForKind } from '../lib/ccs/upload';
+import type { CcsUploadResult } from '../lib/ccs/upload';
 
 interface FeedPageProps {
   user: any;
@@ -482,6 +486,41 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                     className="hidden"
                     onChange={handleFileUpload}
                   />
+                  {user && (
+                    <>
+                      <CcsUploader
+                        userId={user.uid}
+                        userName={profileData.displayName || user.email || 'Utilizador'}
+                        folder={ccsFolderForKind('audio')}
+                        kind="audio"
+                        accept="audio/*"
+                        label="Áudio"
+                        icon={<Music className="h-4 w-4 mr-2 text-violet-500" />}
+                        className="ml-1"
+                        user={user}
+                        profileData={profileData}
+                        onUploaded={(results: CcsUploadResult[]) =>
+                          results.forEach((r) =>
+                            publishCcsMediaPost({ user, profileData, file: r.file, url: r.url, assetId: r.assetId, kind: 'audio', content: newPostContent })
+                          )
+                        }
+                      />
+                      <CcsUploader
+                        userId={user.uid}
+                        userName={profileData.displayName || user.email || 'Utilizador'}
+                        folder={ccsFolderForKind('document')}
+                        kind="document"
+                        accept="application/pdf,.ppt,.pptx,.key,.txt,.doc,.docx,.xls,.xlsx,.csv,.odt,.zip,.rar,.7z"
+                        label="Documento"
+                        icon={<FileText className="h-4 w-4 mr-2 text-amber-500" />}
+                        onUploaded={(results: CcsUploadResult[]) =>
+                          results.forEach((r) =>
+                            publishCcsMediaPost({ user, profileData, file: r.file, url: r.url, assetId: r.assetId, kind: 'document', content: newPostContent })
+                          )
+                        }
+                      />
+                    </>
+                  )}
                 </div>
 
                 {selectedMedia && (

@@ -111,7 +111,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                   user={user}
                   profileData={profileData}
                   className="bg-transparent border-0 shadow-none"
-                  onUploaded={(urls) => urls[0] && setProfileData((prev: any) => ({ ...prev, photoURL: urls[0] }))}
+                  onUploaded={(results) => results[0]?.url && setProfileData((prev: any) => ({ ...prev, photoURL: results[0].url }))}
                 />
               </div>
             </div>
@@ -314,7 +314,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                   icon={<Camera className="h-4 w-4" />}
                   user={user}
                   profileData={profileData}
-                  onUploaded={(urls) => setGallery((prev) => [...prev, ...urls.map((u) => ({ url: u, kind: 'photo' }))])}
+                  onUploaded={(results) => setGallery((prev) => [...prev, ...results.map((r) => ({ url: r.url, kind: 'photo' }))])}
                 />
                 <CcsUploader
                   userId={user.uid}
@@ -326,7 +326,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                   icon={<Video className="h-4 w-4" />}
                   user={user}
                   profileData={profileData}
-                  onUploaded={(urls) => setGallery((prev) => [...prev, ...urls.map((u) => ({ url: u, kind: 'video' }))])}
+                  onUploaded={(results) => setGallery((prev) => [...prev, ...results.map((r) => ({ url: r.url, kind: 'video' }))])}
                 />
               </div>
               {gallery.length > 0 && (

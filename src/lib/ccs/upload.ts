@@ -40,6 +40,7 @@ export interface CcsUploadResult {
   url: string;
   assetId: string;
   key: string;
+  file: File;
 }
 
 export async function uploadToCcs(input: CcsUploadInput): Promise<CcsUploadResult> {
@@ -86,7 +87,7 @@ export async function uploadToCcs(input: CcsUploadInput): Promise<CcsUploadResul
   });
   await setAssetReady(id, { downloadUrl: res.url });
 
-  return { url: res.url, assetId: id, key };
+  return { url: res.url, assetId: id, key, file };
 }
 
 /** Mapeia o tipo de conteúdo para a pasta CCS (users/{uid}/{folder}). */

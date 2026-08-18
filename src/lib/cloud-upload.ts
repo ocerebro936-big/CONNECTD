@@ -514,3 +514,45 @@ export async function publishToCloud(
     thumbnailUrl,
   };
 }
+
+// ----------------------------------------------------------------------------
+// Publica um post cujo ficheiro JÁ foi carregado para a Connected Cloud (CCS)
+// via uploadToCcs — evita o re-upload. Usado pelos CcsUploader do compositor.
+// ----------------------------------------------------------------------------
+export async function publishCcsMediaPost(opts: {
+  user: any;
+  profileData: any;
+  file: File;
+  url: string;
+  assetId: string;
+  kind: any;
+  content?: string;
+}): Promise<void> {
+  const authorName = opts.profileData.displayName || opts.user.email?.split('@')[0] || 'Unknown';
+  const authorHandle = `@${authorName.toLowerCase().replace(/\s+/g, '')}`;
+  let fallback = `Partilhou ${opts.file.name}`;
+  const k = opts.kind;
+  if (k === 'audio') fallback = `🎵 Partilhou áudio: ${opts.file.name}`;
+  else if (k === 'pdf') fallback = `📄 Partilhou documento: ${opts.file.name}`;
+  else if (k === 'slides') fallback = `📊 Partilhou apresentação: ${opts.file.name}`;
+  else if (k === 'document') fallback = `📦 Partilhou ficheiro: ${opts.file.name}`;
+
+  await addDoc(collection(db, 'posts'), {
+    userId: opts.user.uid,
+    authorName,
+    authorHandle,
+    authorAvatar: opts.profileData.photoURL || 'https://github.com/shadcn.png',
+    content: (opts.content || '').trim() || fallback,
+    media: {
+      type: k,
+      url: opts.url,
+      fileName: opts.file.name,
+      sizeBytes: opts.file.size,
+      cloudAssetId: opts.assetId,
+    },
+    ratings: { totalScore: 0, count: 0, userRatings: {} },
+    likes: 0,
+    comments: 0,
+    createdAt: Date.now(),
+  });
+}
