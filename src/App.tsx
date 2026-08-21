@@ -80,6 +80,9 @@ import { BackgroundSlider } from './components/BackgroundSlider';
 import { InstallPrompt } from './components/InstallPrompt';
 import { UpdateNotifier } from './components/UpdateNotifier';
 import { DivinoMordomo } from './components/DivinoMordomo';
+import { OnboardingGuide, shouldShowOnboarding } from './components/OnboardingGuide';
+import { MusicProvider } from './lib/connected-music/context';
+import { presenceEngine } from './lib/presence/presence';
 import { CallModal, IncomingCallListener } from './components/CallModal';
 import { ChatModal } from './components/ChatModal';
 import { UserProfileModal } from './components/UserProfileModal';
@@ -1164,6 +1167,11 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    presenceEngine.start();
+    return () => presenceEngine.stop();
+  }, []);
+
   const handleLogin = async (providerName: 'google' | 'apple') => {
     if (isLoggingIn) return;
     setAuthError('');
@@ -1509,7 +1517,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <MusicProvider>
       <BackgroundSlider />
       <DayNightAmbience />
       <UpdateNotifier />
@@ -2394,6 +2402,10 @@ export default function App() {
           sendFriendRequest={sendFriendRequest}
         />
       )}
-    </>
+
+      {isAuthenticated && shouldShowOnboarding() && (
+        <OnboardingGuide onClose={() => {}} />
+      )}
+    </MusicProvider>
   );
 }

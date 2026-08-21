@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Music2, Plus, Play, Pause } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { MusicPlayerBar } from '../components/MusicPlayerBar';
+import { useMusic } from '../lib/connected-music/context';
 import { MusicUpload } from '../components/MusicUpload';
 import { listMusicTracks, listMusicByArtist, MusicTrack, isMusicLiked } from '../lib/music';
 import { setPageMeta, injectJsonLd, removeJsonLd, musicRecordingSchema } from '../lib/seo';
@@ -19,7 +19,7 @@ export function MusicPage({ user, profileData, allUsers, onOpenProfile }: MusicP
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
 
-  const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
+  const music = useMusic();
   const [filter, setFilter] = useState<'all' | 'mine'>('all');
 
   useEffect(() => {
@@ -27,12 +27,12 @@ export function MusicPage({ user, profileData, allUsers, onOpenProfile }: MusicP
   }, []);
 
   useEffect(() => {
-    if (currentTrack) {
-      injectJsonLd('ld-music', musicRecordingSchema(currentTrack));
+    if (music.current) {
+      injectJsonLd('ld-music', musicRecordingSchema(music.current));
     } else {
       removeJsonLd('ld-music');
     }
-  }, [currentTrack]);
+  }, [music.current]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,11 +112,11 @@ export function MusicPage({ user, profileData, allUsers, onOpenProfile }: MusicP
                   </div>
                 )}
                 <button
-                  onClick={() => setCurrentTrack(t)}
+                  onClick={() => music.play(t, user)}
                   className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity"
                 >
                   <span className="h-12 w-12 rounded-full bg-primary text-black flex items-center justify-center">
-                    {currentTrack?.id === t.id ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+                    {music.current?.id === t.id ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
                   </span>
                 </button>
               </div>
@@ -154,7 +154,7 @@ export function MusicPage({ user, profileData, allUsers, onOpenProfile }: MusicP
         />
       )}
 
-      <MusicPlayerBar track={currentTrack} user={user} onClose={() => setCurrentTrack(null)} />
+      {/* Player global montado em <MusicProvider> (App) — persiste na navegação */}
     </div>
   );
 }

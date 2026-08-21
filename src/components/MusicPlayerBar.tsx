@@ -34,6 +34,19 @@ export function MusicPlayerBar({ track, user, onClose }: MusicPlayerBarProps) {
     setProgress(0);
   }, [track, user?.uid]);
 
+  // Política de áudio: pára a música se outro áudio/video pedir foco.
+  useEffect(() => {
+    const onFocus = () => {
+      const audio = audioRef.current;
+      if (audio && !audio.paused) {
+        audio.pause();
+        setIsPlaying(false);
+      }
+    };
+    window.addEventListener("ck:pause-music", onFocus);
+    return () => window.removeEventListener("ck:pause-music", onFocus);
+  }, []);
+
   const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio) return;

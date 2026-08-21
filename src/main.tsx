@@ -3,6 +3,7 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import './styles/theme.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 let preloadErrorReloading = false;
