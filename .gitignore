@@ -7,3 +7,6 @@ coverage/
 .env*
 !.env.example
 .wrangler/
+
+# segredos locais (nunca comitar)
+Token 99/

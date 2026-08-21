@@ -17,6 +17,7 @@ import { connectedStorage } from '../../cloud-storage/provider';
 import { generateImageDerivatives } from '../media/image';
 import { generateVideoThumbnail } from '../media/video';
 import { uploadResumable } from './chunk-upload';
+import { reactorEvents } from '../../connected-reactor/events/reactor-events';
 import type {
   CcsUploadInput,
   CcsUploadResult,
@@ -85,7 +86,15 @@ export async function ccsUpload(input: CcsUploadInput): Promise<CcsUploadResult>
     session,
     { onProgress: input.onProgress, signal: input.signal }
   );
-  const { url } = await handle.promise;
+  reactorEvents.emit({ type: 'upload_start', ownerId: ownerUid, bytes: file.size, taskId: assetId, at: Date.now() });
+  let url: string;
+  try {
+    url = (await handle.promise).url;
+    reactorEvents.emit({ type: 'upload_complete', ownerId: ownerUid, bytes: file.size, taskId: assetId, at: Date.now() });
+  } catch (e) {
+    reactorEvents.emit({ type: 'upload_failed', ownerId: ownerUid, bytes: file.size, taskId: assetId, at: Date.now() });
+    throw e;
+  }
 
   const id = await createCloudAsset({
     ownerUid,
@@ -191,6 +200,8 @@ export async function ccsUpload(input: CcsUploadInput): Promise<CcsUploadResult>
       /* thumbnail opcional */
     }
   }
+
+  reactorEvents.emit({ type: 'media_processed', ownerId: ownerUid, bytes: file.size, taskId: assetId, at: Date.now() });
 
   return result;
 }

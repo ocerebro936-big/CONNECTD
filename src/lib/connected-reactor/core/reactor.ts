@@ -26,6 +26,7 @@ export class DigitalReactor {
   private running = new Set<string>();
   private completed = 0;
   private failed = 0;
+  private activeUploads = 0;
   private workersTotal: number;
   private timer: ReturnType<typeof setInterval> | null = null;
   private started = false;
@@ -41,6 +42,11 @@ export class DigitalReactor {
     );
     this.registerHandler("media.thumbnail", async () => ({ ok: true }));
     this.registerHandler("maintenance", async () => ({ ok: true }));
+    reactorEvents.on((e) => {
+      if (e.type === "upload_start") this.activeUploads += 1;
+      else if (e.type === "upload_complete" || e.type === "upload_failed")
+        this.activeUploads = Math.max(0, this.activeUploads - 1);
+    });
   }
 
   registerHandler(type: string, handler: WorkerHandler): void {
@@ -151,6 +157,7 @@ export class DigitalReactor {
       cpuCores: r.cpuCores,
       memoryMb: r.jsHeapUsedMb,
       latencyMs: r.latencyMs,
+      activeUploads: this.activeUploads,
       healthy: h.healthy,
       alerts: h.alerts,
     };

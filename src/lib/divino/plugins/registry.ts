@@ -14,6 +14,7 @@ import { connectedDiagnose, connectedOrchestrate } from '../tools/connected';
 import { economyStatus } from '../tools/economy';
 import { cloudStatus } from '../tools/cloud-status';
 import { reactorStatus } from '../tools/reactor';
+import { cloudDelete } from '../tools/cloud-delete';
 import { memoryPlugin } from './memory/memory-plugin';
 import { recallPlugin } from './memory/recall-plugin';
 import { contextPlugin } from './memory/context-plugin';
@@ -24,6 +25,7 @@ export interface ToolContext {
   uid: string;
   role: string;
   term?: string;
+  args?: Record<string, any>;
 }
 
 type ToolFn = (ctx: ToolContext) => Promise<{ ok: boolean; summary: string; data?: any }>;
@@ -44,6 +46,7 @@ export const PLUGIN_BUS: Record<string, { plugin: string; fn: ToolFn }> = {
   economy_status: { plugin: 'connected_economy', fn: (c) => economyStatus(c.uid) },
   cloud_status: { plugin: 'connected_cloud', fn: () => cloudStatus() },
   reactor_status: { plugin: 'connected_reactor', fn: () => reactorStatus() },
+  cloud_delete: { plugin: 'connected_cloud', fn: (c) => cloudDelete(c as any) },
   memory_status: { plugin: 'divino_memory', fn: () => memoryPlugin({ uid: '', role: 'user' }) },
   memory_recall: { plugin: 'divino_memory', fn: (c) => recallPlugin(c) },
   memory_context: { plugin: 'divino_memory', fn: (c) => contextPlugin(c) },

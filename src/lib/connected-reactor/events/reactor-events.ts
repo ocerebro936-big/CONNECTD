@@ -8,9 +8,16 @@
 
 export type ReactorEventType =
   | "upload"
+  | "upload_start"
+  | "upload_complete"
+  | "upload_failed"
   | "download"
   | "stream"
   | "video_processing"
+  | "media_processed"
+  | "replicate"
+  | "backup"
+  | "cleanup"
   | "storage"
   | "game"
   | "advertisement";

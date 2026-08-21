@@ -15,6 +15,7 @@ export const CAPABILITY_ACTION: Record<string, DivinoAction> = {
   economy_status: 'read_own_data',
   cloud_status: 'run_diagnostics',
   reactor_status: 'run_diagnostics',
+  cloud_delete: 'delete_own_file',
   memory_status: 'read_own_data',
   memory_recall: 'read_own_data',
   memory_context: 'read_own_data',
