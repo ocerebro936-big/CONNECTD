@@ -16,6 +16,12 @@
   --ck-border: rgba(245, 179, 1, 0.28);
   --ck-text: rgba(255, 255, 255, 0.92);
   --ck-text-dim: rgba(255, 255, 255, 0.62);
+
+  /* Paleta oficial Connected King (ouro) */
+  --ck-gold-1: #d4af37; /* ouro principal */
+  --ck-gold-2: #f5d76e; /* ouro claro */
+  --ck-gold-3: #ffd700; /* ouro brilhante */
+  --ck-gold-4: #9a7219; /* ouro escuro */
 }
 
 /* Vidro com menos branco e borda dourada subtil */
@@ -74,3 +80,39 @@
 .ck-text-dim {
   color: var(--ck-text-dim);
 }
+
+/* ============================================================================
+   Connected King Mascot — animação (coroa dourada, aceno, partículas)
+   Fundo transparente; usa a paleta oficial de ouro. Loop suave.
+   ============================================================================ */
+@keyframes ck-crown-glow {
+  0%, 100% { opacity: 0.55; filter: drop-shadow(0 0 2px var(--ck-gold-2)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 8px var(--ck-gold-3)); }
+}
+@keyframes ck-wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-18deg); }
+  50% { transform: rotate(8deg); }
+  75% { transform: rotate(-10deg); }
+}
+@keyframes ck-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes ck-particle {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--px, 0), var(--py, -22px)) scale(1); }
+}
+@keyframes ck-shimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+.ck-mascot { display: inline-block; }
+.ck-mascot__crown { animation: ck-crown-glow 3s ease-in-out infinite; transform-origin: center; }
+.ck-mascot__wave { animation: ck-wave 2.2s ease-in-out infinite; transform-origin: 88% 78%; }
+.ck-mascot__float { animation: ck-float 4s ease-in-out infinite; }
+.ck-mascot__shimmer { animation: ck-shimmer 3.5s ease-in-out infinite; }
+.ck-mascot__particle { animation: ck-particle 2.8s ease-in-out infinite; }
+

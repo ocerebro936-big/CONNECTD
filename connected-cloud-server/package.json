@@ -1,0 +1,11 @@
+{
+  "name": "connected-cloud-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Connected Cloud Object Node — backend real da Connected Cloud (objects em disco, checksum, dedup).",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.mjs"
+  }
+}

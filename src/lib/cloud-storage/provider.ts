@@ -1,36 +1,23 @@
 // ============================================================================
-// Connected Cloud Core — Connected Storage (provider-agnóstico)
+// Connected Cloud Core — Connected Storage
 // ----------------------------------------------------------------------------
-// A Connected controla regras, organização, quotas e acessos. O disco físico
-// pode estar em qualquer Cloud (Firebase Storage, S3, GCS, servidor próprio).
-// Esta camada isola o fornecedor atrás de uma interface comum.
+// ÚNICO caminho oficial de mídia da Connected King. NÃO existe Firebase
+// Storage, nem fallback silencioso. O disco físico é o Connected Cloud Node,
+// acessado através do Connected Cloud Gateway (servidor de objetos real).
+//
+// Se o Gateway estiver indisponível, o erro é explícito — o upload é
+// preservado no lado do cliente e retomado, em vez de fingir sucesso.
 // ============================================================================
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-  getBytes,
-  getMetadata,
-  deleteObject,
-} from 'firebase/storage';
-import { storage } from '../../firebase';
-import { MegaStorageProvider } from './mega-provider';
-import type { MegaProviderConfig } from './mega-provider';
-import { S3StorageProvider } from './s3-provider';
-import type { S3ProviderConfig } from './s3-provider';
+import { ConnectedStorage } from "./connected-storage-class";
+
+const GATEWAY =
+  (import.meta.env.VITE_CCS_GATEWAY_URL as string | undefined)?.replace(/\/+$/, "") ||
+  "http://localhost:8787";
 
 export interface StorageObjectMeta {
   ownerId: string;
   mimeType: string;
-  visibility: 'private' | 'public';
-  checksum?: string;
-  size: number;
-}
-
-export interface StorageObjectMeta {
-  ownerId: string;
-  mimeType: string;
-  visibility: 'private' | 'public';
+  visibility: "private" | "public";
   checksum?: string;
   size: number;
 }
@@ -40,8 +27,8 @@ export interface StorageProvider {
     key: string,
     data: Blob | ArrayBuffer,
     meta: StorageObjectMeta,
-    onProgress?: (fraction: number) => void
-  ): Promise<string>; // devolve downloadURL
+    onProgress?: (fraction: number) => void,
+  ): Promise<string>; // devolve URL do objeto
   get(key: string): Promise<ArrayBuffer>;
   delete(key: string): Promise<void>;
   exists(key: string): Promise<boolean>;
@@ -54,66 +41,6 @@ export interface StorageProvider {
   signedUrl?(key: string, opts?: { expiresInSeconds?: number }): Promise<string>;
 }
 
-/** Provider concreto: Firebase Cloud Storage (upload em chunks resumíveis). */
-export class FirebaseStorageProvider implements StorageProvider {
-  async put(
-    key: string,
-    data: Blob | ArrayBuffer,
-    meta: StorageObjectMeta,
-    onProgress?: (fraction: number) => void
-  ): Promise<string> {
-    const storageRef = ref(storage, key);
-    const task = uploadBytesResumable(storageRef, data, {
-      contentType: meta.mimeType,
-      customMetadata: { ownerId: meta.ownerId, visibility: meta.visibility, checksum: meta.checksum || '' },
-    });
-    return new Promise<string>((resolve, reject) => {
-      task.on(
-        'state_changed',
-        (snap) => {
-          if (onProgress && snap.totalBytes > 0) onProgress(snap.bytesTransferred / snap.totalBytes);
-        },
-        (e) => reject(e),
-        async () => resolve(await getDownloadURL(task.snapshot.ref))
-      );
-    });
-  }
-
-  async get(key: string): Promise<ArrayBuffer> {
-    return getBytes(ref(storage, key));
-  }
-
-  async delete(key: string): Promise<void> {
-    await deleteObject(ref(storage, key));
-  }
-
-  async exists(key: string): Promise<boolean> {
-    try {
-      await getBytes(ref(storage, key));
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  async metadata(key: string): Promise<{ size: number; contentType: string; updated: number; etag?: string }> {
-    const m = await getMetadata(ref(storage, key));
-    return {
-      size: m.size,
-      contentType: m.contentType || '',
-      updated: Date.parse(m.updated),
-      etag: (m as any).etag,
-    };
-  }
-
-  async signedUrl(key: string, opts?: { expiresInSeconds?: number }): Promise<string> {
-    // Firebase: a downloadURL já é um URL assinado de longa duração.
-    // Para expiração curta, seria necessário um token customizado (server-side).
-    void opts;
-    return getDownloadURL(ref(storage, key));
-  }
-}
-
 export interface StorageObject {
   id: string;
   ownerId: string;
@@ -121,97 +48,118 @@ export interface StorageObject {
   mimeType: string;
   size: number;
   checksum: string;
-  visibility: 'private' | 'public';
+  visibility: "private" | "public";
 }
 
-/** API própria da Connected — não depende do fornecedor concreto. */
-export class ConnectedStorage {
-  private _provider: StorageProvider;
-  constructor(provider: StorageProvider) {
-    this._provider = provider;
+const CHUNK = 1024 * 1024; // 1 MB
+
+async function toBytes(data: Blob | ArrayBuffer): Promise<Uint8Array> {
+  if (data instanceof ArrayBuffer) return new Uint8Array(data);
+  return new Uint8Array(await data.arrayBuffer());
+}
+
+async function apiJson(url: string, init?: RequestInit): Promise<any> {
+  const res = await fetch(url, init);
+  const text = await res.text();
+  const body = text ? JSON.parse(text) : {};
+  if (!res.ok) {
+    throw new Error(body?.error || `CCS_GATEWAY_${res.status}`);
+  }
+  return body;
+}
+
+/** Provider que fala com o Connected Cloud Gateway (objeto real). */
+export class ConnectedCloudProvider implements StorageProvider {
+  private base: string;
+  constructor(base: string = GATEWAY) {
+    this.base = base.replace(/\/+$/, "");
   }
 
-  /** Permite trocar o fornecedor em runtime (ex.: S3 em produção, Firebase em dev). */
-  use(provider: StorageProvider) {
-    this._provider = provider;
-  }
-
-  get provider(): StorageProvider {
-    return this._provider;
-  }
-
-  async upload(
-    object: StorageObject,
+  async put(
+    key: string,
     data: Blob | ArrayBuffer,
-    onProgress?: (fraction: number) => void
-  ): Promise<{ success: boolean; fileId: string; url: string }> {
-    if (data instanceof ArrayBuffer && object.size !== data.byteLength) {
-      throw new Error('STORAGE_SIZE_MISMATCH');
+    meta: StorageObjectMeta,
+    onProgress?: (fraction: number) => void,
+  ): Promise<string> {
+    const bytes = await toBytes(data);
+    if (bytes.byteLength !== meta.size) {
+      throw new Error("STORAGE_SIZE_MISMATCH");
     }
-    const url = await this.provider.put(
-      object.key,
-      data,
-      {
-        ownerId: object.ownerId,
-        mimeType: object.mimeType,
-        visibility: object.visibility,
-        checksum: object.checksum,
-        size: object.size,
-      },
-      onProgress
-    );
-    return { success: true, fileId: object.id, url };
+    const total = Math.max(1, Math.ceil(bytes.byteLength / CHUNK));
+
+    const session = await apiJson(`${this.base}/v1/upload/init`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        key,
+        ownerId: meta.ownerId,
+        mimeType: meta.mimeType,
+        visibility: meta.visibility,
+        checksum: meta.checksum,
+        totalChunks: total,
+      }),
+    });
+
+    for (let i = 0; i < total; i++) {
+      const chunk = bytes.subarray(i * CHUNK, Math.min((i + 1) * CHUNK, bytes.byteLength));
+      const res = await fetch(`${this.base}/v1/upload/${session.sessionId}/${i}`, {
+        method: "PUT",
+        headers: { "content-type": "application/octet-stream" },
+        body: chunk,
+      });
+      if (!res.ok) throw new Error("CCS_UPLOAD_CHUNK_FAILED");
+      onProgress?.((i + 1) / total);
+    }
+
+    const done = await apiJson(`${this.base}/v1/upload/${session.sessionId}/complete`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ checksum: meta.checksum }),
+    });
+
+    return `${this.base}/v1/assets/${encodeURIComponent(done.key || key)}`;
   }
 
-  get(key: string) {
-    return this.provider.get(key);
+  async get(key: string): Promise<ArrayBuffer> {
+    const res = await fetch(`${this.base}/v1/assets/${encodeURIComponent(key)}`);
+    if (!res.ok) throw new Error("CCS_OBJECT_NOT_FOUND");
+    return await res.arrayBuffer();
   }
 
-  remove(key: string) {
-    return this.provider.delete(key);
+  async delete(key: string): Promise<void> {
+    const res = await fetch(`${this.base}/v1/assets/${encodeURIComponent(key)}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("CCS_DELETE_FAILED");
   }
 
-  exists(key: string) {
-    return this.provider.exists(key);
+  async exists(key: string): Promise<boolean> {
+    const res = await fetch(`${this.base}/v1/assets/${encodeURIComponent(key)}`, {
+      method: "HEAD",
+    });
+    return res.ok;
   }
 
-  metadata(key: string) {
-    return this.provider.metadata ? this.provider.metadata(key) : Promise.reject(new Error('provider não suporta metadata'));
+  async metadata(key: string) {
+    const res = await fetch(`${this.base}/v1/assets/${encodeURIComponent(key)}`, {
+      method: "HEAD",
+    });
+    if (!res.ok) throw new Error("CCS_OBJECT_NOT_FOUND");
+    return {
+      size: Number(res.headers.get("content-length") || 0),
+      contentType: res.headers.get("content-type") || "",
+      updated: Number(res.headers.get("x-ccs-updated") || Date.now()),
+      etag: res.headers.get("etag") || undefined,
+    };
   }
 
-  signedUrl(key: string, opts?: { expiresInSeconds?: number }) {
-    return this.provider.signedUrl
-      ? this.provider.signedUrl(key, opts)
-      : Promise.reject(new Error('provider não suporta signedUrl'));
+  async signedUrl(key: string): Promise<string> {
+    return `${this.base}/v1/assets/${encodeURIComponent(key)}`;
   }
 }
 
-export const connectedStorage = new ConnectedStorage(new FirebaseStorageProvider());
+// A app fala APENAS com connectedStorage (Connected Cloud Gateway).
+export const connectedStorage = new ConnectedStorage(new ConnectedCloudProvider());
 
-export { MegaStorageProvider } from './mega-provider';
-export type { MegaProviderConfig } from './mega-provider';
-export { S3StorageProvider } from './s3-provider';
-export type { S3ProviderConfig } from './s3-provider';
-
-/** Cria um StorageProvider conforme o fornecedor pretendido (agnóstico). */
-export function createStorageProvider(
-  kind: 'firebase' | 'mega' | 's3',
-  cfg?: MegaProviderConfig | S3ProviderConfig
-): StorageProvider {
-  if (kind === 'mega') {
-    if (!isMega(cfg)) throw new Error('MEGA provider requer MegaProviderConfig (bridgeUrl + getIdToken).');
-    return new MegaStorageProvider(cfg);
-  }
-  if (kind === 's3') {
-    if (!isS3(cfg)) throw new Error('S3 provider requer S3ProviderConfig (presignUrl + cdnBase + getIdToken).');
-    return new S3StorageProvider(cfg);
-  }
-  return new FirebaseStorageProvider();
-}
-
-function isMega(c: unknown): c is MegaProviderConfig {
-  return !!c && typeof (c as MegaProviderConfig).bridgeUrl === 'string';
-}
-function isS3(c: unknown): c is S3ProviderConfig {
-  return !!c && typeof (c as S3ProviderConfig).presignUrl === 'string';
-}
+export { ConnectedStorage } from "./connected-storage-class";
+export { createStorageProvider } from "./create-provider";

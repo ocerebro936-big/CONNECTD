@@ -36,6 +36,7 @@ function detectIntent(t: string): string {
     return 'storage_issue';
   if (/(diagn[óo]stico|funcionando|verifica|estado|lento|degradado|sa[úu]de)/.test(t)) return 'diagnostics';
   if (/(cloud|servidor|infraestrutura|n[óo] |connected cloud|guardi[ãa]o|armazenamento)/.test(t)) return 'cloud';
+  if (/(reactor|reator digital|n[úu]cleo digital|processamento|fila de tarefas|workers?)/.test(t)) return 'reactor';
   if (/(prepara|orquestra|evento (com|de)|muitos utiliza|escala|deploy global|preparar a connected)/.test(t)) return 'orchestrate';
   if (/(pessoa|encontrar|quem [ée]|perfil de|utilizador|procurar algu[ée]m)/.test(t)) return 'search_people';
   if (/(publica[çc][ãa]o|post sobre|pesquisar posts|conte[úu]do sobre)/.test(t)) return 'search_posts';

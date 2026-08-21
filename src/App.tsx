@@ -81,8 +81,10 @@ import { InstallPrompt } from './components/InstallPrompt';
 import { UpdateNotifier } from './components/UpdateNotifier';
 import { DivinoMordomo } from './components/DivinoMordomo';
 import { OnboardingGuide, shouldShowOnboarding } from './components/OnboardingGuide';
+import { ConnectedKingMascot } from './components/ConnectedKingMascot';
 import { MusicProvider } from './lib/connected-music/context';
 import { presenceEngine } from './lib/presence/presence';
+import { startReactor } from './lib/connected-reactor';
 import { CallModal, IncomingCallListener } from './components/CallModal';
 import { ChatModal } from './components/ChatModal';
 import { UserProfileModal } from './components/UserProfileModal';
@@ -1172,6 +1174,10 @@ export default function App() {
     return () => presenceEngine.stop();
   }, []);
 
+  useEffect(() => {
+    startReactor();
+  }, []);
+
   const handleLogin = async (providerName: 'google' | 'apple') => {
     if (isLoggingIn) return;
     setAuthError('');
@@ -1315,7 +1321,7 @@ export default function App() {
           <div className="glass-dark p-8 rounded-2xl max-w-md w-full shadow-2xl space-y-6">
             {/* Branding */}
             <div className="text-center space-y-3">
-              <ConnectedLogo className="h-20 w-20 mx-auto" breathing />
+              <ConnectedKingMascot size={128} className="mx-auto" />
               <div>
                 <h1 className="text-3xl font-bold tracking-tight gold-text-gradient">Connected King</h1>
                 <p className="flex items-center justify-center gap-2 text-amber-200/90 font-semibold tracking-wider text-base">
