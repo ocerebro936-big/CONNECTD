@@ -11,6 +11,7 @@ import { listChannels } from '../tools/tv';
 import { retrieveRanking, inspectScore } from '../tools/games';
 import { serviceHealth } from '../tools/admin';
 import { connectedDiagnose, connectedOrchestrate } from '../tools/connected';
+import { economyStatus } from '../tools/economy';
 
 export interface ToolContext {
   uid: string;
@@ -33,6 +34,7 @@ export const PLUGIN_BUS: Record<string, { plugin: string; fn: ToolFn }> = {
   service_health: { plugin: 'connected_admin', fn: () => serviceHealth() },
   connected_health: { plugin: 'connected_orchestrator', fn: (c) => connectedDiagnose(c.uid) },
   connected_orchestrate: { plugin: 'connected_orchestrator', fn: (c) => connectedOrchestrate(c.uid, c.role) },
+  economy_status: { plugin: 'connected_economy', fn: (c) => economyStatus(c.uid) },
 };
 
 export async function runCapability(capability: string, ctx: ToolContext): Promise<DivinoToolResult | null> {

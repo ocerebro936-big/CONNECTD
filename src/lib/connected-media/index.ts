@@ -29,6 +29,7 @@ import {
   setAssetPublished,
 } from '../connected-cloud';
 import { awardPoints } from '../economy/engine';
+import { recordUsage } from '../economy/traffic';
 import type { CcsUploadResult } from '../ccs/upload/types';
 
 export type MediaKind = 'photo' | 'video' | 'audio' | 'document';
@@ -194,6 +195,12 @@ export async function publishMedia(opts: PublishMediaOptions): Promise<void> {
     await awardPoints(opts.user.uid, 'publish', { ref: `post:${opts.assetId}` });
   } catch {
     /* pontos opcionais */
+  }
+  // Regista o custo de tráfego desta publicação na plataforma (Connected Cloud Cost).
+  try {
+    await recordUsage({ userId: opts.user.uid, assetId: opts.assetId, uploadBytes: opts.file?.size || 0 });
+  } catch {
+    /* métrica opcional */
   }
 }
 

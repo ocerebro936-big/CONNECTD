@@ -12,4 +12,5 @@ export const CAPABILITY_ACTION: Record<string, DivinoAction> = {
   retrieve_ranking: 'read_public',
   inspect_score: 'read_own_data',
   service_health: 'run_diagnostics',
+  economy_status: 'read_own_data',
 };
