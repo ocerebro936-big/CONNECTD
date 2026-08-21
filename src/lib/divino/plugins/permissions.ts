@@ -13,4 +13,9 @@ export const CAPABILITY_ACTION: Record<string, DivinoAction> = {
   inspect_score: 'read_own_data',
   service_health: 'run_diagnostics',
   economy_status: 'read_own_data',
+  memory_status: 'read_own_data',
+  memory_recall: 'read_own_data',
+  memory_context: 'read_own_data',
+  memory_summarize: 'read_own_data',
+  memory_preference: 'read_own_data',
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense, useRef, useCallback, useMemo } from 'react';
 import ErrorBoundary from './components/ErrorBoundary';
+import BackgroundLayer from './components/BackgroundLayer';
 import { auth } from './firebase';
 import { initConnectedStorage } from './lib/cloud-storage/init';
 import { 
@@ -1163,7 +1164,7 @@ export default function App() {
     }
   };
 
-  const handleLogin = async (providerName: 'google' | 'microsoft') => {
+  const handleLogin = async (providerName: 'google' | 'apple') => {
     if (isLoggingIn) return;
     setAuthError('');
     setIsLoggingIn(true);
@@ -1171,8 +1172,8 @@ export default function App() {
       let provider;
       if (providerName === 'google') {
         provider = new GoogleAuthProvider();
-      } else if (providerName === 'microsoft') {
-        provider = new OAuthProvider('microsoft.com');
+      } else if (providerName === 'apple') {
+        provider = new OAuthProvider('apple.com');
       }
       
       if (provider) {
@@ -1363,12 +1364,12 @@ export default function App() {
                 size="lg"
                 disabled={isLoggingIn}
                 className="w-full text-sm h-12 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform bg-white/10 border-primary/25 text-white font-semibold hover:bg-white/15 disabled:opacity-60 disabled:hover:scale-100"
-                onClick={() => handleLogin('microsoft')}
+                onClick={() => handleLogin('apple')}
               >
-                <svg className="mr-2 h-5 w-5" viewBox="0 0 21 21">
-                  <path fill="#f35325" d="M1 1h9v9H1z"/><path fill="#81bc06" d="M11 1h9v9h-9z"/><path fill="#05a6f0" d="M1 11h9v9H1z"/><path fill="#ffba08" d="M11 11h9v9h-9z"/>
+                <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M16.365 1.43c0 1.14-.42 2.2-1.12 2.99-.79.9-2.07 1.6-3.18 1.51-.13-1.1.42-2.27 1.1-3.02C13.85 1.99 15.27 1.27 16.37 1.43zM20.5 17.2c-.55 1.27-.82 1.84-1.53 2.97-1.09 1.71-2.62 3.84-4.51 3.84-1.66 0-2.07-.99-4.29-.99-2.21 0-2.71.95-4.37.95-1.88 0-3.32-1.8-4.43-3.5-2.4-3.42-2.69-7.46-1.18-9.52 1.02-1.43 2.6-2.32 4.13-2.32 1.65 0 2.68.99 4.04.99 1.33 0 2.14-.99 4.06-.99 1.45 0 2.98.79 4.07 2.15-3.57 1.95-2.99 7.06.01 8.43z"/>
                 </svg>
-                Entrar com a Microsoft
+                {isLoggingIn ? 'A conectar à Apple...' : 'Entrar com a Apple'}
               </Button>
 
               <div className="relative py-2">
@@ -1527,6 +1528,7 @@ export default function App() {
           handleFollow={handleFollow}
         />
       )}
+      <BackgroundLayer />
       <div className="flex h-screen w-full text-slate-900 overflow-hidden">
       
       {/* Mobile Menu Overlay */}
@@ -1625,13 +1627,6 @@ export default function App() {
               className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'empresas' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <Building2 className="h-5 w-5" />
-              Empresas
-            </button>
-            <button
-              onClick={() => handleTabSelect('business')}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'business' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
-            >
-              <Briefcase className="h-5 w-5" />
               Empresas
             </button>
             <button

@@ -12,6 +12,11 @@ import { retrieveRanking, inspectScore } from '../tools/games';
 import { serviceHealth } from '../tools/admin';
 import { connectedDiagnose, connectedOrchestrate } from '../tools/connected';
 import { economyStatus } from '../tools/economy';
+import { memoryPlugin } from './memory/memory-plugin';
+import { recallPlugin } from './memory/recall-plugin';
+import { contextPlugin } from './memory/context-plugin';
+import { summarizePlugin } from './memory/summarize-plugin';
+import { preferencePlugin } from './memory/preference-plugin';
 
 export interface ToolContext {
   uid: string;
@@ -35,6 +40,11 @@ export const PLUGIN_BUS: Record<string, { plugin: string; fn: ToolFn }> = {
   connected_health: { plugin: 'connected_orchestrator', fn: (c) => connectedDiagnose(c.uid) },
   connected_orchestrate: { plugin: 'connected_orchestrator', fn: (c) => connectedOrchestrate(c.uid, c.role) },
   economy_status: { plugin: 'connected_economy', fn: (c) => economyStatus(c.uid) },
+  memory_status: { plugin: 'divino_memory', fn: () => memoryPlugin({ uid: '', role: 'user' }) },
+  memory_recall: { plugin: 'divino_memory', fn: (c) => recallPlugin(c) },
+  memory_context: { plugin: 'divino_memory', fn: (c) => contextPlugin(c) },
+  memory_summarize: { plugin: 'divino_memory', fn: (c) => summarizePlugin(c) },
+  memory_preference: { plugin: 'divino_memory', fn: (c) => preferencePlugin(c) },
 };
 
 export async function runCapability(capability: string, ctx: ToolContext): Promise<DivinoToolResult | null> {

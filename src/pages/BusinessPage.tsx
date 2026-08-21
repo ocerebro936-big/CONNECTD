@@ -15,7 +15,6 @@ import {
   TreasuryEntry,
   ContractType,
 } from '../lib/business';
-import { seedDemoBusinesses } from '../lib/seed';
 
 const CONTRACT_TYPES: { id: ContractType; label: string }[] = [
   { id: 'publicidade', label: 'Publicidade' },
@@ -34,7 +33,6 @@ export function BusinessPage({ user, profileData }: { user: any; profileData: an
   const [showBizForm, setShowBizForm] = useState(false);
   const [showContractForm, setShowContractForm] = useState(false);
   const [showTreasuryForm, setShowTreasuryForm] = useState(false);
-  const [seeding, setSeeding] = useState(false);
 
   const [bizForm, setBizForm] = useState({ name: '', category: 'Tecnologia', description: '', website: '', email: '', whatsapp: '' });
   const [contractForm, setContractForm] = useState({ type: 'publicidade' as ContractType, value: 0, period: '', services: '' });
@@ -61,17 +59,6 @@ export function BusinessPage({ user, profileData }: { user: any; profileData: an
   useEffect(() => {
     if (selected) loadContracts(selected.id);
   }, [selected]);
-
-  const handleSeed = async () => {
-    if (!user) return;
-    setSeeding(true);
-    try {
-      await seedDemoBusinesses(user, profileData?.displayName || user.email?.split('@')[0] || 'Empresa');
-      await loadBusinesses();
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   const handleCreateBiz = async () => {
     if (!user || !bizForm.name.trim()) return;
@@ -130,9 +117,6 @@ export function BusinessPage({ user, profileData }: { user: any; profileData: an
         </div>
         {user && (
           <div className="flex items-center gap-2 flex-wrap">
-            <Button onClick={handleSeed} variant="outline" disabled={seeding} className="rounded-xl font-bold border-primary/40 text-primary hover:bg-primary/10">
-              {seeding ? 'A carregar...' : 'Carregar exemplo'}
-            </Button>
             <Button onClick={() => setShowBizForm(true)} className="rounded-xl bg-primary text-black font-bold hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" /> Criar perfil empresarial
             </Button>
