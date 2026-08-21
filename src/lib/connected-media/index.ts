@@ -27,7 +27,7 @@ import {
   findAssetByChecksum,
   setAssetDraft,
   setAssetPublished,
-} from '../connected-cloud';
+} from '../cloud-assets';
 import { awardPoints } from '../economy/engine';
 import { recordUsage } from '../economy/traffic';
 import type { CcsUploadResult } from '../ccs/upload/types';

@@ -8,7 +8,7 @@
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { connectedStorage } from './cloud-storage/provider';
-import { removeUndefined } from './connected-cloud';
+import { removeUndefined } from './cloud-assets';
 
 export interface ResumableUploadOptions {
   path: string; // ex: music/{uid}/{id}/audio

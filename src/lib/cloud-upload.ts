@@ -24,7 +24,7 @@ import {
   type CloudAsset,
   type AssetVisibility,
   type ProcessingState,
-} from './connected-cloud';
+} from './cloud-assets';
 import { ccsUserKey } from './ccs';
 
 // ============================================================================

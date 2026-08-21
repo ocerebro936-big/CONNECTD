@@ -11,7 +11,7 @@ import {
   createCloudAsset,
   setAssetReady,
   updateCloudAsset,
-} from '../../connected-cloud';
+} from '../../cloud-assets';
 import { fileChecksum } from '../../cloud-storage/checksum';
 import { connectedStorage } from '../../cloud-storage/provider';
 import { generateImageDerivatives } from '../media/image';
