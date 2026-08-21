@@ -24,7 +24,14 @@ import type { UploadKind } from './upload-engine';
 // ============================================================================
 
 export type AssetVisibility = 'public' | 'followers' | 'private';
-export type ProcessingState = 'pending' | 'uploading' | 'processing' | 'ready' | 'failed';
+export type ProcessingState =
+  | 'pending'
+  | 'uploading'
+  | 'processing'
+  | 'ready'
+  | 'draft'
+  | 'published'
+  | 'failed';
 
 export interface CloudAsset {
   id?: string;
@@ -58,6 +65,8 @@ export interface CloudAsset {
   uploadedChunks?: number;
   // Sessão resumable (permite retomar após interrupção/recarregamento)
   uploadSessionUri?: string;
+  // SHA-256 do conteúdo (dedup: reutiliza asset se o ficheiro já existir)
+  checksum?: string;
   // Referência à origem: "post:<id>", "chat:<id>", "tv:<id>", "profile:cover"…
   sourceRef?: string;
   createdAt: number;
@@ -78,6 +87,7 @@ export interface CreateAssetInput {
   storagePath: string;
   thumbnailPath?: string;
   sourceRef?: string;
+  checksum?: string;
   width?: number;
   height?: number;
   duration?: number;
@@ -165,6 +175,30 @@ export async function setAssetUploading(
 
 export async function setAssetProcessing(id: string): Promise<void> {
   await updateCloudAsset(id, { processingState: 'processing' });
+}
+
+export async function setAssetDraft(id: string): Promise<void> {
+  await updateCloudAsset(id, { processingState: 'draft' });
+}
+
+export async function setAssetPublished(id: string): Promise<void> {
+  await updateCloudAsset(id, { processingState: 'published' });
+}
+
+export async function findAssetByChecksum(
+  ownerUid: string,
+  checksum: string
+): Promise<CloudAsset | null> {
+  if (!checksum) return null;
+  const q = query(
+    collection(db, ASSETS),
+    where('ownerUid', '==', ownerUid),
+    where('checksum', '==', checksum),
+    qLimit(1)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return snap.docs[0].data() as CloudAsset;
 }
 
 // Timestamp do servidor (usado para auditoria consistente)

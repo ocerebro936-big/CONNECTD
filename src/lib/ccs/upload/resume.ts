@@ -58,3 +58,45 @@ export function pendingSessions(): UploadSession[] {
   }
   return out;
 }
+
+// ----------------------------------------------------------------------------
+// Registo de tarefa de retomada: persiste além da conclusão, para que após
+// fechar o navegador/perder ligação o envio possa continuar para a mesma chave
+// (assetId reutilizado) em vez de recomeçar do zero.
+// ----------------------------------------------------------------------------
+const RT_PREFIX = 'ccs_resume_task_';
+
+export function saveResumeTask(s: UploadSession): void {
+  try {
+    localStorage.setItem(RT_PREFIX + s.assetId, JSON.stringify(s));
+  } catch {
+    /* ignorado */
+  }
+}
+
+export function matchResumeTask(fileName: string, size: number, checksum: string): UploadSession | null {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(RT_PREFIX)) continue;
+      const v = localStorage.getItem(k);
+      if (!v) continue;
+      const s = JSON.parse(v) as UploadSession;
+      if (s.fileName === fileName && s.size === size && (!checksum || s.checksum === checksum)) {
+        return s;
+      }
+    }
+  } catch {
+    /* ignorado */
+  }
+  return null;
+}
+
+export function clearResumeTask(assetId: string): void {
+  try {
+    localStorage.removeItem(RT_PREFIX + assetId);
+  } catch {
+    /* ignorado */
+  }
+}
+

@@ -97,6 +97,7 @@ export async function ccsUpload(input: CcsUploadInput): Promise<CcsUploadResult>
     sizeBytes: file.size,
     visibility: visibility as any,
     storagePath: baseKey,
+    checksum,
     sourceRef: input.postId ? `post:${input.postId}` : undefined,
   });
   await setAssetReady(id, { downloadUrl: url });

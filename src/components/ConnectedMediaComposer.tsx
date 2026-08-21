@@ -27,6 +27,7 @@ const STEP_LABEL: Record<UploadPhase | 'done' | 'publishing' | 'published', stri
   done: 'Concluído',
   publishing: 'Publicando',
   published: 'Publicado',
+  resumed: 'Retomando',
 };
 
 export function ConnectedMediaComposer({ file, kind, user, profileData, onClose, onPublished }: ConnectedMediaComposerProps) {
@@ -38,8 +39,11 @@ export function ConnectedMediaComposer({ file, kind, user, profileData, onClose,
   const [result, setResult] = useState<{ assetId: string; url: string; kind: MediaKind; thumbnailUrl?: string | null } | null>(null);
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'followers' | 'private'>('public');
+  const [notice, setNotice] = useState('');
 
   const isVideo = kind === 'video' || kind === 'reel';
+  const displayName = profileData?.displayName || user?.displayName || 'Tu';
+  const avatar = profileData?.photoURL || user?.photoURL || '';
 
   useEffect(() => {
     previewRef.current = URL.createObjectURL(file);
@@ -51,15 +55,17 @@ export function ConnectedMediaComposer({ file, kind, user, profileData, onClose,
   useEffect(() => {
     let active = true;
     (async () => {
-      setPhase('verifying');
-      try {
-        const r = await connectedMedia.upload(file, {
-          user,
-          profileData,
-          visibility,
-          onProgress: (f) => active && setProgress(f),
-          onPhase: (p) => active && setPhase(p),
-        });
+        setPhase('verifying');
+        setNotice('');
+        try {
+          const r = await connectedMedia.upload(file, {
+            user,
+            profileData,
+            visibility,
+            onProgress: (f) => active && setProgress(f),
+            onPhase: (p) => active && setPhase(p),
+            onNotice: (t) => active && setNotice(t),
+          });
         if (!active) return;
         setMeta(r.meta);
         setResult({ assetId: r.assetId, url: r.url, kind: r.kind, thumbnailUrl: r.thumbnailUrl });
@@ -157,7 +163,10 @@ export function ConnectedMediaComposer({ file, kind, user, profileData, onClose,
             </div>
           )}
           {phase === 'error' && (
-            <p className="text-xs text-rose-600 font-semibold mt-1">{error}</p>
+            <p className="text-xs text-rose-600 font-semibold mt-1 whitespace-pre-line">{error}</p>
+          )}
+          {notice && phase !== 'error' && (
+            <p className="text-[11px] text-amber-700 font-semibold mt-1 whitespace-pre-line bg-amber-50/70 border border-amber-200 rounded-lg px-2 py-1">{notice}</p>
           )}
         </div>
       </div>
@@ -172,6 +181,36 @@ export function ConnectedMediaComposer({ file, kind, user, profileData, onClose,
             placeholder="Escreva uma descrição..."
             className="w-full glass-input bg-white/70 border-white/50 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
           />
+
+          {/* Pré-visualização "Como ficará no Feed" */}
+          <div className="rounded-xl border border-slate-200/60 bg-slate-50/70 p-2.5">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Como ficará no Feed</p>
+            <div className="flex items-center gap-2 mb-2">
+              {avatar ? (
+                <img src={avatar} alt="" className="h-6 w-6 rounded-full object-cover border border-white" />
+              ) : (
+                <span className="h-6 w-6 rounded-full bg-gradient-to-br from-primary to-amber-400 flex items-center justify-center text-[10px] font-bold text-black">
+                  {displayName.slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <p className="text-xs font-bold text-slate-900">{displayName}</p>
+            </div>
+            {isVideo ? (
+              previewRef.current ? (
+                <video src={previewRef.current} className="w-full max-h-44 rounded-lg object-cover bg-black/20" muted playsInline />
+              ) : (
+                <div className="w-full h-28 rounded-lg bg-black/20 flex items-center justify-center"><Video className="h-6 w-6 text-slate-400" /></div>
+              )
+            ) : previewRef.current ? (
+              <img src={previewRef.current} alt="" className="w-full max-h-44 rounded-lg object-cover bg-black/20" />
+            ) : (
+              <div className="w-full h-28 rounded-lg bg-black/20 flex items-center justify-center"><ImageIcon className="h-6 w-6 text-slate-400" /></div>
+            )}
+            {description && (
+              <p className="text-xs text-slate-700 mt-1.5 line-clamp-3 whitespace-pre-line">{description}</p>
+            )}
+          </div>
+
           <div className="flex items-center gap-2 flex-wrap">
             {VISIBILITY.map((v) => (
               <button

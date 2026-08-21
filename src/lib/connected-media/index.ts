@@ -2,16 +2,32 @@
 // Connected Media Upload Engine — facade única para o utilizador
 // ----------------------------------------------------------------------------
 // Consolida o que já existe (CCS ccsUpload, publishCcsMediaPost, sessões de
-// resume, Media Engine) numa API simples de duas fases:
+// resume, Media Engine) numa API simples de duas fases e resiliente:
 //   Fase 1 (upload):  connectedMedia.upload(file)  -> { assetId, url, kind }
+//       • valida formato/tamanho/dimensão/duração ANTES de enviar
+//       • faz dedup por checksum (reutiliza asset se já existir)
+//       • retoma sessão se o navegador fechou ou a ligação caiu
+//       • asset fica como "draft" (pronto) até o utilizador publicar
 //   Fase 2 (publish): connectedMedia.publish({...}) -> cria o Post
-// O asset fica como "draft" (pronto) até o utilizador publicar, e a sessão de
-// upload é persistida para recuperação (resume) caso a aba feche.
+// O asset NUNCA é apagado automaticamente se uma etapa falha (fica "failed").
 // ============================================================================
 import { ccsUpload, ccsFolderForKind } from '../ccs/upload/uploader';
 import { publishCcsMediaPost } from '../cloud-upload';
-import { pendingSessions, type UploadSession } from '../ccs/upload/resume';
+import {
+  pendingSessions,
+  saveResumeTask,
+  matchResumeTask,
+  clearResumeTask,
+  type UploadSession,
+} from '../ccs/upload/resume';
 import { readMediaMeta, type MediaMeta } from '../ccs/media/metadata';
+import { validateMediaFile } from '../ccs/upload/validate';
+import { fileChecksum } from '../cloud-storage/checksum';
+import {
+  findAssetByChecksum,
+  setAssetDraft,
+  setAssetPublished,
+} from '../connected-cloud';
 import type { CcsUploadResult } from '../ccs/upload/types';
 
 export type MediaKind = 'photo' | 'video' | 'audio' | 'document';
@@ -29,6 +45,7 @@ export type UploadPhase =
   | 'uploading'
   | 'processing'
   | 'ready'
+  | 'resumed'
   | 'error';
 
 export interface UploadMediaOptions {
@@ -37,6 +54,7 @@ export interface UploadMediaOptions {
   visibility?: 'public' | 'followers' | 'private';
   onProgress?: (fraction: number) => void;
   onPhase?: (phase: UploadPhase) => void;
+  onNotice?: (text: string) => void;
 }
 
 export interface UploadMediaResult {
@@ -46,6 +64,7 @@ export interface UploadMediaResult {
   kind: MediaKind;
   file: File;
   meta: MediaMeta;
+  reused?: boolean;
 }
 
 export async function uploadMedia(
@@ -53,8 +72,59 @@ export async function uploadMedia(
   opts: UploadMediaOptions
 ): Promise<UploadMediaResult> {
   const kind = classifyKind(file);
+
+  // 1) Validação pré-upload (formato, tamanho, dimensão, duração)
   opts.onPhase?.('verifying');
-  const meta = await readMediaMeta(file).catch(() => ({}) as MediaMeta);
+  const validation = await validateMediaFile(file, kind);
+  if (!validation.ok) {
+    const msg = `Não foi possível enviar:\n• ${validation.errors.join('\n• ')}`;
+    const err: any = new Error(msg);
+    err.details = validation;
+    throw err;
+  }
+  if (validation.suggestions.length) {
+    opts.onNotice?.(
+      `Recomendamos antes de publicar:\n• ${validation.suggestions.join('\n• ')}`
+    );
+  }
+
+  const meta = validation.meta || (await readMediaMeta(file).catch(() => ({}) as MediaMeta));
+  const checksum = await fileChecksum(file);
+
+  // 2) Dedup por checksum: se o utilizador já enviou este ficheiro, reutiliza.
+  try {
+    const existing = await findAssetByChecksum(opts.user.uid, checksum);
+    if (existing && ['ready', 'draft', 'published'].includes(existing.processingState)) {
+      return {
+        assetId: existing.id!,
+        url: existing.downloadUrl || '',
+        thumbnailUrl: existing.thumbnailUrl,
+        kind,
+        file,
+        meta,
+        reused: true,
+      };
+    }
+  } catch {
+    /* query pode falhar sem índice; ignoramos e seguimos com upload normal */
+  }
+
+  // 3) Retomada: se havia tarefa pendente (navegador fechou / ligação caiu),
+  //    reutilizamos o mesmo assetId para continuar para a mesma chave.
+  const resume = matchResumeTask(file.name, file.size, checksum);
+  const assetId = resume?.assetId || `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  if (resume) opts.onPhase?.('resumed');
+
+  const task: UploadSession = {
+    assetId,
+    key: '',
+    checksum,
+    fileName: file.name,
+    size: file.size,
+    folder: ccsFolderForKind(kind),
+    createdAt: Date.now(),
+  };
+  saveResumeTask(task);
 
   let lastFraction = 0;
   const res: CcsUploadResult = await ccsUpload({
@@ -64,6 +134,7 @@ export async function uploadMedia(
     file,
     folder: ccsFolderForKind(kind),
     kind,
+    assetId,
     visibility: (opts.visibility || 'public') as any,
     onProgress: (f: number) => {
       if (f > 0 && lastFraction === 0) opts.onPhase?.('uploading');
@@ -71,6 +142,14 @@ export async function uploadMedia(
       opts.onProgress?.(f);
     },
   });
+
+  clearResumeTask(assetId);
+  // 4) O asset está armazenado mas ainda NÃO é um Post: marca como "draft".
+  try {
+    await setAssetDraft(res.assetId);
+  } catch {
+    /* estado opcional */
+  }
 
   return {
     assetId: res.assetId,
@@ -103,6 +182,12 @@ export async function publishMedia(opts: PublishMediaOptions): Promise<void> {
     kind: opts.kind,
     content: opts.content,
   });
+  // O asset deixa de ser "draft" e passa a "published".
+  try {
+    await setAssetPublished(opts.assetId);
+  } catch {
+    /* estado opcional */
+  }
 }
 
 export function getUploadQueue(): UploadSession[] {
