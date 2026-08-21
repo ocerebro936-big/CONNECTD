@@ -15,6 +15,7 @@ import { GoLiveModal } from '../components/GoLiveModal';
 import { feedCache, prefetchImages } from '../lib/fast-engine';
 import { buildFeed } from '../lib/discovery';
 import { CcsUploader } from '../components/CcsUploader';
+import { ConnectedMediaComposer } from '../components/ConnectedMediaComposer';
 import { publishCcsMediaPost } from '../lib/cloud-upload';
 import { ccsFolderForKind } from '../lib/ccs/upload';
 import type { CcsUploadResult } from '../lib/ccs/upload';
@@ -86,6 +87,7 @@ const FeedPage: React.FC<FeedPageProps> = ({
   const [liveStreams, setLiveStreams] = useState<any[]>([]);
   const [viewingLive, setViewingLive] = useState<any | null>(null);
   const [showGoLive, setShowGoLive] = useState(false);
+  const [connectedComposer, setConnectedComposer] = useState<{ file: File; kind: string } | null>(null);
   const [myActiveLive, setMyActiveLive] = useState<string | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<{ file: File; kind: UploadKind; previewUrl?: string; label: string } | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -155,7 +157,19 @@ const FeedPage: React.FC<FeedPageProps> = ({
     }
   };
 
-const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const openComposer = (e: React.ChangeEvent<HTMLInputElement>, k: string) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (k === 'reel' && !file.type.startsWith('video/')) {
+      alert('O Reel tem de ser um vídeo (MP4/WebM/MOV/M4V).');
+      return;
+    }
+    setSelectedMedia(null);
+    setConnectedComposer({ file, kind: k });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
@@ -494,7 +508,7 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => handleFileSelect(e, 'photo')}
+                    onChange={(e) => openComposer(e, 'photo')}
                   />
                   <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900 hover:bg-white/60 rounded-xl px-2.5 h-9" onClick={() => videoInputRef.current?.click()}>
                     <Video className="h-4 w-4 mr-2 text-cyan-500" /> Vídeo
@@ -504,7 +518,7 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                     type="file"
                     accept="video/*"
                     className="hidden"
-                    onChange={(e) => handleFileSelect(e, 'video')}
+                    onChange={(e) => openComposer(e, 'video')}
                   />
                   <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900 hover:bg-white/60 rounded-xl px-2.5 h-9" onClick={() => fileInputRef.current?.click()}>
                     <FileText className="h-4 w-4 mr-2 text-amber-500" /> Ficheiro
@@ -553,50 +567,62 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                   )}
                 </div>
 
-                {selectedMedia && (
-                  <div className="mt-3 rounded-xl border border-primary/30 bg-white/50 p-2.5 animate-in fade-in slide-in-from-bottom-2">
-                    <div className="flex items-center gap-3">
-                      {selectedMedia.previewUrl && (selectedMedia.kind === 'photo' || selectedMedia.kind === 'video' || selectedMedia.kind === 'reel') ? (
-                        selectedMedia.kind === 'photo' ? (
-                          <img src={selectedMedia.previewUrl} alt="Pré-visualização" className="h-14 w-14 rounded-lg object-cover border border-white shadow-sm" />
-                        ) : (
-                          <video src={selectedMedia.previewUrl} className="h-14 w-14 rounded-lg object-cover border border-white shadow-sm" muted playsInline />
-                        )
-                      ) : (
-                        <span className="h-14 w-14 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center text-2xl shadow-sm shrink-0">
-                          {selectedMedia.kind === 'audio' ? '🎵' : selectedMedia.kind === 'pdf' ? '📄' : selectedMedia.kind === 'slides' ? '📊' : '📦'}
-                        </span>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-slate-900 truncate">{selectedMedia.label}</p>
-                        <p className="text-[11px] text-slate-500 font-medium truncate">{selectedMedia.file.name} · {(selectedMedia.file.size / 1024 / 1024).toFixed(1)} MB</p>
-                      </div>
-                      <button onClick={clearSelectedMedia} className="p-2 rounded-full hover:bg-white text-slate-500 hover:text-rose-600 transition-colors shrink-0" aria-label="Remover ficheiro">
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                    {uploadProgress !== null && (
-                      <div className="mt-2.5">
-                        <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-200"
-                            style={{ width: `${Math.round(uploadProgress * 100)}%` }}
-                          />
+                {connectedComposer ? (
+                  <ConnectedMediaComposer
+                    file={connectedComposer.file}
+                    kind={connectedComposer.kind}
+                    user={user}
+                    profileData={profileData}
+                    onClose={() => setConnectedComposer(null)}
+                    onPublished={() => setNewPostContent('')}
+                  />
+                ) : (
+                  <>
+                    {selectedMedia && (
+                      <div className="mt-3 rounded-xl border border-primary/30 bg-white/50 p-2.5 animate-in fade-in slide-in-from-bottom-2">
+                        <div className="flex items-center gap-3">
+                          {selectedMedia.previewUrl && (selectedMedia.kind === 'photo' || selectedMedia.kind === 'video' || selectedMedia.kind === 'reel') ? (
+                            selectedMedia.kind === 'photo' ? (
+                              <img src={selectedMedia.previewUrl} alt="Pré-visualização" className="h-14 w-14 rounded-lg object-cover border border-white shadow-sm" />
+                            ) : (
+                              <video src={selectedMedia.previewUrl} className="h-14 w-14 rounded-lg object-cover border border-white shadow-sm" muted playsInline />
+                            )
+                          ) : (
+                            <span className="h-14 w-14 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center text-2xl shadow-sm shrink-0">
+                              {selectedMedia.kind === 'audio' ? '🎵' : selectedMedia.kind === 'pdf' ? '📄' : selectedMedia.kind === 'slides' ? '📊' : '📦'}
+                            </span>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-900 truncate">{selectedMedia.label}</p>
+                            <p className="text-[11px] text-slate-500 font-medium truncate">{selectedMedia.file.name} · {(selectedMedia.file.size / 1024 / 1024).toFixed(1)} MB</p>
+                          </div>
+                          <button onClick={clearSelectedMedia} className="p-2 rounded-full hover:bg-white text-slate-500 hover:text-rose-600 transition-colors shrink-0" aria-label="Remover ficheiro">
+                            <X className="h-4 w-4" />
+                          </button>
                         </div>
-                        <p className="text-[10px] text-slate-500 font-bold mt-1">
-                          {uploadProgress >= 1 ? 'Armazenado na Connected Cloud ✓' : `A enviar para a Connected Cloud... ${Math.round(uploadProgress * 100)}%`}
-                        </p>
+                        {uploadProgress !== null && (
+                          <div className="mt-2.5">
+                            <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-200"
+                                style={{ width: `${Math.round(uploadProgress * 100)}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-slate-500 font-bold mt-1">
+                              {uploadProgress >= 1 ? 'Armazenado na Connected Cloud ✓' : `A enviar para a Connected Cloud... ${Math.round(uploadProgress * 100)}%`}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200/40">
+                      <p className="text-[10px] text-slate-400 font-medium">A publicação só é criada depois de o ficheiro estar armazenado na Connected Cloud.</p>
+                      <Button size="sm" className="rounded-xl px-6 font-bold shadow-md" onClick={publishSelected} disabled={isPosting || (!newPostContent.trim() && !selectedMedia)}>
+                        {isPosting ? (uploadProgress !== null ? `Enviando ${Math.round((uploadProgress || 0) * 100)}%...` : 'Publicando...') : 'Publicar'}
+                      </Button>
+                    </div>
+                  </>
                 )}
-
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200/40">
-                  <p className="text-[10px] text-slate-400 font-medium">A publicação só é criada depois de o ficheiro estar armazenado na Connected Cloud.</p>
-                  <Button size="sm" className="rounded-xl px-6 font-bold shadow-md" onClick={publishSelected} disabled={isPosting || (!newPostContent.trim() && !selectedMedia)}>
-                    {isPosting ? (uploadProgress !== null ? `Enviando ${Math.round((uploadProgress || 0) * 100)}%...` : 'Publicando...') : 'Publicar'}
-                  </Button>
-                </div>
               </div>
             </CardContent>
           </Card>
