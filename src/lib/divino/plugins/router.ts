@@ -24,6 +24,8 @@ export function routeToCapability(analysis: DivinoAnalysis): string | null {
       return 'ccs_diagnostics'; // placeholder; cria ticket via UI
     case 'economy':
       return 'economy_status';
+    case 'cloud':
+      return 'cloud_status';
     case 'memory':
       return 'memory_recall';
     default:
