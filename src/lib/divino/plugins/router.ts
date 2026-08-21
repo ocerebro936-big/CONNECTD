@@ -32,6 +32,12 @@ export function routeToCapability(analysis: DivinoAnalysis): string | null {
       return 'cloud_delete';
     case 'trace':
       return 'cloud_trace';
+    case 'global_cloud':
+      return 'global_cloud_status';
+    case 'node':
+      return 'node_status';
+    case 'best_node':
+      return 'best_node';
     case 'memory':
       return 'memory_recall';
     default:

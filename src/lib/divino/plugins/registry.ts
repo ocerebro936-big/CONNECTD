@@ -16,6 +16,9 @@ import { cloudStatus } from '../tools/cloud-status';
 import { reactorStatus } from '../tools/reactor';
 import { cloudDelete } from '../tools/cloud-delete';
 import { cloudTrace } from '../tools/cloud-trace';
+import { globalCloudStatus } from '../tools/global-cloud-status';
+import { nodeStatus } from '../tools/node-status';
+import { bestNode } from '../tools/best-node';
 import { memoryPlugin } from './memory/memory-plugin';
 import { recallPlugin } from './memory/recall-plugin';
 import { contextPlugin } from './memory/context-plugin';
@@ -49,6 +52,9 @@ export const PLUGIN_BUS: Record<string, { plugin: string; fn: ToolFn }> = {
   reactor_status: { plugin: 'connected_reactor', fn: () => reactorStatus() },
   cloud_delete: { plugin: 'connected_cloud', fn: (c) => cloudDelete(c as any) },
   cloud_trace: { plugin: 'connected_cloud', fn: () => cloudTrace() },
+  global_cloud_status: { plugin: 'connected_cloud', fn: () => globalCloudStatus() },
+  node_status: { plugin: 'connected_cloud', fn: (c) => nodeStatus(c as any) },
+  best_node: { plugin: 'connected_cloud', fn: (c) => bestNode(c as any) },
   memory_status: { plugin: 'divino_memory', fn: () => memoryPlugin({ uid: '', role: 'user' }) },
   memory_recall: { plugin: 'divino_memory', fn: (c) => recallPlugin(c) },
   memory_context: { plugin: 'divino_memory', fn: (c) => contextPlugin(c) },

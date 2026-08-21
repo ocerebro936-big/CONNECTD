@@ -13,7 +13,7 @@
 // Em produção isto corre atrás de HTTPS/TLS e com nós em máquinas separadas.
 // ============================================================================
 import http from "node:http";
-import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync, readdirSync } from "node:fs";
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync, readdirSync, appendFileSync } from "node:fs";
 import { dirname, join, extname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
@@ -49,6 +49,7 @@ function metaFor(k) {
   return m[e] || "application/octet-stream";
 }
 function log(method, path, status, ms) { console.info(`[ccs] ${method} ${path} -> ${status} (${ms}ms)`); }
+function audit(op, msg) { try { appendFileSync(join(DATA, "audit.log"), `[${new Date().toISOString()}] ${op}: ${msg}\n`); } catch {} }
 function readJson(req) { return new Promise((res, rej) => { let d = ""; req.on("data", (c) => (d += c)); req.on("end", () => res(d ? JSON.parse(d) : {})); req.on("error", rej); }); }
 function readBytes(req) { return new Promise((res, rej) => { const c = []; req.on("data", (x) => c.push(x)); req.on("end", () => res(Buffer.concat(c))); req.on("error", rej); }); }
 function allow(ip) {
@@ -93,18 +94,34 @@ const server = http.createServer(async (req, res) => {
       return stream(res, f, method, decodeURIComponent(nm[2]));
     }
 
-    // replicação forçada de uma chave para todos os nós
+    // replicação forçada de uma chave para todos os nós (com checksum + auditoria)
     if (method === "POST" && url.pathname === "/v1/replicate") {
       const b = await readJson(req);
       const key = b.key;
       if (!key) return send(res, 400, { error: "KEY_REQUIRED" });
+      const REPLICA_LIMIT = Number(process.env.CCS_REPLICA_LIMIT || 5 * 1024 * 1024 * 1024);
       let replicated = 0;
-      for (const node of [ ...NODES, BACKUP ]) {
+      const targets = [ ...NODES, BACKUP ];
+      for (const node of targets) {
         const dest = objPath(node, key);
-        if (!existsSync(dest)) {
-          const src = [ ...NODES, BACKUP ].map((n) => objPath(n, key)).find(existsSync);
-          if (src) { mkdirSync(dirname(dest), { recursive: true }); writeFileSync(dest, readFileSync(src)); replicated++; }
+        if (existsSync(dest)) continue; // prevenção de loop: não re-replica o que já existe
+        const src = targets.map((n) => objPath(n, key)).find(existsSync);
+        if (!src) continue;
+        const size = statSync(src).size;
+        if (size > REPLICA_LIMIT) { audit("replicate", `SKIP ${key} -> ${node} (excede limite ${size})`); continue; }
+        mkdirSync(dirname(dest), { recursive: true });
+        const data = readFileSync(src);
+        writeFileSync(dest, data);
+        // checksum antes/depois da replicação
+        const before = createHash("sha256").update(readFileSync(src)).digest("hex");
+        const after = createHash("sha256").update(readFileSync(dest)).digest("hex");
+        if (before !== after) {
+          rmSync(dest, { force: true });
+          audit("replicate", `FAIL ${key} -> ${node} (checksum mismatch)`);
+          return send(res, 500, { error: "REPLICA_CHECKSUM_MISMATCH", key, node });
         }
+        replicated++;
+        audit("replicate", `OK ${key} -> ${node} (${size} bytes, sha256 ${after.slice(0, 12)}…)`);
       }
       return send(res, 200, { key, replicated, nodes: NODES.length + 1 });
     }
