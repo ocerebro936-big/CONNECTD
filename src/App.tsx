@@ -69,7 +69,8 @@ import {
   Building2,
   Github,
   Briefcase,
-  Cloud} from 'lucide-react';
+  Cloud,
+  Wallet} from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from './components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
@@ -86,6 +87,7 @@ import { DayNightAmbience } from './components/DayNightAmbience';
 import { playSound } from './lib/sound-engine';
 import { DOMAINS } from './lib/domain-config';
 import { startCloudCore } from './lib/engines';
+import { awardPoints } from './lib/economy/engine';
 
 const FeedPage = lazy(() => import('./pages/FeedPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -101,6 +103,7 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const CompaniesPage = lazy(() => import('./pages/CompaniesPage'));
 const BusinessPage = lazy(() => import('./pages/BusinessPage'));
 const CloudStatusPage = lazy(() => import('./pages/CloudStatusPage'));
+const WalletPage = lazy(() => import('./pages/WalletPage'));
 
 function PageLoader() {
   return (
@@ -178,6 +181,15 @@ export default function App() {
       console.warn(e);
     }
   };
+
+  // Prémios base: login diário + perfil completo (o motor faz dedupe por ref).
+  useEffect(() => {
+    if (!user?.uid) return;
+    awardPoints(user.uid, 'daily_login', { ref: `login_${new Date().toISOString().slice(0, 10)}` }).catch(() => {});
+    const complete = profileData?.displayName && (profileData?.photoURL || profileData?.bio);
+    if (complete) awardPoints(user.uid, 'complete_profile', { ref: 'profile_complete' }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
   const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [emailMode, setEmailMode] = useState<'login' | 'register'>('login');
@@ -1615,12 +1627,19 @@ export default function App() {
               <Building2 className="h-5 w-5" />
               Empresas
             </button>
-            <button 
+            <button
               onClick={() => handleTabSelect('business')}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'business' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <Briefcase className="h-5 w-5" />
-              Negócios
+              Empresas
+            </button>
+            <button
+              onClick={() => handleTabSelect('wallet')}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'wallet' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
+            >
+              <Wallet className="h-5 w-5" />
+              Carteira
             </button>
             <button
               onClick={() => handleTabSelect('cloud')}
@@ -2061,6 +2080,12 @@ export default function App() {
                 user={user}
                 profileData={profileData}
                 toggleConnection={toggleConnection}
+              />
+            )}
+            {activeTab === 'wallet' && (
+              <WalletPage
+                user={user}
+                profileData={profileData}
               />
             )}
           </Suspense>

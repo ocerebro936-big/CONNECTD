@@ -28,6 +28,7 @@ import {
   setAssetDraft,
   setAssetPublished,
 } from '../connected-cloud';
+import { awardPoints } from '../economy/engine';
 import type { CcsUploadResult } from '../ccs/upload/types';
 
 export type MediaKind = 'photo' | 'video' | 'audio' | 'document';
@@ -187,6 +188,12 @@ export async function publishMedia(opts: PublishMediaOptions): Promise<void> {
     await setAssetPublished(opts.assetId);
   } catch {
     /* estado opcional */
+  }
+  // Prémio de pontos por publicação legítima (com dedupe por assetId).
+  try {
+    await awardPoints(opts.user.uid, 'publish', { ref: `post:${opts.assetId}` });
+  } catch {
+    /* pontos opcionais */
   }
 }
 
