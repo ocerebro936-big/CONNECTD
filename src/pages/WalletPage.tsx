@@ -3,8 +3,8 @@ import { Wallet as WalletIcon, Coins, Gem, Ticket, Banknote, History, Gift, Shie
 import {
   connectedEconomy,
   WITHDRAW_RULES,
-  type WalletDoc,
-  type WalletTx,
+  type EconomyBalance,
+  type EconomyTransaction,
   type DailyMission,
   type WithdrawalRequest,
   type WithdrawalMethod,
@@ -24,9 +24,9 @@ const METHOD_LABEL: Record<WithdrawalMethod, string> = {
 };
 
 export default function WalletPage({ user, profileData }: WalletPageProps) {
-  const [wallet, setWallet] = useState<WalletDoc | null>(null);
+  const [wallet, setWallet] = useState<EconomyBalance | null>(null);
   const [missions, setMissions] = useState<DailyMission[]>([]);
-  const [history, setHistory] = useState<WalletTx[]>([]);
+  const [history, setHistory] = useState<EconomyTransaction[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [method, setMethod] = useState<WithdrawalMethod>('mpesa');
@@ -80,7 +80,7 @@ export default function WalletPage({ user, profileData }: WalletPageProps) {
     });
     setBusy(false);
     if (r.ok) {
-      setMsg({ type: 'ok', text: 'Pedido de saque registado. Em revisão.' });
+      setMsg({ type: 'ok', text: 'Pedido de saque registado. Em revisão pela Treasury.' });
       setAmount('');
       setAccount('');
       await load();
@@ -104,26 +104,23 @@ export default function WalletPage({ user, profileData }: WalletPageProps) {
         <h1 className="text-2xl font-bold text-slate-900">Connected Wallet</h1>
       </div>
 
-      {/* Aviso de separação (regra do produto) */}
       <div className="rounded-2xl border border-primary/20 bg-white/60 p-3 flex items-start gap-2">
         <Info className="h-4 w-4 text-primary mt-0.5" />
         <p className="text-xs text-slate-600 font-medium">
           <b className="text-slate-900">Como funciona:</b> 💎 Gems e 🎟️ Tickets são moeda virtual (jogos/eventos, não resgatáveis).
-          ⭐ Pontos são promocionais, ganhos por atividade legítima. 💵 O saldo real vem de receita efetiva da plataforma
-          (partilha de receita/criadores) e só sai por saque com regras — pontos <b>nunca</b> viram dinheiro automaticamente.
+          ⭐ Pontos/XP são promocionais, ganhos por atividade legítima. 💵 O dinheiro real (MZN) entra na
+          <b> Treasury</b> da plataforma e só vira <b>saldo disponível</b> após validação — pontos <b>nunca</b> viram dinheiro automaticamente.
         </p>
       </div>
 
-      {/* Saldos */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <BalanceCard icon={<Coins className="h-5 w-5 text-amber-500" />} label="Pontos" value={wallet.points} sub="promocionais" />
         <BalanceCard icon={<Gem className="h-5 w-5 text-fuchsia-500" />} label="Gems" value={wallet.gems} sub="virtual" />
         <BalanceCard icon={<Ticket className="h-5 w-5 text-sky-500" />} label="Tickets" value={wallet.tickets} sub="virtual" />
-        <BalanceCard icon={<Banknote className="h-5 w-5 text-emerald-600" />} label="Saldo real" value={`${wallet.realBalanceMZN} MZN`} sub="disponível p/ saque" />
+        <BalanceCard icon={<Banknote className="h-5 w-5 text-emerald-600" />} label="Disponível" value={`${wallet.availableCash} MZN`} sub={`pendente: ${wallet.pendingCash} MZN`} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Missões diárias */}
         <section className="rounded-2xl border border-white/50 bg-white/60 p-4">
           <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
             <Gift className="h-4 w-4 text-primary" /> Missões diárias
@@ -147,14 +144,13 @@ export default function WalletPage({ user, profileData }: WalletPageProps) {
           </div>
         </section>
 
-        {/* Saque */}
         <section className="rounded-2xl border border-white/50 bg-white/60 p-4">
           <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
             <ArrowDownToLine className="h-4 w-4 text-emerald-600" /> Saque real
           </h2>
-          <div className={`mb-2 flex items-center gap-2 text-xs font-semibold ${wallet.kycVerified ? 'text-emerald-600' : 'text-amber-600'}`}>
-            {wallet.kycVerified ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
-            {wallet.kycVerified ? 'Identidade verificada (KYC)' : 'KYC necessário acima de ' + WITHDRAW_RULES.kycThresholdMZN + ' MZN'}
+          <div className={`mb-2 flex items-center gap-2 text-xs font-semibold text-amber-600`}>
+            <ShieldAlert className="h-4 w-4" />
+            KYC necessário acima de {WITHDRAW_RULES.kycThresholdMZN} MZN
           </div>
           <div className="space-y-2">
             <select value={method} onChange={(e) => setMethod(e.target.value as WithdrawalMethod)} className="w-full glass-input bg-white/70 border-white/50 rounded-xl px-3 py-2 text-sm text-slate-900">
@@ -178,10 +174,9 @@ export default function WalletPage({ user, profileData }: WalletPageProps) {
         <div className={`rounded-xl px-3 py-2 text-sm font-semibold ${msg.type === 'ok' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>{msg.text}</div>
       )}
 
-      {/* Histórico */}
       <section className="rounded-2xl border border-white/50 bg-white/60 p-4">
         <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
-          <History className="h-4 w-4 text-primary" /> Histórico
+          <History className="h-4 w-4 text-primary" /> Histórico (Ledger)
         </h2>
         {history.length === 0 ? (
           <p className="text-xs text-slate-500">Sem movimentos ainda.</p>
@@ -191,7 +186,9 @@ export default function WalletPage({ user, profileData }: WalletPageProps) {
               <div key={i} className="flex items-center justify-between text-xs">
                 <span className="text-slate-600">{txLabel(t)}</span>
                 <span className={t.currency === 'MZN' ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
-                  {t.currency === 'MZN' ? '-' : '+'}{t.amount} {t.currency === 'MZN' ? 'MZN' : t.currency === 'points' ? 'pts' : t.currency}
+                  {t.currency === 'MZN' ? (t.status === 'withdrawal' ? '-' : '+') : '+'}
+                  {t.currency === 'MZN' ? `${t.amount} MZN` : `${t.points} pts`}
+                  {t.status === 'pending' && <span className="text-slate-400"> · pendente</span>}
                 </span>
               </div>
             ))}
@@ -199,7 +196,6 @@ export default function WalletPage({ user, profileData }: WalletPageProps) {
         )}
       </section>
 
-      {/* Saques recentes */}
       {withdrawals.length > 0 && (
         <section className="rounded-2xl border border-white/50 bg-white/60 p-4">
           <h2 className="text-sm font-bold text-slate-900 mb-3">Pedidos de saque</h2>
@@ -227,14 +223,19 @@ function BalanceCard({ icon, label, value, sub }: { icon: React.ReactNode; label
   );
 }
 
-function txLabel(t: WalletTx): string {
-  switch (t.type) {
-    case 'earn_points': return 'Pontos: ' + (t.reason || 'atividade');
-    case 'earn_real': return 'Receita: ' + (t.reason || 'plataforma');
-    case 'spend_gems': return 'Gems: ' + t.reason;
-    case 'spend_tickets': return 'Tickets: ' + t.reason;
-    case 'mission': return 'Missão: ' + (t.reason || '').replace('mission:', '');
-    case 'withdraw_request': return 'Saque ' + (t.reason || '').replace('withdraw:', '');
-    default: return t.reason || t.type;
+function txLabel(t: EconomyTransaction): string {
+  switch (t.source) {
+    case 'CONTENT_PUBLISHED': return 'Publicação';
+    case 'DAILY_LOGIN': return 'Login diário';
+    case 'PROFILE_COMPLETED': return 'Perfil completo';
+    case 'REFERRAL_COMPLETED': return 'Convite';
+    case 'GAME_PLAYED': return 'Connected RUN';
+    case 'TASK_COMPLETED': return 'Missão';
+    default:
+      if (t.source.startsWith('mission:')) return 'Missão diária';
+      if (t.source.startsWith('withdraw:')) return 'Saque ' + t.source.replace('withdraw:', '');
+      if (t.source.startsWith('earnings:')) return 'Ganhos: ' + t.source.replace('earnings:', '');
+      if (t.source.startsWith('revenue:')) return 'Receita plataforma';
+      return t.source;
   }
 }

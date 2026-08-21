@@ -42,6 +42,7 @@ function detectIntent(t: string): string {
   if (/(ranking|top|quem est[áa] no|classifica[çc][ãa]o)/.test(t)) return 'games_ranking';
   if (/(minha pontua[çc][ãa]o|meus pontos|meu score|quantos pontos)/.test(t)) return 'games_score';
   if (/(problema|ajuda|erro|suporte|ticket|denunciar|reportar|spam)/.test(t)) return 'support_ticket';
+  if (/(saldo|ponto|ganho|carteira|economia|levantar|saque|resgate|dispon[íi]vel|pendente|mzn|gem|ticket virtual)/.test(t)) return 'economy';
   if (/(o que [ée]|como funciona|explica|para que serve|qual [ée])/.test(t)) return 'explain';
   if (/^(ol[áa]|bom dia|boa tarde|oi|hey|salve)/.test(t)) return 'greeting';
   if (/obrigad/.test(t)) return 'thanks';
