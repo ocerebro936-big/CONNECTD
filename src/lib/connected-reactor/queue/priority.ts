@@ -8,6 +8,7 @@ export interface ReactorTask {
   createdAt: number;
   attempts: number;
   status: "queued" | "running" | "completed" | "failed";
+  error?: string;
   payload?: any;
   ownerId?: string;
   enqueuedAt?: number;

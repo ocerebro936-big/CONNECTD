@@ -88,6 +88,35 @@ ok(existsSync(join(DATA, "sessions", "abandonada")), "sessão abandonada existe 
 const health = await j("GET", "/v1/nodes/health");
 ok(health.status === 200 && Array.isArray(health.data.nodes) && health.data.nodes.length === 3, "health lista nós (node-a,node-b,backup)");
 
+// 9. por-nó + replicação + backup + gc + metrics
+const wbytes = Buffer.from("worker-engine-payload");
+const wsum = sha(wbytes);
+const wkey = "media/worker-test.bin";
+const wi = await j("POST", "/v1/upload/init", { key: wkey, size: wbytes.length, totalChunks: 1, checksum: wsum });
+const wsid = wi.data.sessionId;
+await putChunk(wsid, 0, wbytes);
+const wdone = await j("POST", `/v1/upload/${wsid}/complete`, {});
+ok(wdone.status === 200, "upload worker-test -> 200");
+
+const na = await fetch(`${BASE}/v1/nodes/node-a/objects/${encodeURIComponent(wkey)}`);
+ok(na.status === 200, "GET por-nó node-a -> 200");
+const nb = await fetch(`${BASE}/v1/nodes/backup/objects/${encodeURIComponent(wkey)}`);
+ok(nb.status === 200, "GET por-nó backup (replicado) -> 200");
+
+const rep = await j("POST", "/v1/replicate", { key: wkey });
+ok(rep.status === 200 && rep.data.replicated >= 0, "replicate -> 200");
+
+const snap = await j("POST", "/v1/backup/snapshot", {});
+ok(snap.status === 200 && snap.data.objects >= 1, "backup snapshot -> objects>=1");
+const snaps = await j("GET", "/v1/backup/snapshots");
+ok(snaps.status === 200 && snaps.data.snapshots.includes(snap.data.snapshot), "lista snapshots inclui o novo");
+
+const gcRes = await j("POST", "/v1/admin/gc");
+ok(gcRes.status === 200 && typeof gcRes.data.removed === "number", "admin gc -> removed number");
+
+const met = await j("GET", "/v1/metrics");
+ok(met.status === 200 && met.data.uploads >= 2, "metrics -> uploads>=2");
+
 console.info(`\n[ccs v2] ${passed} passou, ${failed} falhou`);
 server.close();
 setTimeout(() => process.exit(failed ? 1 : 0), 50);

@@ -30,6 +30,8 @@ export function routeToCapability(analysis: DivinoAnalysis): string | null {
       return 'reactor_status';
     case 'delete':
       return 'cloud_delete';
+    case 'trace':
+      return 'cloud_trace';
     case 'memory':
       return 'memory_recall';
     default:

@@ -86,13 +86,13 @@ export async function ccsUpload(input: CcsUploadInput): Promise<CcsUploadResult>
     session,
     { onProgress: input.onProgress, signal: input.signal }
   );
-  reactorEvents.emit({ type: 'upload_start', ownerId: ownerUid, bytes: file.size, taskId: assetId, at: Date.now() });
+  reactorEvents.emit({ type: 'upload_start', ownerId: ownerUid, bytes: file.size, taskId: assetId, key: baseKey, at: Date.now() });
   let url: string;
   try {
     url = (await handle.promise).url;
-    reactorEvents.emit({ type: 'upload_complete', ownerId: ownerUid, bytes: file.size, taskId: assetId, at: Date.now() });
+    reactorEvents.emit({ type: 'upload_complete', ownerId: ownerUid, bytes: file.size, taskId: assetId, key: baseKey, at: Date.now() });
   } catch (e) {
-    reactorEvents.emit({ type: 'upload_failed', ownerId: ownerUid, bytes: file.size, taskId: assetId, at: Date.now() });
+    reactorEvents.emit({ type: 'upload_failed', ownerId: ownerUid, bytes: file.size, taskId: assetId, key: baseKey, at: Date.now() });
     throw e;
   }
 

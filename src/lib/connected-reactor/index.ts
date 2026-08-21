@@ -2,6 +2,7 @@ import { digitalReactor } from "./core/reactor";
 import { mediaWorker } from "./workers/media.worker";
 import { uploadWorker } from "./workers/upload.worker";
 import { maintenanceWorker } from "./workers/maintenance.worker";
+import { cloudWorkerEngine } from "./engine/worker-engine";
 import { recordUsage } from "../economy/traffic";
 import type { ReactorEvent } from "./events/reactor-events";
 
@@ -26,6 +27,7 @@ digitalReactor.bindEconomy((e: ReactorEvent) => {
 
 export function startReactor(): void {
   digitalReactor.start();
+  cloudWorkerEngine.start();
 }
 
 export function getReactorStatus() {

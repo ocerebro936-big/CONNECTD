@@ -27,6 +27,7 @@ export interface ReactorEvent {
   ownerId?: string;
   bytes?: number;
   taskId: string;
+  key?: string;
   at: number;
 }
 

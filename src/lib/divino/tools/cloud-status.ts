@@ -1,20 +1,18 @@
 import { cloudGuardian } from "../../connected-cloud/node";
 import { connectedRuntime } from "../../connected-runtime";
+import { getCloudSupervision } from "../../connected-reactor/supervision";
 
-// O DIVINO CONSULTA o estado real da Cloud. Só leitura — sem autoridade para
-// apagar, mover ou modificar objetos críticos.
+// O DIVINO CONSULTA o estado real da Cloud (cérebro de supervisão, não
+// executor). Agrega Reactor + 7 Cloud Workers num relatório humano.
 export async function cloudStatus() {
+  const supervision = getCloudSupervision();
   const report = cloudGuardian.report();
   const services = connectedRuntime
     .registry.list()
     .map((s) => ({ name: s.id, status: s.status }));
-  const operational = report.fleet.offline === 0;
-  const summary = operational
-    ? `A Connected Cloud está operacional. ${report.fleet.online} node(s) online, ${report.runtime.ready} serviço(s) pronto(s) e ${report.fleet.errors} erro(s) acumulado(s).`
-    : `A Connected Cloud tem falhas: ${report.fleet.offline} node(s) offline e ${report.runtime.offline} serviço(s) offline.`;
   return {
     ok: true,
-    summary,
-    data: { report, services },
+    summary: supervision.text,
+    data: { supervision, report, services },
   };
 }

@@ -35,6 +35,7 @@ for (const d of [DATA, SESS_DIR, ...NODES.map((n) => join(DATA, n, "objects")), 
 
 const INDEX = join(DATA, ".index.json");
 const sessions = new Map();
+const stats = { uploads: 0, downloads: 0, bytes: 0, requests: 0 };
 let activeWrites = 0;
 const rate = new Map(); // ip -> timestamps[]
 
@@ -74,6 +75,7 @@ const server = http.createServer(async (req, res) => {
     if (!authOk) return send(res, 401, { error: "UNAUTHORIZED" });
     if (!allow(ip)) return send(res, 429, { error: "RATE_LIMITED" });
     if (activeWrites >= MAX_CONCURRENT) return send(res, 503, { error: "BUSY" });
+    stats.requests++;
 
     // health
     if (method === "GET" && url.pathname === "/v1/nodes/health") {
@@ -81,6 +83,67 @@ const server = http.createServer(async (req, res) => {
         id: n, status: "ready", usedBytes: countBytes(join(DATA, n, "objects")),
       }));
       return send(res, 200, { status: "ready", nodes, replicas: NODES.length, backup: BACKUP });
+    }
+
+    // verificação por nó
+    let nm = url.pathname.match(/^\/v1\/nodes\/([^/]+)\/objects\/(.+)$/);
+    if (nm && (method === "GET" || method === "HEAD")) {
+      const f = objPath(nm[1], decodeURIComponent(nm[2]));
+      if (!existsSync(f)) return send(res, 404, { error: "NOT_FOUND" });
+      return stream(res, f, method, decodeURIComponent(nm[2]));
+    }
+
+    // replicação forçada de uma chave para todos os nós
+    if (method === "POST" && url.pathname === "/v1/replicate") {
+      const b = await readJson(req);
+      const key = b.key;
+      if (!key) return send(res, 400, { error: "KEY_REQUIRED" });
+      let replicated = 0;
+      for (const node of [ ...NODES, BACKUP ]) {
+        const dest = objPath(node, key);
+        if (!existsSync(dest)) {
+          const src = [ ...NODES, BACKUP ].map((n) => objPath(n, key)).find(existsSync);
+          if (src) { mkdirSync(dirname(dest), { recursive: true }); writeFileSync(dest, readFileSync(src)); replicated++; }
+        }
+      }
+      return send(res, 200, { key, replicated, nodes: NODES.length + 1 });
+    }
+
+    // snapshot de backup
+    if (method === "POST" && url.pathname === "/v1/backup/snapshot") {
+      const ts = new Date().toISOString().replace(/[:.]/g, "-");
+      const snapDir = join(DATA, BACKUP, "snapshots", ts);
+      mkdirSync(snapDir, { recursive: true });
+      const src = join(DATA, NODES[0], "objects");
+      const copyTree = (s, d) => {
+        for (const e of readdirSync(s)) {
+          const sp = join(s, e), dp = join(d, e);
+          if (statSync(sp).isDirectory()) { mkdirSync(dp, { recursive: true }); copyTree(sp, dp); }
+          else { mkdirSync(dirname(dp), { recursive: true }); writeFileSync(dp, readFileSync(sp)); }
+        }
+      };
+      let n = 0;
+      if (existsSync(src)) { copyTree(src, snapDir); n = readdirSync(snapDir).length; }
+      return send(res, 200, { snapshot: ts, objects: n });
+    }
+    if (method === "GET" && url.pathname === "/v1/backup/snapshots") {
+      const base = join(DATA, BACKUP, "snapshots");
+      return send(res, 200, { snapshots: existsSync(base) ? readdirSync(base) : [] });
+    }
+    if (method === "DELETE" && url.pathname.match(/^\/v1\/backup\/snapshots\/(.+)$/)) {
+      const ts = decodeURIComponent(url.pathname.match(/^\/v1\/backup\/snapshots\/(.+)$/)[1]);
+      rmSync(join(DATA, BACKUP, "snapshots", ts), { recursive: true, force: true });
+      return send(res, 200, { ok: true });
+    }
+
+    // garbage collection de sessões abandonadas
+    if (method === "POST" && url.pathname === "/v1/admin/gc") {
+      return send(res, 200, { removed: gc() });
+    }
+
+    // métricas de tráfego
+    if (method === "GET" && url.pathname === "/v1/metrics") {
+      return send(res, 200, { ...stats, replicas: NODES.length, backup: BACKUP });
     }
 
     // upload init
@@ -134,6 +197,8 @@ const server = http.createServer(async (req, res) => {
         }
         idx.byChecksum[checksum] = storedKey;
         saveIndex(idx);
+        stats.uploads++;
+        stats.bytes += buf.length;
       }
       rmSync(join(SESS_DIR, sid), { recursive: true, force: true });
       sessions.delete(sid);
@@ -160,8 +225,10 @@ const server = http.createServer(async (req, res) => {
         // falha num nó -> tenta réplica/backup
         const alt = [ ...NODES.slice(1), BACKUP ].map((n) => objPath(n, key)).find(existsSync);
         if (!alt) return send(res, 404, { error: "NOT_FOUND" });
+        if (method === "GET") { stats.downloads++; stats.bytes += statSync(alt).size; }
         return stream(res, alt, method, key);
       }
+      if (method === "GET") { stats.downloads++; stats.bytes += statSync(f).size; }
       return stream(res, f, method, key);
     }
 
@@ -184,15 +251,18 @@ function stream(res, file, method, key) {
 // Garbage Collection de sessões abandonadas.
 function gc() {
   const now = Date.now();
+  let removed = 0;
   for (const id of readdirSync(SESS_DIR)) {
     const dir = join(SESS_DIR, id);
     try {
       if (now - statSync(dir).mtimeMs > SESSION_TTL_MS) {
         rmSync(dir, { recursive: true, force: true });
         sessions.delete(id);
+        removed++;
       }
     } catch {}
   }
+  return removed;
 }
 const _gcTimer = setInterval(gc, 60_000);
 if (_gcTimer.unref) _gcTimer.unref();

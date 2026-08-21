@@ -27,6 +27,7 @@ export class DigitalReactor {
   private completed = 0;
   private failed = 0;
   private activeUploads = 0;
+  private recentTasks: Array<{ id: string; type: string; status: string; attempts: number; error?: string; at: number }> = [];
   private workersTotal: number;
   private timer: ReturnType<typeof setInterval> | null = null;
   private started = false;
@@ -112,6 +113,7 @@ export class DigitalReactor {
     } catch (e: any) {
       task.status = "failed";
       this.failed += 1;
+      task.error = e?.message || String(e);
       if (task.attempts < MAX_ATTEMPTS && task.type !== "maintenance") {
         // reenfileira para retry (mesma prioridade)
         task.status = "queued";
@@ -119,6 +121,8 @@ export class DigitalReactor {
       }
     } finally {
       this.running.delete(task.id);
+      this.recentTasks.unshift({ id: task.id, type: task.type, status: task.status, attempts: task.attempts, error: task.error, at: Date.now() });
+      if (this.recentTasks.length > 30) this.recentTasks.pop();
     }
   }
 
@@ -166,6 +170,15 @@ export class DigitalReactor {
   private syncRuntime(): void {
     const healthy = this.metrics().healthy;
     connectedRuntime.setStatus("ccs", healthy ? "ready" : "degraded");
+  }
+
+  /** Rasto de tarefas recentes — usado pelo DIVINO para diagnóstico humano. */
+  trace() {
+    return {
+      recent: this.recentTasks,
+      queue: this.queue.size,
+      activeUploads: this.activeUploads,
+    };
   }
 }
 
