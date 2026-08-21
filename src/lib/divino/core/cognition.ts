@@ -10,8 +10,8 @@ import { analyzeIntent } from './intent';
 import { resolveContext } from './context';
 import { buildSystemPrompt } from './response';
 import { callGemini } from './reasoning';
+import { memoryManager } from '../memory/memory-manager';
 import { shortTerm } from '../memory/short-term';
-import { session } from '../memory/session';
 import { knowledge } from '../memory/knowledge';
 import { authority } from '../security/authority';
 import { audit } from '../security/audit';
@@ -41,8 +41,11 @@ export class DivinoBrain {
   async think(input: BrainInput): Promise<DivinoCognitiveReply> {
     const analysis = analyzeIntent(input.text);
     resolveContext(input.uid, input.text);
-    shortTerm.push(input.uid, { role: 'user', text: input.text, ts: Date.now() });
-    session.save(input.uid, [...session.load(input.uid), { role: 'user', text: input.text }]);
+    await memoryManager.storeInteraction(
+      input.uid,
+      'user',
+      input.text,
+    );
 
     // Atalho de conhecimento interno.
     const kb = knowledge.search(input.text);
@@ -134,8 +137,7 @@ export class DivinoBrain {
   }
 
   private finalize(input: BrainInput, analysis: DivinoAnalysis, tools: DivinoToolResult[], text: string, source: DivinoCognitiveReply['source']): DivinoCognitiveReply {
-    shortTerm.push(input.uid, { role: 'divino', text, ts: Date.now() });
-    session.save(input.uid, [...session.load(input.uid), { role: 'divino', text }]);
+    void memoryManager.storeInteraction(input.uid, 'assistant', text);
     return { text, specialist: analysis.specialist, source, modelUsed: input.modelId, toolsUsed: tools, analysis };
   }
 

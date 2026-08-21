@@ -44,6 +44,7 @@ function detectIntent(t: string): string {
   if (/(problema|ajuda|erro|suporte|ticket|denunciar|reportar|spam)/.test(t)) return 'support_ticket';
   if (/(saldo|ponto|ganho|carteira|economia|levantar|saque|resgate|dispon[íi]vel|pendente|mzn|gem|ticket virtual)/.test(t)) return 'economy';
   if (/(o que [ée]|como funciona|explica|para que serve|qual [ée])/.test(t)) return 'explain';
+  if (/(mem[óo]ria|lembra|esquec|contexto|prefer[êe]ncia|consent)/.test(t)) return 'memory';
   if (/^(ol[áa]|bom dia|boa tarde|oi|hey|salve)/.test(t)) return 'greeting';
   if (/obrigad/.test(t)) return 'thanks';
   return 'general';

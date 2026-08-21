@@ -6,7 +6,6 @@ import { MusicPlayerBar } from '../components/MusicPlayerBar';
 import { MusicUpload } from '../components/MusicUpload';
 import { listMusicTracks, listMusicByArtist, MusicTrack, isMusicLiked } from '../lib/music';
 import { setPageMeta, injectJsonLd, removeJsonLd, musicRecordingSchema } from '../lib/seo';
-import { seedDemoMusic } from '../lib/seed';
 
 interface MusicPageProps {
   user: any;
@@ -19,7 +18,7 @@ export function MusicPage({ user, profileData, allUsers, onOpenProfile }: MusicP
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
-  const [seeding, setSeeding] = useState(false);
+
   const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
   const [filter, setFilter] = useState<'all' | 'mine'>('all');
 
@@ -54,21 +53,6 @@ export function MusicPage({ user, profileData, allUsers, onOpenProfile }: MusicP
     load();
   }, [load]);
 
-  const handleSeed = useCallback(async () => {
-    if (!user) return;
-    setSeeding(true);
-    try {
-      await seedDemoMusic(user, profileData?.displayName || user.email || 'Artista');
-      setFilter('all');
-      await load();
-    } catch (err: any) {
-      console.error('Erro ao carregar música de exemplo:', err);
-      alert('Não foi possível carregar a música de exemplo. Verifica se o Connected Storage (Firebase Storage) está ativo no console ou se o backend S3/MEGA está configurado.');
-    } finally {
-      setSeeding(false);
-    }
-  }, [user, profileData, load]);
-
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-28">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -82,9 +66,6 @@ export function MusicPage({ user, profileData, allUsers, onOpenProfile }: MusicP
         </div>
         {user && (
           <div className="flex items-center gap-2 flex-wrap">
-            <Button onClick={handleSeed} variant="outline" disabled={seeding} className="rounded-xl font-bold border-primary/40 text-primary hover:bg-primary/10">
-              {seeding ? 'A carregar...' : 'Carregar exemplo'}
-            </Button>
             <Button onClick={() => setShowUpload(true)} className="rounded-xl bg-primary text-black font-bold hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" /> Publicar música
             </Button>
