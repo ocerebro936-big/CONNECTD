@@ -26,6 +26,7 @@ export * from "./engines/security";
 export * from "./engines/backup";
 export * from "./engines/recovery";
 export * from "./engines/health";
+export * from "./node";
 
 import { createMemoryEngines } from "./engines";
 import { ConnectedCloud } from "./core/cloud";
