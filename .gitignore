@@ -10,3 +10,7 @@ coverage/
 
 # segredos locais (nunca comitar)
 Token 99/
+
+# Connected Cloud Gateway
+connected-cloud-server/data/
+!connected-cloud-server/.env.example

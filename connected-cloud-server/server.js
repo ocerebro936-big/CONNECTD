@@ -28,6 +28,9 @@ const NODES = (process.env.CCS_NODES || "node-a,node-b").split(",").map((s) => s
 const BACKUP = "backup";
 const RATE_LIMIT = Number(process.env.CCS_RATE || 60); // req/s por IP
 const MAX_CONCURRENT = Number(process.env.CCS_CONCURRENCY || 20);
+// CORS restrito à Connected King (e localhost em dev). Nunca "*" em produção.
+const ALLOWED_ORIGINS = (process.env.CCS_ALLOWED_ORIGINS || "http://localhost:8787,https://connectedking.web.app")
+  .split(",").map((s) => s.trim()).filter(Boolean);
 const SESSION_TTL_MS = 10 * 60 * 1000;
 
 for (const d of [DATA, SESS_DIR, ...NODES.map((n) => join(DATA, n, "objects")), join(DATA, BACKUP, "objects")])
@@ -71,6 +74,17 @@ const server = http.createServer(async (req, res) => {
   const ip = req.socket.remoteAddress || "local";
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const method = req.method;
+
+  // CORS (restrito). Aplica antes de auth para permitir preflight.
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "content-type,x-ccs-key,authorization");
+    res.setHeader("Access-Control-Max-Age", "600");
+  }
+  if (method === "OPTIONS") return send(res, 204, "");
+
   const authOk = !API_KEY || req.headers["x-ccs-key"] === API_KEY;
   try {
     if (!authOk) return send(res, 401, { error: "UNAUTHORIZED" });
