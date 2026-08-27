@@ -1190,6 +1190,11 @@ export default function App() {
     return () => presenceEngine.stop();
   }, []);
 
+  // Publica a presença REAL do utilizador em `presence/{uid}` (Firestore).
+  useEffect(() => {
+    if (user?.uid) presenceEngine.bindUser(user.uid);
+  }, [user?.uid]);
+
   useEffect(() => {
     startReactor();
     startEdge();
