@@ -163,6 +163,25 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { ...stats, replicas: NODES.length, backup: BACKUP });
     }
 
+    // auditoria — registo estruturado de comandos (Control Center)
+    if (method === "POST" && url.pathname === "/v1/admin/audit") {
+      const b = await readJson(req);
+      const line = { ts: Date.now(), ...(typeof b === "object" ? b : { raw: b }) };
+      try { appendFileSync(join(DATA, "audit.log"), JSON.stringify(line) + "\n"); } catch {}
+      return send(res, 200, { ok: true });
+    }
+    if (method === "GET" && url.pathname === "/v1/admin/audit") {
+      try {
+        const lines = existsSync(join(DATA, "audit.log"))
+          ? readFileSync(join(DATA, "audit.log"), "utf8").trim().split("\n").filter(Boolean).slice(-50)
+          : [];
+        const entries = lines.map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+        return send(res, 200, { entries });
+      } catch {
+        return send(res, 200, { entries: [] });
+      }
+    }
+
     // upload init
     if (method === "POST" && url.pathname === "/v1/upload/init") {
       const b = await readJson(req);

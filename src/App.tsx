@@ -71,7 +71,7 @@ import {
   Github,
   Briefcase,
   Cloud,
-  Wallet} from 'lucide-react';
+  Wallet, Server} from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from './components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
@@ -110,6 +110,7 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const CompaniesPage = lazy(() => import('./pages/CompaniesPage'));
 const BusinessPage = lazy(() => import('./pages/BusinessPage'));
 const CloudStatusPage = lazy(() => import('./pages/CloudStatusPage'));
+const CloudControlCenter = lazy(() => import('./pages/CloudControlCenter'));
 const WalletPage = lazy(() => import('./pages/WalletPage'));
 
 function PageLoader() {
@@ -158,7 +159,7 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['feed', 'profile', 'overview', 'connections', 'ai', 'network', 'gallery', 'connect-tv', 'games', 'settings', 'empresas'].includes(tabParam)) {
+    if (tabParam && ['feed', 'profile', 'overview', 'connections', 'ai', 'network', 'gallery', 'connect-tv', 'games', 'settings', 'empresas', 'cloud', 'cloud-control'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, []);
@@ -1659,6 +1660,13 @@ export default function App() {
               <Cloud className="h-5 w-5" />
               Cloud
             </button>
+            <button
+              onClick={() => handleTabSelect('cloud-control')}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'cloud-control' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
+            >
+              <Server className="h-5 w-5" />
+              Control Center
+            </button>
             <button 
               onClick={() => handleTabSelect('settings')}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all font-semibold ${activeTab === 'settings' ? 'bg-primary/15 text-primary border border-primary/25 shadow-[0_0_18px_rgba(233,184,84,0.15)]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
@@ -1699,13 +1707,14 @@ export default function App() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 inset-x-0 z-50 sm:hidden glass-dark border-t border-primary/15 pb-[env(safe-area-inset-bottom)]">
-        <div className="grid grid-cols-6">
+        <div className="grid grid-cols-7">
           {[
             { id: 'feed', label: 'Feed', icon: Home },
             { id: 'network', label: 'Rede', icon: Users },
             { id: 'games', label: 'Games', icon: Gamepad2 },
             { id: 'connect-tv', label: 'TV', icon: Tv },
             { id: 'cloud', label: 'Cloud', icon: Cloud },
+            { id: 'cloud-control', label: 'CC', icon: Server },
             { id: 'profile', label: 'Perfil', icon: UserCircle },
           ].map(({ id, label, icon: Icon }) => (
             <button
@@ -2083,9 +2092,14 @@ export default function App() {
             {activeTab === 'business' && (
               <BusinessPage user={user} profileData={profileData} />
             )}
-            {activeTab === 'cloud' && (
-              <CloudStatusPage />
-            )}
+{activeTab === 'cloud' && (
+  <CloudStatusPage />
+)}
+{activeTab === 'cloud-control' && (
+  <Suspense fallback={<div className="p-8 text-center text-slate-400">A carregar Control Center…</div>}>
+    <CloudControlCenter />
+  </Suspense>
+)}
             {activeTab === 'settings' && (
               <SettingsPage
                 user={user}
