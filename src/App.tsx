@@ -112,6 +112,8 @@ const BusinessPage = lazy(() => import('./pages/BusinessPage'));
 const CloudStatusPage = lazy(() => import('./pages/CloudStatusPage'));
 const CloudControlCenter = lazy(() => import('./pages/CloudControlCenter'));
 const WalletPage = lazy(() => import('./pages/WalletPage'));
+import DivinoOnboarding from "./components/DivinoOnboarding";
+import { getDivinoOnboarding } from "./lib/divino/onboarding";
 
 function PageLoader() {
   return (
@@ -128,6 +130,7 @@ export default function App() {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
 
   const [showShareModal, setShowShareModal] = useState(false);
   const [copiedLinkText, setCopiedLinkText] = useState<string | null>(null);
@@ -155,6 +158,17 @@ export default function App() {
     const stop = startCloudCore();
     return stop;
   }, []);
+
+  // Onboarding cognitivo do DIVINO: só entra no app após concluir (ou se já tiver).
+  useEffect(() => {
+    if (isAuthenticated && user?.uid) {
+      getDivinoOnboarding(user.uid)
+        .then((s) => setOnboardingComplete(!!s.profile.completed))
+        .catch(() => setOnboardingComplete(false));
+    } else {
+      setOnboardingComplete(null);
+    }
+  }, [isAuthenticated, user?.uid]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1522,6 +1536,15 @@ export default function App() {
           </div>
         </div>
       </>
+    );
+  }
+
+  // Onboarding cognitivo — o utilizador não entra diretamente no Feed na 1ª vez.
+  if (isAuthenticated && user?.uid && onboardingComplete === false) {
+    return (
+      <div className="min-h-screen w-full grid place-items-center bg-[#0b0f1a] p-4">
+        <DivinoOnboarding uid={user.uid} onComplete={() => setOnboardingComplete(true)} />
+      </div>
     );
   }
 
