@@ -19,6 +19,9 @@ import { cloudTrace } from '../tools/cloud-trace';
 import { globalCloudStatus } from '../tools/global-cloud-status';
 import { nodeStatus } from '../tools/node-status';
 import { bestNode } from '../tools/best-node';
+import { edgeStatus } from '../tools/edge-status';
+import { cacheStatus } from '../tools/cache-status';
+import { deliveryTrace } from '../tools/delivery-trace';
 import { memoryPlugin } from './memory/memory-plugin';
 import { recallPlugin } from './memory/recall-plugin';
 import { contextPlugin } from './memory/context-plugin';
@@ -55,6 +58,9 @@ export const PLUGIN_BUS: Record<string, { plugin: string; fn: ToolFn }> = {
   global_cloud_status: { plugin: 'connected_cloud', fn: () => globalCloudStatus() },
   node_status: { plugin: 'connected_cloud', fn: (c) => nodeStatus(c as any) },
   best_node: { plugin: 'connected_cloud', fn: (c) => bestNode(c as any) },
+  edge_status: { plugin: 'connected_edge', fn: () => edgeStatus() },
+  cache_status: { plugin: 'connected_edge', fn: () => cacheStatus() },
+  delivery_trace: { plugin: 'connected_edge', fn: () => deliveryTrace() },
   memory_status: { plugin: 'divino_memory', fn: () => memoryPlugin({ uid: '', role: 'user' }) },
   memory_recall: { plugin: 'divino_memory', fn: (c) => recallPlugin(c) },
   memory_context: { plugin: 'divino_memory', fn: (c) => contextPlugin(c) },

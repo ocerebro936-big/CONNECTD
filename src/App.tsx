@@ -85,6 +85,7 @@ import { ConnectedKingMascot } from './components/ConnectedKingMascot';
 import { MusicProvider } from './lib/connected-music/context';
 import { presenceEngine } from './lib/presence/presence';
 import { startReactor } from './lib/connected-reactor';
+import { startEdge } from './lib/connected-edge';
 import { CallModal, IncomingCallListener } from './components/CallModal';
 import { ChatModal } from './components/ChatModal';
 import { UserProfileModal } from './components/UserProfileModal';
@@ -1176,6 +1177,7 @@ export default function App() {
 
   useEffect(() => {
     startReactor();
+    startEdge();
   }, []);
 
   const handleLogin = async (providerName: 'google' | 'apple') => {

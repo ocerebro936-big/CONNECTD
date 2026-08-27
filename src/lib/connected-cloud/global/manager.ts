@@ -158,6 +158,18 @@ export class GlobalNodeManager {
     return best;
   }
 
+  /** Endpoint do Node (baseUrl) por id — usado pelo Edge para entrega. */
+  endpoint(id: string): string {
+    return this.defs.get(id)?.baseUrl || cloudGateway.base;
+  }
+
+  /** Melhor endpoint ponderado (reutiliza a seleção do Global Node Manager). */
+  bestEndpoint(opts: SelectionOptions = {}): { id: string; region: CloudRegion; baseUrl: string } | null {
+    const n = this.selectBestNode(opts);
+    if (!n) return null;
+    return { id: n.id, region: n.region, baseUrl: this.defs.get(n.id)?.baseUrl || cloudGateway.base };
+  }
+
   /** Failover: próximo melhor Node, excluindo o que falhou. */
   failover(failedId?: string): CloudNode | null {
     const candidates = [...this.state.values()].filter((n) => n.id !== failedId && n.status !== "offline");

@@ -16,7 +16,7 @@ import http from "node:http";
 import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync, readdirSync, appendFileSync } from "node:fs";
 import { dirname, join, extname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA = join(__dirname, "data");
@@ -234,19 +234,37 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { ok: true, removed });
     }
 
-    // GET/HEAD asset
+    // GET/HEAD asset (com validação de URL assinada, ETag/304 e Cache-Control)
     if ((method === "GET" || method === "HEAD") && m) {
       const key = decodeURIComponent(m[1]);
+      const sp = url.searchParams;
+      const sig = sp.get("sig");
+      const exp = Number(sp.get("exp") || 0);
+      if (sig) {
+        if (!verifySig(key, sig, exp)) return send(res, 403, { error: "BAD_SIGNATURE" });
+        if (exp && Date.now() > exp) return send(res, 403, { error: "SIGNATURE_EXPIRED" });
+      }
       const f = objPath(NODES[0], key);
+      let file = f;
       if (!existsSync(f)) {
-        // falha num nó -> tenta réplica/backup
         const alt = [ ...NODES.slice(1), BACKUP ].map((n) => objPath(n, key)).find(existsSync);
         if (!alt) return send(res, 404, { error: "NOT_FOUND" });
-        if (method === "GET") { stats.downloads++; stats.bytes += statSync(alt).size; }
-        return stream(res, alt, method, key);
+        file = alt;
       }
-      if (method === "GET") { stats.downloads++; stats.bytes += statSync(f).size; }
-      return stream(res, f, method, key);
+      const st = statSync(file);
+      const etag = `"${st.size}-${st.mtimeMs}"`;
+      const inm = req.headers["if-none-match"];
+      const cc = sig ? "private, max-age=60" : "public, max-age=300";
+      if (method === "GET" && inm === etag) return send(res, 304, "", { etag, "cache-control": cc });
+      res.setHeader("cache-control", cc);
+      return stream(res, file, method, key, cc);
+    }
+
+    // assinatura de URL para conteúdo autorizado
+    if (method === "POST" && url.pathname === "/v1/sign") {
+      const b = await readJson(req);
+      const exp = b.exp || Date.now() + 120_000;
+      return send(res, 200, { url: `/v1/assets/${encodeURIComponent(b.key)}?sig=${sign(b.key, exp)}&exp=${exp}` });
     }
 
     send(res, 404, { error: "NOT_FOUND" });
@@ -257,12 +275,20 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-function stream(res, file, method, key) {
+function stream(res, file, method, key, cacheControl = "public, max-age=300") {
   const st = statSync(file);
-  const headers = { "content-type": metaFor(key), "content-length": String(st.size), "x-ccs-updated": String(st.mtimeMs), etag: `"${st.size}-${st.mtimeMs}"` };
+  const etag = `"${st.size}-${st.mtimeMs}"`;
+  const headers = { "content-type": metaFor(key), "content-length": String(st.size), "x-ccs-updated": String(st.mtimeMs), etag, "cache-control": cacheControl };
   if (method === "HEAD") return send(res, 200, "", headers);
   res.writeHead(200, headers);
   createReadStream(file).pipe(res);
+}
+
+// URLs assinadas para conteúdo que exige autorização (privado/friends/followers/admin).
+const SIGN_KEY = process.env.CCS_SIGN_KEY || API_KEY || "dev-connected-sign";
+function sign(key, exp) { return createHmac("sha256", SIGN_KEY).update(`${key}:${exp}`).digest("hex"); }
+function verifySig(key, sig, exp) {
+  try { return timingSafeEqual(Buffer.from(sign(key, exp)), Buffer.from(sig)); } catch { return false; }
 }
 
 // Garbage Collection de sessões abandonadas.

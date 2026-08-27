@@ -117,6 +117,25 @@ ok(gcRes.status === 200 && typeof gcRes.data.removed === "number", "admin gc -> 
 const met = await j("GET", "/v1/metrics");
 ok(met.status === 200 && met.data.uploads >= 2, "metrics -> uploads>=2");
 
+// 10. Edge: ETag/If-None-Match (304) + URL assinada
+const ebytes = Buffer.from("edge-unique-payload-xyz-789");
+const esum = sha(ebytes);
+const ekey = "media/edge-test.bin";
+const ei = await j("POST", "/v1/upload/init", { key: ekey, size: ebytes.length, totalChunks: 1, checksum: esum });
+await putChunk(ei.data.sessionId, 0, ebytes);
+await j("POST", `/v1/upload/${ei.data.sessionId}/complete`, {});
+const eget = await fetch(`${BASE}/v1/assets/${encodeURIComponent(ekey)}`);
+const etag = eget.headers.get("etag");
+ok(!!etag, "Edge: GET retorna ETag");
+const e304 = await fetch(`${BASE}/v1/assets/${encodeURIComponent(ekey)}`, { headers: { "if-none-match": etag } });
+ok(e304.status === 304, "Edge: If-None-Match -> 304");
+const sign = await j("POST", "/v1/sign", { key: ekey });
+ok(sign.status === 200 && sign.data.url, "Edge: /v1/sign retorna URL");
+const sg = await fetch(`${BASE}${sign.data.url}`);
+ok(sg.status === 200, "Edge: URL assinada -> 200");
+const bad = await fetch(`${BASE}/v1/assets/${encodeURIComponent(ekey)}?sig=xxx&exp=${Date.now() + 1000}`);
+ok(bad.status === 403, "Edge: assinatura inválida -> 403");
+
 console.info(`\n[ccs v2] ${passed} passou, ${failed} falhou`);
 server.close();
 setTimeout(() => process.exit(failed ? 1 : 0), 50);

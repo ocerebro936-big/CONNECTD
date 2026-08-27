@@ -38,6 +38,12 @@ export function routeToCapability(analysis: DivinoAnalysis): string | null {
       return 'node_status';
     case 'best_node':
       return 'best_node';
+    case 'edge':
+      return 'edge_status';
+    case 'cache':
+      return 'cache_status';
+    case 'delivery':
+      return 'delivery_trace';
     case 'memory':
       return 'memory_recall';
     default:
