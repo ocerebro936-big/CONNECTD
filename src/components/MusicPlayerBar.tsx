@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, Heart, Share2, Download, X, Music2 } from 'lucide-react';
-import { MusicTrack, incrementPlays, incrementShares, incrementDownloads, toggleMusicLike, isMusicLiked } from '../lib/music';
+import React, { useEffect, useRef, useState } from "react";
+import { Play, Pause, Heart, Share2, Download, X, Music2 } from "lucide-react";
+import { MusicTrack, incrementPlays, incrementShares, incrementDownloads, toggleMusicLike, isMusicLiked } from "../lib/music";
 
 interface MusicPlayerBarProps {
   track: MusicTrack | null;
@@ -34,18 +34,45 @@ export function MusicPlayerBar({ track, user, onClose }: MusicPlayerBarProps) {
     setProgress(0);
   }, [track, user?.uid]);
 
-  // Política de áudio: pára a música se outro áudio/video pedir foco.
+  // Video-priority REAL: quando QUALQUER <video> toca, a música pausa;
+  // quando o vídeo termina/para, a música retoma (se tocava antes).
   useEffect(() => {
-    const onFocus = () => {
+    if (!track) return;
+    let wasPlaying = false;
+    let videoCount = 0;
+    const onPlay = (e: Event) => {
+      if (!(e.target instanceof HTMLVideoElement)) return;
+      videoCount++;
       const audio = audioRef.current;
       if (audio && !audio.paused) {
+        wasPlaying = true;
         audio.pause();
         setIsPlaying(false);
       }
     };
+    const onStop = () => {
+      videoCount = Math.max(0, videoCount - 1);
+      const audio = audioRef.current;
+      if (videoCount === 0 && wasPlaying && audio && track) {
+        wasPlaying = false;
+        audio.play().then(() => setIsPlaying(true)).catch(() => {});
+      }
+    };
+    const onFocus = () => {
+      const audio = audioRef.current;
+      if (audio && !audio.paused) { audio.pause(); setIsPlaying(false); }
+    };
+    document.addEventListener("play", onPlay, true);
+    document.addEventListener("ended", onStop, true);
+    document.addEventListener("pause", onStop, true);
     window.addEventListener("ck:pause-music", onFocus);
-    return () => window.removeEventListener("ck:pause-music", onFocus);
-  }, []);
+    return () => {
+      document.removeEventListener("play", onPlay, true);
+      document.removeEventListener("ended", onStop, true);
+      document.removeEventListener("pause", onStop, true);
+      window.removeEventListener("ck:pause-music", onFocus);
+    };
+  }, [track]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -69,7 +96,7 @@ export function MusicPlayerBar({ track, user, onClose }: MusicPlayerBarProps) {
   const fmt = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, '0')}`;
+    return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
   const handleLike = async () => {
@@ -84,7 +111,7 @@ export function MusicPlayerBar({ track, user, onClose }: MusicPlayerBarProps) {
     const url = `${window.location.origin}/?tab=music`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: `${track.title} — ${track.artistName}`, text: 'Ouça na Connected Music', url });
+        await navigator.share({ title: `${track.title} — ${track.artistName}`, text: "Ouça na Connected Music", url });
       } catch {}
     } else {
       navigator.clipboard?.writeText(url).catch(() => {});
@@ -94,7 +121,7 @@ export function MusicPlayerBar({ track, user, onClose }: MusicPlayerBarProps) {
   const handleDownload = () => {
     if (!track) return;
     incrementDownloads(track.id).catch(() => {});
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = track.audioUrl;
     a.download = `${track.title}.mp3`;
     a.click();
@@ -103,7 +130,7 @@ export function MusicPlayerBar({ track, user, onClose }: MusicPlayerBarProps) {
   if (!track) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 glass-dark border-t border-primary/30 px-3 py-2 shadow-2xl">
+    <div className="fixed bottom-0 left-0 right-0 z-40 glass-dark border-t border-primary/30 px-3 py-2 shadow-2xl">
       <style>{`
         @keyframes cr-wave { 0%,100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
         .cr-bar { animation: cr-wave 0.9s ease-in-out infinite; transform-origin: bottom; }
@@ -132,10 +159,10 @@ export function MusicPlayerBar({ track, user, onClose }: MusicPlayerBarProps) {
               key={i}
               className="cr-bar w-[2px] bg-primary rounded-full"
               style={{
-                height: '100%',
+                height: "100%",
                 animationDelay: `${(i % 7) * 0.08}s`,
                 opacity: isPlaying ? 1 : 0.25,
-                animationPlayState: isPlaying ? 'running' : 'paused',
+                animationPlayState: isPlaying ? "running" : "paused",
               }}
             />
           ))}
@@ -162,8 +189,8 @@ export function MusicPlayerBar({ track, user, onClose }: MusicPlayerBarProps) {
           {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
         </button>
 
-        <button onClick={handleLike} className={`p-2 rounded-full hover:bg-white/10 ${liked ? 'text-rose-400' : 'text-white/70'}`} title="Gostar">
-          <Heart className="h-5 w-5" fill={liked ? 'currentColor' : 'none'} />
+        <button onClick={handleLike} className={`p-2 rounded-full hover:bg-white/10 ${liked ? "text-rose-400" : "text-white/70"}`} title="Gostar">
+          <Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} />
         </button>
         <button onClick={handleShare} className="p-2 rounded-full hover:bg-white/10 text-white/70" title="Partilhar">
           <Share2 className="h-5 w-5" />

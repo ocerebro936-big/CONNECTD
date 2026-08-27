@@ -8,7 +8,6 @@ import { ChatModal } from '../components/ChatModal';
 import { UserLevelBadge } from '../components/UserLevelBadge';
 import { JOB_ROLES } from '../lib/reputation-utils';
 import DivinoIa from './DivinoIa';
-import { DivinoAutonomousPanel } from '../components/DivinoAutonomousPanel';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -220,7 +219,6 @@ const NetworkPage: React.FC<NetworkPageProps> = ({
             <DivinoIa user={user} profileData={profileData} />
           </div>
           <div className="xl:col-span-1">
-            <DivinoAutonomousPanel />
           </div>
         </div>
       )}

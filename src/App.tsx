@@ -79,7 +79,7 @@ import { Progress } from './components/ui/progress';
 import { BackgroundSlider } from './components/BackgroundSlider';
 import { InstallPrompt } from './components/InstallPrompt';
 import { UpdateNotifier } from './components/UpdateNotifier';
-import { DivinoMordomo } from './components/DivinoMordomo';
+import DivinoAssistant from './components/DivinoAssistant';
 import { OnboardingGuide, shouldShowOnboarding } from './components/OnboardingGuide';
 import { ConnectedKingMascot } from './components/ConnectedKingMascot';
 import { MusicProvider } from './lib/connected-music/context';
@@ -1563,15 +1563,7 @@ export default function App() {
         <IncomingCallListener user={user} onIncoming={handleIncomingCall} />
       )}
       {isAuthenticated && (
-        <DivinoMordomo
-          user={user}
-          profileData={profileData}
-          allUsers={allUsers}
-          followingIds={followingIds}
-          onNavigate={handleTabSelect}
-          onCreatePost={() => handleTabSelect('feed')}
-          handleFollow={handleFollow}
-        />
+        <DivinoAssistant user={user} />
       )}
       <BackgroundLayer />
       <div className="flex h-screen w-full text-slate-900 overflow-hidden">
