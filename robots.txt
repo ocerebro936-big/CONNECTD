@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://ocerebro936-big.github.io/CONNECTD/sitemap.xml
+Sitemap: https://www.connectedking.web.app/sitemap.xml

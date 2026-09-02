@@ -1,0 +1,1 @@
+import{v as c,k as o,m as t}from"./index-hBVO-r89.js";const e=async a=>{try{await c(o(t,"finance_transactions"),{...a,createdAt:a.createdAt??Date.now()})}catch(r){console.error("Error recording finance transaction:",r)}};export{e as r};
