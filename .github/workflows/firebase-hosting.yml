@@ -1,0 +1,44 @@
+name: Deploy Connected King (connectedking.web.app)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "index.html"
+      - "vite.config.*"
+      - "package.json"
+      - "tsconfig.json"
+      - ".github/workflows/firebase-hosting.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "public/**"
+      - "index.html"
+      - "vite.config.*"
+      - "package.json"
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy to connectedking
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Build (com URL do Gateway)
+        run: npm run build
+        env:
+          # Define o segredo do repositório para ligar o app ao Gateway real.
+          VITE_CCS_GATEWAY_URL: ${{ secrets.VITE_CCS_GATEWAY_URL }}
+      - name: Deploy to Firebase Hosting (target connectedking)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_TOKEN }}
+          projectId: connected-ecossistema
+          channelId: live
+          target: connectedking

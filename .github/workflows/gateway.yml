@@ -30,7 +30,7 @@ jobs:
   deploy:
     name: Build & Push image (GHCR)
     needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -46,13 +46,17 @@ jobs:
       - name: Lowercase image name
         id: img
         run: echo "name=ghcr.io/${{ github.repository_owner }}/connected-gateway" | tr '[:upper:]' '[:lower:]' >> "$GITHUB_OUTPUT"
+      - name: Compute tags
+        id: tags
+        run: |
+          TAGS="${{ steps.img.outputs.name }}:${{ github.sha }}"
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then TAGS="$TAGS,${{ steps.img.outputs.name }}:latest"; fi
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: ./connected-cloud-server
           push: true
-          tags: |
-            ${{ steps.img.outputs.name }}:latest
-            ${{ steps.img.outputs.name }}:${{ github.sha }}
+          tags: ${{ steps.tags.outputs.tags }}
       - name: Done
         run: echo "Imagem publicada em ${{ steps.img.outputs.name }}:latest — aponta o host (Cloud Run/Render/Fly) para esta imagem com CCS_API_KEY e CCS_SIGN_KEY como secrets."

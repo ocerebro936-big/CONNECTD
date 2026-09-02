@@ -1,0 +1,28 @@
+# Connected Cloud Gateway — deploy de um clique no Render (a partir do GHCR).
+# Pré-requisitos:
+#   1. A imagem ghcr.io/<owner>/connected-gateway:latest existe (GitHub Actions
+#      constrói e publica no push para main).
+#   2. No Render: New > Blueprints > importa este repo; ou cria um Web Service
+#      apontando para a imagem acima.
+#   3. Define CCS_API_KEY e CCS_SIGN_KEY como env vars (secret) no Render.
+#   4. Define CCS_ALLOWED_ORIGINS=https://connectedking.web.app
+# HTTPS é terminado pelo Render. O app usa VITE_CCS_GATEWAY_URL=<url do Render>.
+
+services:
+  - type: web
+    name: connected-gateway
+    image: ghcr.io/ocerebro936-big/connected-gateway:latest
+    runtime: image
+    plan: starter
+    healthCheckPath: /v1/nodes/health
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: CCS_NODES
+        value: "node-a,node-b"
+      - key: CCS_ALLOWED_ORIGINS
+        value: "https://connectedking.web.app"
+      - key: CCS_API_KEY
+        sync: false
+      - key: CCS_SIGN_KEY
+        sync: false
